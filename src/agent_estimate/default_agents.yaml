@@ -1,0 +1,31 @@
+agents:
+  - name: Claude
+    capabilities:
+      - planning
+      - implementation
+      - review
+    parallelism: 2
+    cost_per_turn: 0.12
+    model_tier: frontier
+  - name: Codex
+    capabilities:
+      - implementation
+      - debugging
+      - testing
+    parallelism: 3
+    cost_per_turn: 0.08
+    model_tier: production
+  - name: Gemini
+    capabilities:
+      - research
+      - synthesis
+      - review
+    parallelism: 2
+    cost_per_turn: 0.09
+    model_tier: frontier
+
+settings:
+  friction_multiplier: 1.15
+  inter_wave_overhead: 0.25
+  review_overhead: 0.2
+  metr_fallback_threshold: 45.0
