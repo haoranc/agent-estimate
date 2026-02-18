@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.24.0"]
 build-backend = "hatchling.build"
 
 [project]
@@ -9,16 +9,26 @@ description = "Effort estimation for AI coding agents — PERT + METR + wave pla
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
-authors = [
-    { name = "haoranc" },
-]
+authors = [{ name = "haoranc" }]
 keywords = ["ai", "agents", "estimation", "pert", "planning"]
 classifiers = [
-    "Development Status :: 1 - Planning",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Topic :: Software Development :: Quality Assurance",
+  "Development Status :: 1 - Planning",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = [
+  "typer>=0.12,<1.0",
+  "pyyaml>=6.0,<7.0",
+  "pydantic>=2.0,<3.0",
+  "networkx>=3.0,<4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0,<9.0",
+  "ruff>=0.9,<1.0",
 ]
 
 [project.urls]
@@ -27,4 +37,11 @@ Repository = "https://github.com/haoranc/agent-estimate"
 Issues = "https://github.com/haoranc/agent-estimate/issues"
 
 [project.scripts]
-agent-estimate = "agent_estimate.cli:main"
+agent-estimate = "agent_estimate.cli.app:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100

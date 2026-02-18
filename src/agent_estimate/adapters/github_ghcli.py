@@ -1,0 +1,1 @@
+"""GitHub CLI adapter (stub)."""
