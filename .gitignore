@@ -1,5 +1,6 @@
 # Agent Hub / Claude Code (local-only)
 .agent-hub
+AGENTS.md
 CLAUDE.md
 .claude/
 
@@ -30,3 +31,14 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*_rsa
+*_ed25519
+secrets.yaml
+secrets.yml
