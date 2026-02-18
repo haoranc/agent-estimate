@@ -35,6 +35,7 @@ htmlcov/
 # Secrets and credentials
 .env
 .env.*
+!.env.example
 *.pem
 *.key
 *_rsa
