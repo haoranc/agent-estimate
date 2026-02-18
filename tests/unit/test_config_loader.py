@@ -94,6 +94,29 @@ settings:
         load_config(config_path)
 
 
+def test_load_config_accepts_yaml_int_values_for_float_fields(tmp_path: Path) -> None:
+    int_values = """\
+agents:
+  - name: Claude
+    capabilities: [planning]
+    parallelism: 2
+    cost_per_turn: 0
+    model_tier: frontier
+settings:
+  friction_multiplier: 1
+  inter_wave_overhead: 0
+  review_overhead: 1
+  metr_fallback_threshold: 30
+"""
+    config_path = _write(tmp_path, "int-values.yaml", int_values)
+
+    config = load_config(config_path)
+
+    assert config.agents[0].cost_per_turn == pytest.approx(0.0)
+    assert config.settings.friction_multiplier == pytest.approx(1.0)
+    assert config.settings.metr_fallback_threshold == pytest.approx(30.0)
+
+
 def test_load_default_config_has_expected_profiles() -> None:
     config = load_default_config()
 

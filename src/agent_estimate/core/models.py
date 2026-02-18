@@ -12,7 +12,7 @@ NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length
 class AgentProfile(BaseModel):
     """Configuration for one estimation agent profile."""
 
-    model_config = ConfigDict(extra="forbid", strict=True)
+    model_config = ConfigDict(extra="forbid")
 
     name: NonEmptyStr
     capabilities: list[NonEmptyStr] = Field(min_length=1)
@@ -24,7 +24,7 @@ class AgentProfile(BaseModel):
 class ProjectSettings(BaseModel):
     """Project-level calibration and overhead settings."""
 
-    model_config = ConfigDict(extra="forbid", strict=True)
+    model_config = ConfigDict(extra="forbid")
 
     friction_multiplier: Annotated[float, Field(gt=0)]
     inter_wave_overhead: Annotated[float, Field(ge=0)]
@@ -35,7 +35,7 @@ class ProjectSettings(BaseModel):
 class EstimationConfig(BaseModel):
     """Top-level config object for estimation inputs."""
 
-    model_config = ConfigDict(extra="forbid", strict=True)
+    model_config = ConfigDict(extra="forbid")
 
     agents: list[AgentProfile] = Field(min_length=1)
     settings: ProjectSettings
