@@ -1,0 +1,13 @@
+models:
+  opus:
+    display_name: "Opus"
+    p80_minutes: 90
+  gpt_5_3:
+    display_name: "GPT-5.3"
+    p80_minutes: 60
+  gemini_3_pro:
+    display_name: "Gemini 3 Pro"
+    p80_minutes: 45
+  sonnet:
+    display_name: "Sonnet"
+    p80_minutes: 30
