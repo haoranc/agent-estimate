@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -15,7 +16,7 @@ from agent_estimate.adapters.sqlite_store import (
 
 
 @pytest.fixture
-def store(tmp_path: Path) -> SQLiteCalibrationStore:
+def store(tmp_path: Path) -> Generator[SQLiteCalibrationStore, None, None]:
     calibration_store = SQLiteCalibrationStore(tmp_path / "calibration.db")
     yield calibration_store
     calibration_store.close()
@@ -54,7 +55,7 @@ def test_insert_and_query_observation(store: SQLiteCalibrationStore) -> None:
     assert observation_id > 0
     assert store.journal_mode() == "wal"
 
-    rows = store.query_observations(task_type="feature")
+    rows = store._query_observations(task_type="feature")
     assert len(rows) == 1
     row = rows[0]
     assert row["id"] == observation_id
@@ -117,3 +118,31 @@ def test_module_level_calibrate_recomputes_summary(tmp_path: Path) -> None:
     assert len(summary_rows) == 1
     assert summary_rows[0]["task_type"] == "ops"
     assert summary_rows[0]["sample_count"] == 2
+
+
+def test_store_supports_context_manager(tmp_path: Path) -> None:
+    db_path = tmp_path / "ctx.db"
+    with SQLiteCalibrationStore(db_path) as store:
+        store.insert_observation(_observation())
+
+    with SQLiteCalibrationStore(db_path) as store:
+        rows = store.query_calibration_summary()
+        assert rows == []
+
+
+def test_schema_version_table_exists(store: SQLiteCalibrationStore) -> None:
+    row = store._connection.execute("SELECT version FROM schema_version").fetchone()
+    assert row is not None
+    assert row["version"] == 1
+
+
+def test_insert_rejects_invalid_negative_values(store: SQLiteCalibrationStore) -> None:
+    invalid = _observation()
+    invalid = ObservationInput(
+        **{
+            **invalid.__dict__,
+            "estimated_secs": -1.0,
+        },
+    )
+    with pytest.raises(ValueError, match="estimated_secs must be >= 0"):
+        store.insert_observation(invalid)
