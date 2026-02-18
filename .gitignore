@@ -1,5 +1,7 @@
-# Agent Hub
+# Agent Hub / Claude Code (local-only)
 .agent-hub
+CLAUDE.md
+.claude/
 
 # Python
 __pycache__/
