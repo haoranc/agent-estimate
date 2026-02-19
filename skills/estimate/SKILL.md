@@ -1,6 +1,7 @@
 ---
 name: estimate
 description: Estimate effort for AI coding agent tasks using PERT three-point estimation with METR reliability thresholds and wave planning.
+disable-model-invocation: true
 ---
 
 # /estimate — AI Agent Effort Estimation
@@ -29,33 +30,33 @@ When the user invokes this skill, follow these steps:
 
 Determine which subcommand to run based on context:
 
-| Invocation pattern | Subcommand |
-|---|---|
-| `/estimate ...` with any args | `agent-estimate estimate` |
-| `/validate-estimate <file>` | `agent-estimate validate` |
-| `/calibrate` | `agent-estimate calibrate` |
+| Invocation pattern            | Subcommand                 |
+| ----------------------------- | -------------------------- |
+| `/estimate ...` with any args | `agent-estimate estimate`  |
+| `/validate-estimate <file>`   | `agent-estimate validate`  |
+| `/calibrate`                  | `agent-estimate calibrate` |
 
 ### 2. Build the CLI command
 
 #### Global flags (all subcommands)
 
-| Flag | Short | Description |
-|---|---|---|
-| `--verbose` | `-v` | Enable debug logging — useful when a command exits non-zero |
+| Flag        | Short | Description                                                 |
+| ----------- | ----- | ----------------------------------------------------------- |
+| `--verbose` | `-v`  | Enable debug logging — useful when a command exits non-zero |
 
 #### For `/estimate`
 
 Parse these optional flags from user input and pass them through verbatim:
 
-| Flag | Short | Description |
-|---|---|---|
-| `--file <path>` | `-f` | Path to task file (one task per line) |
-| `--config <path>` | `-c` | Path to config YAML with agent definitions |
-| `--format <fmt>` | | Output format: `markdown` (default) or `json` |
-| `--review-mode <mode>` | | Review overhead: `none`, `self`, `2x-lgtm` (default) |
-| `--issues <nums>` | `-i` | Comma-separated GitHub issue numbers |
-| `--repo <owner/name>` | `-r` | GitHub repo (required with `--issues`) |
-| `--title <text>` | `-t` | Report title |
+| Flag                   | Short | Description                                          |
+| ---------------------- | ----- | ---------------------------------------------------- |
+| `--file <path>`        | `-f`  | Path to task file (one task per line)                |
+| `--config <path>`      | `-c`  | Path to config YAML with agent definitions           |
+| `--format <fmt>`       |       | Output format: `markdown` (default) or `json`        |
+| `--review-mode <mode>` |       | Review overhead: `none`, `self`, `2x-lgtm` (default) |
+| `--issues <nums>`      | `-i`  | Comma-separated GitHub issue numbers                 |
+| `--repo <owner/name>`  | `-r`  | GitHub repo (required with `--issues`)               |
+| `--title <text>`       | `-t`  | Report title                                         |
 
 If none of `--file`, `--issues`, or a task description is provided, prompt the user:
 > Please provide a task description, `--file <path>`, or `--issues <nums> --repo <owner/name>`.
