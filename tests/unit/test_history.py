@@ -205,3 +205,16 @@ def test_none_path_returns_default() -> None:
     result = infer_warm_context(None)
     assert result.value == 1.0
     assert result.source == "default"
+
+
+def test_dispatches_not_a_list_returns_10(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """'dispatches' is not a list -> 1.0 with warning."""
+    path = tmp_path / "bad_type.json"
+    path.write_text('{"dispatches": "not-a-list"}', encoding="utf-8")
+    with caplog.at_level(logging.WARNING, logger="agent_estimate"):
+        result = infer_warm_context(path)
+    assert result.value == 1.0
+    assert result.source == "default"
+    assert "not a list" in caplog.text

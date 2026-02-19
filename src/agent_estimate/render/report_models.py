@@ -26,6 +26,7 @@ class ReportTask:
     human_equivalent_minutes: float | None
     review_overhead_minutes: float
     metr_warning: str | None = None
+    warm_context_detail: str | None = None
 
     @property
     def base_pert_expected_minutes(self) -> float:

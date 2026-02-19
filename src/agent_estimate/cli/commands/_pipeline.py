@@ -53,7 +53,8 @@ def run_estimate_pipeline(
     config: EstimationConfig,
     review_mode: ReviewMode = ReviewMode.TWO_LGTM,
     title: str = "Agent Estimate Report",
-    warm_context: float | None = None,
+    warm_context: float = 1.0,
+    warm_context_detail: str | None = None,
 ) -> EstimationReport:
     """Run the full estimation pipeline and produce a report."""
     if not config.agents:
@@ -68,17 +69,13 @@ def run_estimate_pipeline(
 
     names: list[str] = []
     estimates: list[TaskEstimate] = []
+    modifiers = build_modifier_set(warm_context=warm_context)
 
     for desc in descriptions:
         name = _truncate_name(desc)
         logger.debug("Estimating task: %s", name)
 
         sizing = classify_task(desc)
-        modifiers = (
-            build_modifier_set(warm_context=warm_context)
-            if warm_context is not None
-            else build_modifier_set()
-        )
 
         # First pass — get total_expected_minutes
         est = estimate_task(
@@ -125,7 +122,10 @@ def run_estimate_pipeline(
         inter_wave_overhead_hours=config.settings.inter_wave_overhead,
     )
 
-    return _build_report(names, estimates, wave_plan, config, title, thresholds, fallback)
+    return _build_report(
+        names, estimates, wave_plan, config, title, thresholds, fallback,
+        warm_context_detail=warm_context_detail,
+    )
 
 
 def _build_report(
@@ -136,6 +136,7 @@ def _build_report(
     title: str,
     thresholds: dict[str, float] | None = None,
     fallback: float = 40.0,
+    warm_context_detail: str | None = None,
 ) -> EstimationReport:
     """Map wave planner outputs back to report models."""
     # Build assignment map: task_id -> agent_name
@@ -182,6 +183,7 @@ def _build_report(
                 human_equivalent_minutes=est.human_equivalent_minutes,
                 review_overhead_minutes=est.review_minutes,
                 metr_warning=warning_message,
+                warm_context_detail=warm_context_detail,
             )
         )
     report_tasks = tuple(report_task_list)

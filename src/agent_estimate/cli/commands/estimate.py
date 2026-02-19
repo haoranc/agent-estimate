@@ -110,9 +110,7 @@ def run(
             history_path = default_history
 
     warm_ctx = infer_warm_context(history_path)
-    warm_context_kwarg: dict[str, float] = {}
     if warm_ctx.value != 1.0:
-        warm_context_kwarg["warm_context"] = warm_ctx.value
         logger.info(
             "warm_context: %.2f (auto: %s)", warm_ctx.value, warm_ctx.detail
         )
@@ -120,7 +118,12 @@ def run(
     # --- Run pipeline ---
     try:
         report = run_estimate_pipeline(
-            descriptions, cfg, review_mode=mode, title=title, **warm_context_kwarg
+            descriptions,
+            cfg,
+            review_mode=mode,
+            title=title,
+            warm_context=warm_ctx.value,
+            warm_context_detail=warm_ctx.detail,
         )
     except ValueError as exc:
         _error(f"Estimation error: {exc}", 2)
