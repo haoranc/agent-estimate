@@ -42,6 +42,21 @@ def run(
     title: str = typer.Option(
         "Agent Estimate Report", "--title", "-t", help="Report title."
     ),
+    spec_clarity: float = typer.Option(
+        1.0,
+        "--spec-clarity",
+        help="Spec clarity modifier (range: 0.3 to 1.3; lower means clearer spec).",
+    ),
+    warm_context: float = typer.Option(
+        1.0,
+        "--warm-context",
+        help="Warm context modifier (range: 0.3 to 1.15; lower means warmer context).",
+    ),
+    agent_fit: float = typer.Option(
+        1.0,
+        "--agent-fit",
+        help="Agent fit modifier (range: 0.9 to 1.2; lower means better fit).",
+    ),
 ) -> None:
     """Estimate effort for one or more task descriptions."""
     # --- Resolve input source (exactly one) ---
@@ -99,7 +114,13 @@ def run(
     # --- Run pipeline ---
     try:
         report = run_estimate_pipeline(
-            descriptions, cfg, review_mode=mode, title=title
+            descriptions,
+            cfg,
+            review_mode=mode,
+            title=title,
+            spec_clarity=spec_clarity,
+            warm_context=warm_context,
+            agent_fit=agent_fit,
         )
     except ValueError as exc:
         _error(f"Estimation error: {exc}", 2)
