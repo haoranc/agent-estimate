@@ -1,0 +1,16 @@
+{
+    "name": "agent-estimate-marketplace",
+    "owner": {
+        "name": "haoranc"
+    },
+    "metadata": {
+        "description": "Effort estimation plugin for AI coding agents"
+    },
+    "plugins": [
+        {
+            "name": "agent-estimate",
+            "source": "./",
+            "description": "PERT three-point estimation with METR reliability thresholds and wave planning"
+        }
+    ]
+}

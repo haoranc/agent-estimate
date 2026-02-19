@@ -48,8 +48,17 @@ agent-estimate --version
 
 ### Install
 
+**Option 1 — From marketplace:**
+
+```
+/plugin marketplace add haoranc/agent-estimate
+/plugin install agent-estimate@agent-estimate-marketplace
+```
+
+**Option 2 — Local development:**
+
 ```bash
-/install-plugin haoranc/agent-estimate
+claude --plugin-dir /path/to/agent-estimate
 ```
 
 **Prerequisite**: The CLI must be installed first: `pip install agent-estimate`
@@ -119,14 +128,14 @@ Or run the GitHub Actions workflow `TestPyPI Dry Run` to publish and smoke-test 
 
 The default model thresholds are defined in `src/agent_estimate/metr_thresholds.yaml`:
 
-| Model | p80 threshold |
-| --- | --- |
-| Opus | 90 minutes |
-| GPT-5.3 | 60 minutes |
-| GPT-5 | 50 minutes |
-| GPT-5.2 | 55 minutes |
-| Gemini 3 Pro | 45 minutes |
-| Sonnet | 30 minutes |
+| Model        | p80 threshold |
+| ------------ | ------------- |
+| Opus         | 90 minutes    |
+| GPT-5.3      | 60 minutes    |
+| GPT-5        | 50 minutes    |
+| GPT-5.2      | 55 minutes    |
+| Gemini 3 Pro | 45 minutes    |
+| Sonnet       | 30 minutes    |
 
 ## Agent Config Example
 
