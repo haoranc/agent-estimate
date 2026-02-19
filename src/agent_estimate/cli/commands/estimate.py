@@ -43,6 +43,21 @@ def run(
     title: str = typer.Option(
         "Agent Estimate Report", "--title", "-t", help="Report title."
     ),
+    spec_clarity: float = typer.Option(
+        1.0,
+        "--spec-clarity",
+        help="Spec clarity modifier (range: 0.3 to 1.3; lower means clearer spec).",
+    ),
+    warm_context: float = typer.Option(
+        1.0,
+        "--warm-context",
+        help="Warm context modifier (range: 0.3 to 1.15; lower means warmer context).",
+    ),
+    agent_fit: float = typer.Option(
+        1.0,
+        "--agent-fit",
+        help="Agent fit modifier (range: 0.9 to 1.2; lower means better fit).",
+    ),
     history_file: Optional[Path] = typer.Option(
         None,
         "--history-file",
@@ -122,7 +137,12 @@ def run(
     warm_ctx = infer_warm_context(
         history_path, agent=history_agent, project=history_project
     )
-    if warm_ctx.value != 1.0:
+    # Auto-inferred warm_context applies when --warm-context wasn't explicitly set
+    effective_warm_context = warm_context
+    effective_detail: str | None = None
+    if warm_ctx.value != 1.0 and warm_context == 1.0:
+        effective_warm_context = warm_ctx.value
+        effective_detail = warm_ctx.detail
         logger.info(
             "warm_context: %.2f (auto: %s)", warm_ctx.value, warm_ctx.detail
         )
@@ -134,8 +154,10 @@ def run(
             cfg,
             review_mode=mode,
             title=title,
-            warm_context=warm_ctx.value,
-            warm_context_detail=warm_ctx.detail,
+            spec_clarity=spec_clarity,
+            warm_context=effective_warm_context,
+            agent_fit=agent_fit,
+            warm_context_detail=effective_detail,
         )
     except ValueError as exc:
         _error(f"Estimation error: {exc}", 2)

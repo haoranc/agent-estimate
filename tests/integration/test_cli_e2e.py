@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from typer.testing import CliRunner
 
 from agent_estimate.cli.app import app
+from agent_estimate.cli.commands import estimate as estimate_command
 
 runner = CliRunner()
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
+
+_ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 # ---------------------------------------------------------------------------
@@ -64,6 +68,95 @@ class TestEstimateSingleTask:
         )
         assert result.exit_code == 0
         assert "My Custom Report" in result.output
+
+
+class TestEstimateModifierFlags:
+    def test_modifier_flags_affect_report_for_text_input(self) -> None:
+        result = runner.invoke(
+            app,
+            [
+                "estimate",
+                "--spec-clarity",
+                "0.3",
+                "--warm-context",
+                "0.3",
+                "Add login button",
+            ],
+        )
+        assert result.exit_code == 0
+        assert "spec 0.30 x warm 0.30 x fit 1.00 = 0.09" in result.output
+
+    def test_modifier_flags_work_with_file_input(self) -> None:
+        task_file = str(FIXTURES / "tasks_multi.txt")
+        result = runner.invoke(
+            app,
+            [
+                "estimate",
+                "--file",
+                task_file,
+                "--spec-clarity",
+                "0.6",
+                "--warm-context",
+                "0.5",
+                "--agent-fit",
+                "1.1",
+            ],
+        )
+        assert result.exit_code == 0
+        assert "spec 0.60 x warm 0.50 x fit 1.10 = 0.33" in result.output
+
+    def test_modifier_flags_work_with_issues_input(self, monkeypatch) -> None:
+        class _FakeGitHubAdapter:
+            def fetch_task_descriptions_by_numbers(
+                self, repo: str, issue_numbers: list[int]
+            ) -> list[str]:
+                assert repo == "haoranc/agent-estimate"
+                assert issue_numbers == [11, 12]
+                return ["Implement auth flow", "Add tests"]
+
+        monkeypatch.setattr(estimate_command, "GitHubGhCliAdapter", _FakeGitHubAdapter)
+        result = runner.invoke(
+            app,
+            [
+                "estimate",
+                "--issues",
+                "11,12",
+                "--repo",
+                "haoranc/agent-estimate",
+                "--spec-clarity",
+                "0.7",
+                "--warm-context",
+                "0.6",
+            ],
+        )
+        assert result.exit_code == 0
+        assert result.output.count("spec 0.70 x warm 0.60 x fit 1.00 = 0.42") == 2
+
+    def test_modifier_out_of_range_is_user_facing_error(self) -> None:
+        result = runner.invoke(
+            app,
+            [
+                "estimate",
+                "--spec-clarity",
+                "0.2",
+                "Add login button",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "Estimation error:" in result.output
+        assert "spec_clarity must be between 0.3 and 1.3" in result.output
+
+    def test_estimate_help_includes_modifier_flags(self) -> None:
+        result = runner.invoke(app, ["estimate", "--help"])
+        assert result.exit_code == 0
+        normalized = _ANSI_ESCAPE_RE.sub("", result.output)
+        compact = re.sub(r"\s+", "", normalized)
+        assert "--spec-clarity" in compact
+        assert "--warm-context" in compact
+        assert "--agent-fit" in compact
+        assert "0.3to1.3" in compact
+        assert "0.3to1.15" in compact
+        assert "0.9to1.2" in compact
 
 
 # ---------------------------------------------------------------------------
