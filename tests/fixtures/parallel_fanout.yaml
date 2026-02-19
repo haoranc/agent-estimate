@@ -1,0 +1,21 @@
+agents:
+  - name: Alpha
+    capabilities:
+      - planning
+      - implementation
+    parallelism: 2
+    cost_per_turn: 0.12
+    model_tier: frontier
+  - name: Beta
+    capabilities:
+      - implementation
+      - testing
+    parallelism: 3
+    cost_per_turn: 0.08
+    model_tier: production
+
+settings:
+  friction_multiplier: 1.15
+  inter_wave_overhead: 0.25
+  review_overhead: 0.2
+  metr_fallback_threshold: 45.0
