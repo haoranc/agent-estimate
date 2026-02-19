@@ -157,4 +157,5 @@ def _format_minutes(value: float) -> str:
 
 
 def _escape_cell(value: str) -> str:
-    return value.replace("|", "\\|")
+    normalized = value.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "<br>")
+    return normalized.replace("|", "\\|")

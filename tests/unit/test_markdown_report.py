@@ -224,3 +224,47 @@ def test_render_markdown_report_handles_empty_path_and_warnings() -> None:
 
     assert "No critical path provided." in rendered
     assert "No METR threshold warnings." in rendered
+
+
+def test_render_markdown_report_normalizes_multiline_cells() -> None:
+    task = ReportTask.from_estimate(
+        name="Task | Alpha\nline two",
+        agent="Code|x",
+        estimate=_make_task_estimate(
+            tier=SizeTier.S,
+            base=(12.0, 23.0, 40.0),
+            adjusted=(12.0, 23.0, 40.0),
+            modifier_set=ModifierSet(
+                spec_clarity=1.0,
+                warm_context=1.0,
+                agent_fit=1.0,
+                combined=1.0,
+            ),
+            review_minutes=7.5,
+            human_equivalent_minutes=60.0,
+            metr_warning=MetrWarning(
+                model_key="opus",
+                threshold_minutes=90.0,
+                estimated_minutes=95.0,
+                message="Warning with pipe | and\nnewline",
+            ),
+        ),
+    )
+    report = EstimationReport(
+        tasks=(task,),
+        waves=(),
+        timeline=ReportTimeline(
+            best_case_minutes=10.0,
+            expected_case_minutes=20.0,
+            worst_case_minutes=30.0,
+            human_equivalent_minutes=40.0,
+        ),
+        agent_load=(),
+        critical_path=("Task | Alpha\nline two",),
+    )
+
+    rendered = render_markdown_report(report)
+
+    assert "Task \\| Alpha<br>line two" in rendered
+    assert "Code\\|x" in rendered
+    assert "Warning with pipe \\| and<br>newline" in rendered
