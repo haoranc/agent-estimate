@@ -218,3 +218,59 @@ def test_dispatches_not_a_list_returns_10(
     assert result.value == 1.0
     assert result.source == "default"
     assert "not a list" in caplog.text
+
+
+def test_non_dict_dispatch_entries_are_skipped(
+    tmp_path: Path, ref_time: datetime
+) -> None:
+    """Non-dict entries in dispatches list are silently skipped."""
+    path = tmp_path / "mixed.json"
+    path.write_text(
+        json.dumps(
+            {
+                "dispatches": [
+                    42,
+                    "string-entry",
+                    None,
+                    {
+                        "agent": "codex",
+                        "project": "agent-estimate",
+                        "completed_at": (ref_time - timedelta(minutes=5)).isoformat(),
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    result = infer_warm_context(path, reference_time=ref_time)
+    assert result.value == 0.3
+    assert result.source == "auto"
+
+
+def test_mixed_agent_history_requires_filter(
+    tmp_path: Path, ref_time: datetime
+) -> None:
+    """Without agent filter, picks most recent across all agents; with filter, scoped."""
+    dispatches = [
+        {
+            "agent": "gemini",
+            "project": "agent-estimate",
+            "completed_at": (ref_time - timedelta(minutes=5)).isoformat(),
+        },
+        {
+            "agent": "codex",
+            "project": "agent-estimate",
+            "completed_at": (ref_time - timedelta(hours=30)).isoformat(),
+        },
+    ]
+    path = _write_history(tmp_path, dispatches)
+
+    # Without filter: picks gemini's 5m-ago dispatch -> 0.3
+    result_unfiltered = infer_warm_context(path, reference_time=ref_time)
+    assert result_unfiltered.value == 0.3
+
+    # With codex filter: picks codex's 30h-ago dispatch -> 1.0
+    result_filtered = infer_warm_context(
+        path, agent="codex", reference_time=ref_time
+    )
+    assert result_filtered.value == 1.0

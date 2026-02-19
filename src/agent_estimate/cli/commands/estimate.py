@@ -48,6 +48,16 @@ def run(
         "--history-file",
         help="Dispatch history JSON for auto warm-context detection.",
     ),
+    history_agent: Optional[str] = typer.Option(
+        None,
+        "--history-agent",
+        help="Filter dispatch history by agent name.",
+    ),
+    history_project: Optional[str] = typer.Option(
+        None,
+        "--history-project",
+        help="Filter dispatch history by project name.",
+    ),
 ) -> None:
     """Estimate effort for one or more task descriptions."""
     # --- Resolve input source (exactly one) ---
@@ -109,7 +119,9 @@ def run(
         if default_history.exists():
             history_path = default_history
 
-    warm_ctx = infer_warm_context(history_path)
+    warm_ctx = infer_warm_context(
+        history_path, agent=history_agent, project=history_project
+    )
     if warm_ctx.value != 1.0:
         logger.info(
             "warm_context: %.2f (auto: %s)", warm_ctx.value, warm_ctx.detail

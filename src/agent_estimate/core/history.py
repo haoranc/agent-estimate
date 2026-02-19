@@ -147,4 +147,4 @@ def _load_dispatches(path: Path) -> list[dict]:
         logger.warning("History file %s: 'dispatches' is not a list", path)
         return []
 
-    return dispatches
+    return [d for d in dispatches if isinstance(d, dict)]

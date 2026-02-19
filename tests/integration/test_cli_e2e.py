@@ -284,3 +284,23 @@ class TestEstimateHistoryFile:
         data = json.loads(result.output)
         task = data["tasks"][0]
         assert task["modifiers"]["warm_context"] < 1.0
+
+    def test_history_agent_filter_scopes_inference(self) -> None:
+        import json
+
+        history = str(FIXTURES / "dispatch_history.json")
+        # gemini's dispatch is >24h old in the fixture -> 1.0
+        result = runner.invoke(
+            app,
+            [
+                "estimate",
+                "--history-file", history,
+                "--history-agent", "gemini",
+                "--format", "json",
+                "Add a button",
+            ],
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        task = data["tasks"][0]
+        assert task["modifiers"]["warm_context"] == 1.0
