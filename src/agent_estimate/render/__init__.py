@@ -1,5 +1,6 @@
 """Output rendering modules."""
 
+from agent_estimate.render.json_report import render_json_report
 from agent_estimate.render.markdown_report import render_markdown_report
 from agent_estimate.render.report_models import (
     EstimationReport,
@@ -15,5 +16,6 @@ __all__ = [
     "ReportTask",
     "ReportTimeline",
     "ReportWave",
+    "render_json_report",
     "render_markdown_report",
 ]

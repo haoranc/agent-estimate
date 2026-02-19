@@ -14,7 +14,7 @@ from agent_estimate.adapters.github_ghcli import GitHubGhCliAdapter
 from agent_estimate.cli.commands._pipeline import run_estimate_pipeline
 from agent_estimate.cli.commands.github import parse_issue_selection
 from agent_estimate.core import ReviewMode
-from agent_estimate.render import render_markdown_report
+from agent_estimate.render import render_json_report, render_markdown_report
 
 logger = logging.getLogger("agent_estimate")
 
@@ -110,7 +110,7 @@ def run(
     if format == "markdown":
         typer.echo(render_markdown_report(report))
     elif format == "json":
-        _error("JSON output not yet implemented.", 1)
+        typer.echo(render_json_report(report), nl=False)
     else:
         _error(f"Unknown format: {format!r}. Use markdown or json.", 2)
 

@@ -1,0 +1,99 @@
+{
+  "agent_load": [
+    {
+      "agent": "Claude",
+      "estimated_cost": 9.3,
+      "task_count": 1,
+      "total_work_minutes": 30.5
+    },
+    {
+      "agent": "Codex",
+      "estimated_cost": 18.4,
+      "task_count": 1,
+      "total_work_minutes": 72.5
+    }
+  ],
+  "critical_path": [
+    "Implement auth",
+    "Add tests"
+  ],
+  "metr_warnings": [
+    {
+      "task": "Implement auth",
+      "warning": "Estimate exceeds threshold"
+    }
+  ],
+  "tasks": [
+    {
+      "agent": "Codex",
+      "base_pert": {
+        "expected_minutes": 52.5,
+        "most_likely_minutes": 50.0,
+        "optimistic_minutes": 25.0,
+        "pessimistic_minutes": 90.0
+      },
+      "effective_duration_minutes": 57.8,
+      "human_equivalent_minutes": 160.0,
+      "is_critical_path": true,
+      "metr_warning": "Estimate exceeds threshold",
+      "modifiers": {
+        "agent_fit": 1.0,
+        "combined": 1.1,
+        "spec_clarity": 1.1,
+        "warm_context": 1.0
+      },
+      "name": "Implement auth",
+      "review_overhead_minutes": 17.5,
+      "tier": "M"
+    },
+    {
+      "agent": "Claude",
+      "base_pert": {
+        "expected_minutes": 24.0,
+        "most_likely_minutes": 23.0,
+        "optimistic_minutes": 12.0,
+        "pessimistic_minutes": 40.0
+      },
+      "effective_duration_minutes": 24.0,
+      "human_equivalent_minutes": 75.0,
+      "is_critical_path": true,
+      "metr_warning": null,
+      "modifiers": {
+        "agent_fit": 1.0,
+        "combined": 1.0,
+        "spec_clarity": 1.0,
+        "warm_context": 1.0
+      },
+      "name": "Add tests",
+      "review_overhead_minutes": 7.5,
+      "tier": "S"
+    }
+  ],
+  "timeline": {
+    "best_case_minutes": 70.0,
+    "compression_ratio": 2.7777777777777777,
+    "expected_case_minutes": 90.0,
+    "human_equivalent_minutes": 250.0,
+    "review_overhead_minutes": 25.0,
+    "worst_case_minutes": 130.0
+  },
+  "title": "W3 Estimate",
+  "waves": [
+    {
+      "agent_assignments": {
+        "Claude": [
+          "Add tests"
+        ],
+        "Codex": [
+          "Implement auth"
+        ]
+      },
+      "duration_minutes": 85.0,
+      "number": 1,
+      "tasks": [
+        "Add tests",
+        "Implement auth"
+      ]
+    }
+  ]
+}
