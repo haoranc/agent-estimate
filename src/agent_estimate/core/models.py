@@ -136,8 +136,8 @@ class SizingResult:
 class ModifierSet:
     """Collected modifiers applied to a baseline estimate."""
 
-    spec_clarity: float  # multiplier (0.8–1.3)
-    warm_context: float  # multiplier (0.85–1.15)
+    spec_clarity: float  # multiplier (0.3–1.3)
+    warm_context: float  # multiplier (0.3–1.15)
     agent_fit: float  # multiplier (0.9–1.2)
     combined: float  # product of the three
 

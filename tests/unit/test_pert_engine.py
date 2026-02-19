@@ -149,7 +149,7 @@ class TestModifiers:
 
     def test_spec_clarity_out_of_range_raises(self) -> None:
         with pytest.raises(ValueError, match="spec_clarity"):
-            build_modifier_set(spec_clarity=0.5)
+            build_modifier_set(spec_clarity=0.29)
 
     def test_warm_context_out_of_range_raises(self) -> None:
         with pytest.raises(ValueError, match="warm_context"):
@@ -232,6 +232,79 @@ class TestMetrThresholds:
         assert result.threshold_minutes == pytest.approx(90.0)
         assert result.estimated_minutes == pytest.approx(120.0)
         assert "exceeds" in result.message
+
+    @pytest.mark.parametrize(
+        ("model_key", "expected_model_key", "expected_threshold"),
+        [
+            ("claude", "opus", 90.0),
+            ("codex", "gpt_5_3", 60.0),
+            ("gemini", "gemini_3_pro", 45.0),
+            ("gpt-5.3", "gpt_5_3", 60.0),
+        ],
+    )
+    def test_alias_model_key_resolves_to_threshold_key(
+        self, model_key: str, expected_model_key: str, expected_threshold: float
+    ) -> None:
+        thresholds = {
+            "opus": 90.0,
+            "gpt_5_3": 60.0,
+            "gemini_3_pro": 45.0,
+        }
+        result = check_metr_threshold(
+            model_key, expected_threshold + 1.0, thresholds=thresholds, fallback_threshold=30.0
+        )
+        assert result is not None
+        assert result.model_key == expected_model_key
+        assert result.threshold_minutes == pytest.approx(expected_threshold)
+
+    def test_frontier_model_tier_resolves_by_assigned_agent(self) -> None:
+        thresholds = {
+            "opus": 90.0,
+            "gpt_5_3": 60.0,
+            "gemini_3_pro": 45.0,
+        }
+        claude_result = check_metr_threshold(
+            "frontier",
+            70.0,
+            thresholds=thresholds,
+            fallback_threshold=45.0,
+            agent_name="Claude",
+        )
+        gemini_result = check_metr_threshold(
+            "frontier",
+            70.0,
+            thresholds=thresholds,
+            fallback_threshold=45.0,
+            agent_name="Gemini",
+        )
+        codex_result = check_metr_threshold(
+            "frontier",
+            70.0,
+            thresholds=thresholds,
+            fallback_threshold=45.0,
+            agent_name="Codex",
+        )
+        assert claude_result is None
+        assert codex_result is not None
+        assert codex_result.model_key == "gpt_5_3"
+        assert codex_result.threshold_minutes == pytest.approx(60.0)
+        assert gemini_result is not None
+        assert gemini_result.model_key == "gemini_3_pro"
+        assert gemini_result.threshold_minutes == pytest.approx(45.0)
+
+    def test_unknown_model_logs_warning_when_falling_back(self, caplog: pytest.LogCaptureFixture) -> None:
+        thresholds = {"opus": 90.0}
+        with caplog.at_level("WARNING", logger="agent_estimate"):
+            result = check_metr_threshold(
+                "mystery-model",
+                50.0,
+                thresholds=thresholds,
+                fallback_threshold=40.0,
+            )
+        assert result is not None
+        assert result.threshold_minutes == pytest.approx(40.0)
+        assert "METR threshold not found" in caplog.text
+        assert "mystery-model" in caplog.text
 
     def test_unknown_model_uses_fallback(self) -> None:
         thresholds = {"opus": 90.0}

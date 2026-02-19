@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import re
 from importlib.resources import as_file, files
 from typing import Mapping
 
@@ -18,6 +20,44 @@ from agent_estimate.core.models import (
 from agent_estimate.core.modifiers import apply_modifiers, compute_review_overhead
 
 METR_THRESHOLDS_FILENAME = "metr_thresholds.yaml"
+logger = logging.getLogger("agent_estimate")
+
+_MODEL_KEY_ALIASES: dict[str, str] = {
+    "opus": "opus",
+    "claude": "opus",
+    "claude_opus": "opus",
+    "gpt_5_3": "gpt_5_3",
+    "codex": "gpt_5_3",
+    "production": "gpt_5_3",
+    "gpt_5_2": "gpt_5_2",
+    "gpt_5": "gpt_5",
+    "gemini_3_pro": "gemini_3_pro",
+    "gemini": "gemini_3_pro",
+    "gemini_pro": "gemini_3_pro",
+    "sonnet": "sonnet",
+}
+
+
+def _normalize_model_token(value: str) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", "_", value.strip().lower())
+    return normalized.strip("_")
+
+
+def _resolve_threshold_model_key(model_key: str, *, agent_name: str | None = None) -> str:
+    normalized_model = _normalize_model_token(model_key)
+    if normalized_model in _MODEL_KEY_ALIASES:
+        return _MODEL_KEY_ALIASES[normalized_model]
+
+    if normalized_model == "frontier" and agent_name:
+        normalized_agent = _normalize_model_token(agent_name)
+        if "claude" in normalized_agent:
+            return "opus"
+        if "codex" in normalized_agent:
+            return "gpt_5_3"
+        if "gemini" in normalized_agent:
+            return "gemini_3_pro"
+
+    return normalized_model
 
 
 def compute_pert(optimistic: float, most_likely: float, pessimistic: float) -> PertResult:
@@ -63,6 +103,7 @@ def check_metr_threshold(
     *,
     thresholds: Mapping[str, float] | None = None,
     fallback_threshold: float = 40.0,
+    agent_name: str | None = None,
 ) -> MetrWarning | None:
     """Check whether an estimate exceeds the METR p80 reliability threshold.
 
@@ -71,6 +112,7 @@ def check_metr_threshold(
         estimated_minutes: The total estimated minutes for the task.
         thresholds: Optional pre-loaded thresholds dict. If None, loads from YAML.
         fallback_threshold: Used when model_key is not found in thresholds.
+        agent_name: Optional assigned agent name for resolving legacy model tiers.
 
     Returns:
         A MetrWarning if the estimate exceeds the threshold, else None.
@@ -78,17 +120,28 @@ def check_metr_threshold(
     if thresholds is None:
         thresholds = load_metr_thresholds()
 
-    threshold = thresholds.get(model_key, fallback_threshold)
+    resolved_model_key = _resolve_threshold_model_key(model_key, agent_name=agent_name)
+    threshold = thresholds.get(resolved_model_key)
+    if threshold is None:
+        logger.warning(
+            "METR threshold not found for model_key=%r (resolved=%r, agent_name=%r); "
+            "using fallback_threshold=%.1f",
+            model_key,
+            resolved_model_key,
+            agent_name,
+            fallback_threshold,
+        )
+        threshold = fallback_threshold
 
     if estimated_minutes <= threshold:
         return None
 
     return MetrWarning(
-        model_key=model_key,
+        model_key=resolved_model_key,
         threshold_minutes=threshold,
         estimated_minutes=estimated_minutes,
         message=(
-            f"Estimate ({estimated_minutes:.0f}m) exceeds {model_key} "
+            f"Estimate ({estimated_minutes:.0f}m) exceeds {resolved_model_key} "
             f"p80 threshold ({threshold:.0f}m). Consider splitting the task."
         ),
     )
@@ -102,6 +155,7 @@ def estimate_task(
     model_key: str = "opus",
     thresholds: Mapping[str, float] | None = None,
     fallback_threshold: float = 40.0,
+    agent_name: str | None = None,
     human_equivalent_minutes: float | None = None,
 ) -> TaskEstimate:
     """Full estimation pipeline: sizing -> PERT -> modifiers -> review -> METR check.
@@ -113,6 +167,7 @@ def estimate_task(
         model_key: Concrete model identifier for METR check.
         thresholds: Pre-loaded METR thresholds (optional).
         fallback_threshold: METR fallback when model_key is unknown.
+        agent_name: Optional assigned agent name for resolving legacy model tiers.
         human_equivalent_minutes: Pre-computed human equivalent (optional).
 
     Returns:
@@ -135,6 +190,7 @@ def estimate_task(
         total,
         thresholds=thresholds,
         fallback_threshold=fallback_threshold,
+        agent_name=agent_name,
     )
 
     return TaskEstimate(

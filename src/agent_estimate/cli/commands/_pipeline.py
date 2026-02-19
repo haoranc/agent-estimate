@@ -62,6 +62,7 @@ def run_estimate_pipeline(
     # Use first agent's tier for initial estimation pass; METR warnings are
     # corrected per-task after wave planning assigns each task to an agent.
     initial_model_key = config.agents[0].model_tier
+    initial_agent_name = config.agents[0].name
     fallback = config.settings.metr_fallback_threshold
 
     names: list[str] = []
@@ -82,6 +83,7 @@ def run_estimate_pipeline(
             model_key=initial_model_key,
             thresholds=thresholds,
             fallback_threshold=fallback,
+            agent_name=initial_agent_name,
         )
 
         # Compute human equivalent and re-estimate with it filled in
@@ -95,6 +97,7 @@ def run_estimate_pipeline(
             model_key=initial_model_key,
             thresholds=thresholds,
             fallback_threshold=fallback,
+            agent_name=initial_agent_name,
             human_equivalent_minutes=human_eq,
         )
 
@@ -154,6 +157,7 @@ def _build_report(
             est.total_expected_minutes,
             thresholds=thresholds,
             fallback_threshold=fallback,
+            agent_name=assigned_agent,
         )
         warning_message = corrected_warning.message if corrected_warning is not None else None
 
