@@ -35,7 +35,10 @@ def run(
         "2x-lgtm", "--review-mode", help="Review mode: none, self, 2x-lgtm."
     ),
     issues: Optional[str] = typer.Option(
-        None, "--issues", "-i", help="Comma-separated GitHub issue numbers."
+        None,
+        "--issues",
+        "-i",
+        help="GitHub issue numbers (comma/space separated, '#' optional).",
     ),
     repo: Optional[str] = typer.Option(
         None, "--repo", "-r", help="GitHub repo (owner/name)."
