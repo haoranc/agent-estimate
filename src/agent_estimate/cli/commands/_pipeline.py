@@ -13,6 +13,7 @@ from agent_estimate.core import (
     WavePlan,
     classify_task,
     build_modifier_set,
+    check_metr_threshold,
     compute_human_equivalent,
     estimate_task,
     load_metr_thresholds,
@@ -58,7 +59,9 @@ def run_estimate_pipeline(
         _error("config.agents must be non-empty", 2)
 
     thresholds = load_metr_thresholds()
-    model_key = config.agents[0].model_tier
+    # Use first agent's tier for initial estimation pass; METR warnings are
+    # corrected per-task after wave planning assigns each task to an agent.
+    initial_model_key = config.agents[0].model_tier
     fallback = config.settings.metr_fallback_threshold
 
     names: list[str] = []
@@ -76,7 +79,7 @@ def run_estimate_pipeline(
             sizing,
             modifiers,
             review_mode=review_mode,
-            model_key=model_key,
+            model_key=initial_model_key,
             thresholds=thresholds,
             fallback_threshold=fallback,
         )
@@ -89,7 +92,7 @@ def run_estimate_pipeline(
             sizing,
             modifiers,
             review_mode=review_mode,
-            model_key=model_key,
+            model_key=initial_model_key,
             thresholds=thresholds,
             fallback_threshold=fallback,
             human_equivalent_minutes=human_eq,
@@ -114,7 +117,7 @@ def run_estimate_pipeline(
         inter_wave_overhead_hours=config.settings.inter_wave_overhead,
     )
 
-    return _build_report(names, estimates, wave_plan, config, title)
+    return _build_report(names, estimates, wave_plan, config, title, thresholds, fallback)
 
 
 def _build_report(
@@ -123,6 +126,8 @@ def _build_report(
     wave_plan: WavePlan,
     config: EstimationConfig,
     title: str,
+    thresholds: dict[str, float] | None = None,
+    fallback: float = 40.0,
 ) -> EstimationReport:
     """Map wave planner outputs back to report models."""
     # Build assignment map: task_id -> agent_name
@@ -133,15 +138,44 @@ def _build_report(
 
     default_agent = config.agents[0].name
 
-    # Report tasks
-    report_tasks = tuple(
-        ReportTask.from_estimate(
-            name=names[i],
-            agent=assignment_map.get(str(i), default_agent),
-            estimate=estimates[i],
+    # Build agent model tier map: agent_name -> model_tier
+    agent_model_tier: dict[str, str] = {a.name: a.model_tier for a in config.agents}
+    default_tier = config.agents[0].model_tier
+
+    # Report tasks — re-evaluate METR warnings using the assigned agent's model tier
+    report_task_list: list[ReportTask] = []
+    for i, est in enumerate(estimates):
+        assigned_agent = assignment_map.get(str(i), default_agent)
+        model_tier = agent_model_tier.get(assigned_agent, default_tier)
+
+        # Re-check METR threshold with the assigned agent's model tier
+        corrected_warning = check_metr_threshold(
+            model_tier,
+            est.total_expected_minutes,
+            thresholds=thresholds,
+            fallback_threshold=fallback,
         )
-        for i in range(len(estimates))
-    )
+        warning_message = corrected_warning.message if corrected_warning is not None else None
+
+        report_task_list.append(
+            ReportTask(
+                name=names[i],
+                tier=est.sizing.tier.value,
+                agent=assigned_agent,
+                base_pert_optimistic_minutes=est.sizing.baseline_optimistic,
+                base_pert_most_likely_minutes=est.sizing.baseline_most_likely,
+                base_pert_pessimistic_minutes=est.sizing.baseline_pessimistic,
+                modifier_spec_clarity=est.modifiers.spec_clarity,
+                modifier_warm_context=est.modifiers.warm_context,
+                modifier_agent_fit=est.modifiers.agent_fit,
+                modifier_combined=est.modifiers.combined,
+                effective_duration_minutes=est.pert.expected,
+                human_equivalent_minutes=est.human_equivalent_minutes,
+                review_overhead_minutes=est.review_minutes,
+                metr_warning=warning_message,
+            )
+        )
+    report_tasks = tuple(report_task_list)
 
     # Report waves
     report_waves = tuple(
