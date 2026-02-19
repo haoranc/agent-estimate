@@ -1,0 +1,3 @@
+Add user authentication
+Implement search endpoint
+Write unit tests for auth module
