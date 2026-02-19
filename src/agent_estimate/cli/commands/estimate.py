@@ -22,7 +22,7 @@ logger = logging.getLogger("agent_estimate")
 def run(
     task: Optional[str] = typer.Argument(None, help="Task description to estimate."),
     file: Optional[Path] = typer.Option(
-        None, "--file", "-f", help="Path to a spec/task file."
+        None, "--file", "-f", help="Path to a task file (one task per line)."
     ),
     config: Optional[Path] = typer.Option(
         None, "--config", "-c", help="Path to config YAML."
@@ -57,9 +57,12 @@ def run(
         descriptions = [task]
     elif file is not None:
         try:
-            descriptions = [file.read_text(encoding="utf-8")]
+            lines = file.read_text(encoding="utf-8").splitlines()
+            descriptions = [ln.strip() for ln in lines if ln.strip()]
         except FileNotFoundError:
             _error(f"File not found: {file}", 2)
+        if not descriptions:
+            _error(f"No task descriptions found in {file}.", 2)
     elif issues is not None:
         if not repo:
             _error("--repo is required when using --issues.", 2)
