@@ -1,121 +1,70 @@
 ---
 name: estimate
-description: Estimate effort for AI coding agent tasks using PERT three-point estimation with METR reliability thresholds and wave planning.
+description: Codex skill for running agent-estimate CLI commands (estimate, validate, calibrate).
 ---
 
-# /estimate — AI Agent Effort Estimation
+# estimate (Codex)
 
-Run PERT three-point estimation with METR reliability thresholds and wave planning for one or more tasks.
+Use this skill when a user asks to estimate delivery effort for coding work, validate an estimate with observed results, or recalibrate model factors.
 
-## Usage
+The skill is command-first: execute the `agent-estimate` CLI and return its output.
 
-```
-/estimate <task description>
-/estimate --file <path>
-/estimate --issues <numbers> --repo <owner/name>
-/estimate --config <path> <task>
-/estimate --format json <task>
-/estimate --review-mode none <task>
-/estimate --title "My Report" <task>
-/validate-estimate <observation.yaml>
-/calibrate
-```
+## Intent Mapping
 
-## Instructions
+| User intent | Command |
+| --- | --- |
+| Estimate one task or multiple tasks | `agent-estimate estimate ...` |
+| Validate estimate vs actuals | `agent-estimate validate <observation.yaml> ...` |
+| Recompute calibration summary | `agent-estimate calibrate ...` |
 
-When the user invokes this skill, follow these steps:
+## Build Rules
 
-### 1. Parse the invocation
+### For `estimate`
 
-Determine which subcommand to run based on context:
+- Accept exactly one input source:
+  - task description argument
+  - `--file <path>`
+  - `--issues <nums>` (requires `--repo <owner/name>`)
+- Supported flags:
+  - `--config <path>`
+  - `--format markdown|json`
+  - `--review-mode none|self|2x-lgtm`
+  - `--title <text>`
+  - `--verbose`
 
-| Invocation pattern | Subcommand |
-|---|---|
-| `/estimate ...` with any args | `agent-estimate estimate` |
-| `/validate-estimate <file>` | `agent-estimate validate` |
-| `/calibrate` | `agent-estimate calibrate` |
+If input source is missing, ask for one.
 
-### 2. Build the CLI command
+### For `validate`
 
-#### Global flags (all subcommands)
+- Required: observation YAML path.
+- Optional: `--db <path>`.
 
-| Flag | Short | Description |
-|---|---|---|
-| `--verbose` | `-v` | Enable debug logging — useful when a command exits non-zero |
+### For `calibrate`
 
-#### For `/estimate`
+- Optional: `--db <path>`.
+- Default DB: `~/.agent-estimate/calibration.db`.
 
-Parse these optional flags from user input and pass them through verbatim:
+## Execution Rules
 
-| Flag | Short | Description |
-|---|---|---|
-| `--file <path>` | `-f` | Path to task file (one task per line) |
-| `--config <path>` | `-c` | Path to config YAML with agent definitions |
-| `--format <fmt>` | | Output format: `markdown` (default) or `json` |
-| `--review-mode <mode>` | | Review overhead: `none`, `self`, `2x-lgtm` (default) |
-| `--issues <nums>` | `-i` | Comma-separated GitHub issue numbers |
-| `--repo <owner/name>` | `-r` | GitHub repo (required with `--issues`) |
-| `--title <text>` | `-t` | Report title |
+1. Execute commands from the repository root.
+2. Prefer `agent-estimate` binary; fallback to `python -m agent_estimate.cli.app` if needed.
+3. Capture stdout/stderr and exit code.
+4. If command fails, return the error concisely and include the attempted command.
+5. If command succeeds, return CLI output directly.
+6. `--format json` is supported and should be treated as a normal success path.
 
-If none of `--file`, `--issues`, or a task description is provided, prompt the user:
-> Please provide a task description, `--file <path>`, or `--issues <nums> --repo <owner/name>`.
-
-#### For `/validate-estimate`
-
-The argument after `/validate-estimate` is the observation YAML file path. Optionally pass `--db <path>` if provided.
-
-#### For `/calibrate`
-
-Optionally pass `--db <path>` if provided. Default: `~/.agent-estimate/calibration.db`.
-
-### 3. Run the command
-
-Execute the CLI via Bash:
+## Command Examples
 
 ```bash
-agent-estimate estimate "Add login button"
+agent-estimate estimate "Add login button with OAuth"
 agent-estimate estimate --file tasks.md
 agent-estimate estimate --issues 1,2,3 --repo org/name
-agent-estimate estimate --config custom.yaml "Add login button"
-agent-estimate estimate --format json "Add login button"
-agent-estimate validate observation.yaml
+agent-estimate estimate --config agents.yaml --format json "Refactor auth module"
 agent-estimate validate observation.yaml --db ~/.agent-estimate/calibration.db
-agent-estimate calibrate
-agent-estimate calibrate --db path/to/db
+agent-estimate calibrate --db ~/.agent-estimate/calibration.db
 ```
 
-Capture stdout and stderr. If the command exits non-zero, display the error message to the user.
-
-### 4. Display output
-
-Display the CLI output directly to the user. No post-processing — the CLI handles formatting.
-
-## Examples
-
-```
-/estimate Add a login page with OAuth
-→ agent-estimate estimate "Add a login page with OAuth"
-
-/estimate --file spec.md
-→ agent-estimate estimate --file spec.md
-
-/estimate --issues 1,2,3 --repo myorg/myrepo
-→ agent-estimate estimate --issues 1,2,3 --repo myorg/myrepo
-
-/estimate --config agents.yaml --format json "Refactor auth module"
-→ agent-estimate estimate --config agents.yaml --format json "Refactor auth module"
-
-/validate-estimate results/sprint1.yaml
-→ agent-estimate validate results/sprint1.yaml
-
-/validate-estimate results/sprint1.yaml --db ~/.agent-estimate/calibration.db
-→ agent-estimate validate results/sprint1.yaml --db ~/.agent-estimate/calibration.db
-
-/calibrate
-→ agent-estimate calibrate
-```
-
-## Observation YAML format (for `/validate-estimate`)
+## Observation YAML Example
 
 ```yaml
 task_type: feature
@@ -135,7 +84,7 @@ modifiers:
 
 ## Notes
 
-- Requires `agent-estimate` installed: `pip install agent-estimate` or `pip install -e .[dev]` in the repo.
+- Requires `agent-estimate` installed: `pip install agent-estimate` or `pip install -e '.[dev]'` in this repo.
 - Default config uses bundled `default_agents.yaml`. Pass `--config` to override agent definitions.
-- `--review-mode` defaults to `2x-lgtm` (two-reviewer LGTM overhead included).
-- JSON output is available via `--format json`.
+- `--review-mode` defaults to `2x-lgtm`.
+- Keep command output as source of truth; do not invent computed values.

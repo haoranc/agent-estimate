@@ -77,7 +77,7 @@ class TestSkillLocation:
 
 
 class TestCodexSkillMirror:
-    """Tests for Codex-compatible .agent skill mirror."""
+    """Tests for Codex-compatible .agent skill."""
 
     canonical_skill_md = ROOT / "skills" / "estimate" / "SKILL.md"
     codex_skill_md = ROOT / ".agent" / "skills" / "estimate" / "SKILL.md"
@@ -93,10 +93,30 @@ class TestCodexSkillMirror:
         assert "name:" in frontmatter, "frontmatter must contain 'name:'"
         assert "description:" in frontmatter, "frontmatter must contain 'description:'"
 
-    def test_codex_skill_mirror_matches_canonical_skill(self):
+    def test_codex_skill_frontmatter_name_is_estimate(self):
+        content = self.codex_skill_md.read_text()
+        second_fence = content.index("---", 3)
+        frontmatter = content[3:second_fence].strip()
+        for line in frontmatter.splitlines():
+            if line.startswith("name:"):
+                value = line.split(":", 1)[1].strip()
+                assert value == "estimate", f"codex skill name must be 'estimate', got '{value}'"
+                return
+        pytest.fail("'name:' not found in codex frontmatter")
+
+    def test_codex_skill_includes_core_cli_commands(self):
+        content = self.codex_skill_md.read_text()
+        assert "agent-estimate estimate" in content
+        assert "agent-estimate validate" in content
+        assert "agent-estimate calibrate" in content
+
+    def test_codex_skill_documents_json_as_supported(self):
+        content = self.codex_skill_md.read_text()
+        assert "--format json" in content
+        assert "NOT YET IMPLEMENTED" not in content
+
+    def test_codex_and_canonical_skills_share_skill_name(self):
         canonical = self.canonical_skill_md.read_text()
-        mirror = self.codex_skill_md.read_text()
-        assert mirror == canonical, (
-            ".agent/skills/estimate/SKILL.md must match skills/estimate/SKILL.md "
-            "to avoid behavioral drift across ecosystems"
-        )
+        codex = self.codex_skill_md.read_text()
+        assert "name: estimate" in canonical
+        assert "name: estimate" in codex
