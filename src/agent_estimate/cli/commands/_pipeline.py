@@ -56,6 +56,7 @@ def run_estimate_pipeline(
     spec_clarity: float = 1.0,
     warm_context: float = 1.0,
     agent_fit: float = 1.0,
+    warm_context_detail: str | None = None,
 ) -> EstimationReport:
     """Run the full estimation pipeline and produce a report."""
     if not config.agents:
@@ -127,7 +128,10 @@ def run_estimate_pipeline(
         inter_wave_overhead_hours=config.settings.inter_wave_overhead,
     )
 
-    return _build_report(names, estimates, wave_plan, config, title, thresholds, fallback)
+    return _build_report(
+        names, estimates, wave_plan, config, title, thresholds, fallback,
+        warm_context_detail=warm_context_detail,
+    )
 
 
 def _build_report(
@@ -138,6 +142,7 @@ def _build_report(
     title: str,
     thresholds: dict[str, float] | None = None,
     fallback: float = 40.0,
+    warm_context_detail: str | None = None,
 ) -> EstimationReport:
     """Map wave planner outputs back to report models."""
     # Build assignment map: task_id -> agent_name
@@ -184,6 +189,7 @@ def _build_report(
                 human_equivalent_minutes=est.human_equivalent_minutes,
                 review_overhead_minutes=est.review_minutes,
                 metr_warning=warning_message,
+                warm_context_detail=warm_context_detail,
             )
         )
     report_tasks = tuple(report_task_list)

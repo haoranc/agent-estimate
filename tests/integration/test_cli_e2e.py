@@ -342,3 +342,73 @@ class TestNoArgs:
         result = runner.invoke(app, ["estimate", "--help"])
         assert result.exit_code == 0
         assert "task" in result.output.lower()
+
+
+# ---------------------------------------------------------------------------
+# Estimate — history file
+# ---------------------------------------------------------------------------
+
+
+class TestEstimateHistoryFile:
+    def test_history_file_produces_report(self) -> None:
+        history = str(FIXTURES / "dispatch_history.json")
+        result = runner.invoke(
+            app, ["estimate", "--history-file", history, "Add a button"]
+        )
+        assert result.exit_code == 0
+        assert "Agent Estimate Report" in result.output
+
+    def test_nonexistent_history_file_graceful_fallback(self, tmp_path: Path) -> None:
+        missing = str(tmp_path / "no_such_history.json")
+        result = runner.invoke(
+            app, ["estimate", "--history-file", missing, "Add a button"]
+        )
+        assert result.exit_code == 0
+        assert "Agent Estimate Report" in result.output
+
+    def test_history_file_warm_context_in_json_output(self, tmp_path: Path) -> None:
+        import json
+        from datetime import datetime, timedelta, timezone
+
+        recent = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+        history = tmp_path / "history.json"
+        history.write_text(
+            json.dumps({"dispatches": [
+                {"agent": "codex", "project": "proj", "completed_at": recent}
+            ]})
+        )
+        result = runner.invoke(
+            app, ["estimate", "--history-file", str(history), "--format", "json", "Add a button"]
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        task = data["tasks"][0]
+        assert task["modifiers"]["warm_context"] < 1.0
+
+    def test_history_agent_filter_scopes_inference(self, tmp_path: Path) -> None:
+        import json
+        from datetime import datetime, timedelta, timezone
+
+        recent = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+        stale = (datetime.now(timezone.utc) - timedelta(hours=48)).isoformat()
+        history = tmp_path / "history.json"
+        history.write_text(
+            json.dumps({"dispatches": [
+                {"agent": "gemini", "project": "proj", "completed_at": recent},
+                {"agent": "codex", "project": "proj", "completed_at": stale},
+            ]})
+        )
+        result = runner.invoke(
+            app,
+            [
+                "estimate",
+                "--history-file", str(history),
+                "--history-agent", "codex",
+                "--format", "json",
+                "Add a button",
+            ],
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        task = data["tasks"][0]
+        assert task["modifiers"]["warm_context"] == 1.0

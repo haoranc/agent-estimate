@@ -46,9 +46,12 @@ def _render_task_table(report: EstimationReport) -> list[str]:
             f"{_format_minutes(task.base_pert_pessimistic_minutes)} "
             f"(E={_format_minutes(task.base_pert_expected_minutes)})"
         )
+        warm_str = f"warm {task.modifier_warm_context:.2f}"
+        if task.warm_context_detail:
+            warm_str += f" (auto: {task.warm_context_detail})"
         modifiers = (
             f"spec {task.modifier_spec_clarity:.2f} x "
-            f"warm {task.modifier_warm_context:.2f} x "
+            f"{warm_str} x "
             f"fit {task.modifier_agent_fit:.2f} = {task.modifier_combined:.2f}"
         )
         human = (
