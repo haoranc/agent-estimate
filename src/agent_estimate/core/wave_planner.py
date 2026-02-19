@@ -196,7 +196,8 @@ def plan_waves(
     total_sequential = sum(t.duration_minutes for t in tasks)
 
     # Per-agent utilisation: busy_time / wall_clock
-    agent_busy: dict[str, float] = defaultdict(float)
+    # Initialise all input agents to 0.0 so idle agents appear in the output.
+    agent_busy: dict[str, float] = {agent.name: 0.0 for agent in agents}
     for (name, _idx), load in slot_load.items():
         agent_busy[name] += load
 
@@ -206,7 +207,7 @@ def plan_waves(
         }
         parallel_efficiency = min(1.0, total_sequential / (len(slots) * total_wall_clock))
     else:
-        agent_utilization = {}
+        agent_utilization = {agent.name: 0.0 for agent in agents}
         parallel_efficiency = 0.0
 
     return WavePlan(
