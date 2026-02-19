@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import enum
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Annotated
+from typing import Annotated, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
@@ -15,6 +15,20 @@ NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length
 # ---------------------------------------------------------------------------
 # Pydantic config models (input validation)
 # ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class AgentProfileProtocol(Protocol):
+    """Runtime plugin protocol for discoverable agent profiles."""
+
+    name: str
+    capabilities: Sequence[str]
+    parallelism: int
+    cost_per_turn: float
+    model_tier: str
+
+    def adjust_estimate(self, minutes: float) -> float:
+        """Optionally adjust an estimate (in minutes) for this profile."""
 
 
 class AgentProfile(BaseModel):
@@ -27,6 +41,12 @@ class AgentProfile(BaseModel):
     parallelism: Annotated[int, Field(ge=1)]
     cost_per_turn: Annotated[float, Field(ge=0)]
     model_tier: NonEmptyStr
+
+    def adjust_estimate(self, minutes: float) -> float:
+        """Default profile adjustment: identity transform."""
+        if minutes < 0:
+            raise ValueError(f"minutes must be >= 0, got {minutes}")
+        return float(minutes)
 
 
 class ProjectSettings(BaseModel):
