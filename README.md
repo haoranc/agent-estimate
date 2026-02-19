@@ -64,6 +64,16 @@ agent-estimate --version
 /calibrate
 ```
 
+## Codex Skill Layout
+
+For Codex-oriented tooling, this repo also includes a `.agent` skill mirror:
+
+- `.agent/skills/estimate/SKILL.md`
+
+It is kept in sync with the canonical skill definition at:
+
+- `skills/estimate/SKILL.md`
+
 ## Usage Examples
 
 Estimate tasks from a text file:

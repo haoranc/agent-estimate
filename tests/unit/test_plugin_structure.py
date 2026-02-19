@@ -1,4 +1,4 @@
-"""Structural validation tests for the Claude Code plugin layout."""
+"""Structural validation tests for plugin and skill layout."""
 
 import json
 from pathlib import Path
@@ -73,4 +73,30 @@ class TestSkillLocation:
         assert not self.old_skill_md.exists(), (
             "src/agent_estimate/skill/SKILL.md must be removed — "
             "canonical location is skills/estimate/SKILL.md"
+        )
+
+
+class TestCodexSkillMirror:
+    """Tests for Codex-compatible .agent skill mirror."""
+
+    canonical_skill_md = ROOT / "skills" / "estimate" / "SKILL.md"
+    codex_skill_md = ROOT / ".agent" / "skills" / "estimate" / "SKILL.md"
+
+    def test_codex_skill_mirror_exists(self):
+        assert self.codex_skill_md.exists(), ".agent/skills/estimate/SKILL.md must exist"
+
+    def test_codex_skill_mirror_has_yaml_frontmatter(self):
+        content = self.codex_skill_md.read_text()
+        assert content.startswith("---"), "Codex SKILL.md must start with YAML frontmatter"
+        second_fence = content.index("---", 3)
+        frontmatter = content[3:second_fence].strip()
+        assert "name:" in frontmatter, "frontmatter must contain 'name:'"
+        assert "description:" in frontmatter, "frontmatter must contain 'description:'"
+
+    def test_codex_skill_mirror_matches_canonical_skill(self):
+        canonical = self.canonical_skill_md.read_text()
+        mirror = self.codex_skill_md.read_text()
+        assert mirror == canonical, (
+            ".agent/skills/estimate/SKILL.md must match skills/estimate/SKILL.md "
+            "to avoid behavioral drift across ecosystems"
         )
