@@ -14,7 +14,7 @@ Run PERT three-point estimation with METR reliability thresholds and wave planni
 /estimate --file <path>
 /estimate --issues <numbers> --repo <owner/name>
 /estimate --config <path> <task>
-/estimate --format json <task>       # NOT YET IMPLEMENTED — returns exit code 1
+/estimate --format json <task>
 /estimate --review-mode none <task>
 /estimate --title "My Report" <task>
 /validate-estimate <observation.yaml>
@@ -51,7 +51,7 @@ Parse these optional flags from user input and pass them through verbatim:
 |---|---|---|
 | `--file <path>` | `-f` | Path to task file (one task per line) |
 | `--config <path>` | `-c` | Path to config YAML with agent definitions |
-| `--format <fmt>` | | Output format: `markdown` (default). `json` is not yet implemented. |
+| `--format <fmt>` | | Output format: `markdown` (default) or `json` |
 | `--review-mode <mode>` | | Review overhead: `none`, `self`, `2x-lgtm` (default) |
 | `--issues <nums>` | `-i` | Comma-separated GitHub issue numbers |
 | `--repo <owner/name>` | `-r` | GitHub repo (required with `--issues`) |
@@ -138,4 +138,4 @@ modifiers:
 - Requires `agent-estimate` installed: `pip install agent-estimate` or `pip install -e .[dev]` in the repo.
 - Default config uses bundled `default_agents.yaml`. Pass `--config` to override agent definitions.
 - `--review-mode` defaults to `2x-lgtm` (two-reviewer LGTM overhead included).
-- JSON output (`--format json`) is not yet implemented — use `--format markdown` (default).
+- JSON output is available via `--format json`.
