@@ -14,7 +14,7 @@ Run PERT three-point estimation with METR reliability thresholds and wave planni
 /estimate --file <path>
 /estimate --issues <numbers> --repo <owner/name>
 /estimate --config <path> <task>
-/estimate --format json <task>
+/estimate --format json <task>       # NOT YET IMPLEMENTED — returns exit code 1
 /estimate --review-mode none <task>
 /estimate --title "My Report" <task>
 /validate-estimate <observation.yaml>
@@ -37,6 +37,12 @@ Determine which subcommand to run based on context:
 
 ### 2. Build the CLI command
 
+#### Global flags (all subcommands)
+
+| Flag | Short | Description |
+|---|---|---|
+| `--verbose` | `-v` | Enable debug logging — useful when a command exits non-zero |
+
 #### For `/estimate`
 
 Parse these optional flags from user input and pass them through verbatim:
@@ -45,7 +51,7 @@ Parse these optional flags from user input and pass them through verbatim:
 |---|---|---|
 | `--file <path>` | `-f` | Path to task file (one task per line) |
 | `--config <path>` | `-c` | Path to config YAML with agent definitions |
-| `--format <fmt>` | | Output format: `markdown` (default) or `json` |
+| `--format <fmt>` | | Output format: `markdown` (default). `json` is not yet implemented. |
 | `--review-mode <mode>` | | Review overhead: `none`, `self`, `2x-lgtm` (default) |
 | `--issues <nums>` | `-i` | Comma-separated GitHub issue numbers |
 | `--repo <owner/name>` | `-r` | GitHub repo (required with `--issues`) |
@@ -60,7 +66,7 @@ The argument after `/validate-estimate` is the observation YAML file path. Optio
 
 #### For `/calibrate`
 
-Optionally pass `--db <path>` if provided.
+Optionally pass `--db <path>` if provided. Default: `~/.agent-estimate/calibration.db`.
 
 ### 3. Run the command
 
