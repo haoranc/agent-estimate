@@ -142,3 +142,51 @@ class TaskEstimate:
     total_expected_minutes: float
     human_equivalent_minutes: float | None
     metr_warning: MetrWarning | None
+
+
+# ---------------------------------------------------------------------------
+# Wave planner dataclasses
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class TaskNode:
+    """Input: one task to be scheduled."""
+
+    task_id: str
+    duration_minutes: float
+    dependencies: tuple[str, ...] = ()
+    required_capabilities: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class WaveAssignment:
+    """One task assigned to an agent slot within a wave."""
+
+    task_id: str
+    agent_name: str
+    slot_index: int
+    duration_minutes: float
+
+
+@dataclass(frozen=True)
+class Wave:
+    """A single scheduling wave."""
+
+    wave_number: int
+    start_minutes: float
+    end_minutes: float
+    assignments: tuple[WaveAssignment, ...]
+
+
+@dataclass(frozen=True)
+class WavePlan:
+    """Complete wave plan output."""
+
+    waves: tuple[Wave, ...]
+    critical_path: tuple[str, ...]
+    critical_path_minutes: float
+    agent_utilization: dict[str, float]
+    parallel_efficiency: float
+    total_wall_clock_minutes: float
+    total_sequential_minutes: float

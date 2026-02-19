@@ -12,7 +12,11 @@ from agent_estimate.core.models import (
     SizeTier,
     SizingResult,
     TaskEstimate,
+    TaskNode,
     TaskType,
+    Wave,
+    WaveAssignment,
+    WavePlan,
 )
 from agent_estimate.core.modifiers import (
     apply_modifiers,
@@ -26,6 +30,7 @@ from agent_estimate.core.pert import (
     load_metr_thresholds,
 )
 from agent_estimate.core.sizing import classify_task
+from agent_estimate.core.wave_planner import plan_waves
 
 __all__ = [
     "AgentProfile",
@@ -38,7 +43,11 @@ __all__ = [
     "SizeTier",
     "SizingResult",
     "TaskEstimate",
+    "TaskNode",
     "TaskType",
+    "Wave",
+    "WaveAssignment",
+    "WavePlan",
     "apply_modifiers",
     "build_modifier_set",
     "check_metr_threshold",
@@ -49,4 +58,5 @@ __all__ = [
     "estimate_task",
     "get_human_multiplier",
     "load_metr_thresholds",
+    "plan_waves",
 ]
