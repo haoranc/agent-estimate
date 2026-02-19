@@ -21,15 +21,17 @@ def build_modifier_set(
     """Build a modifier set from individual factors.
 
     Args:
-        spec_clarity: How clear/complete the spec is (0.8=crystal clear, 1.3=vague).
-        warm_context: Whether the agent has prior context (0.85=warm, 1.15=cold).
+        spec_clarity: How clear/complete the spec is (0.3=crystal clear spec with design doc,
+            1.0=normal, 1.3=vague).
+        warm_context: Whether the agent has prior context (0.3=agent just completed closely
+            related work, 0.5=same project recently, 1.0=cold).
         agent_fit: How well the agent suits this task type (0.9=great, 1.2=poor).
 
     Raises:
         ValueError: If any modifier is outside its valid range.
     """
-    _validate_range("spec_clarity", spec_clarity, 0.8, 1.3)
-    _validate_range("warm_context", warm_context, 0.85, 1.15)
+    _validate_range("spec_clarity", spec_clarity, 0.3, 1.3)
+    _validate_range("warm_context", warm_context, 0.3, 1.15)
     _validate_range("agent_fit", agent_fit, 0.9, 1.2)
 
     combined = spec_clarity * warm_context * agent_fit

@@ -19,8 +19,8 @@ from agent_estimate.core.modifiers import (
 
 class TestSpecClarityBoundaries:
     def test_spec_clarity_lower_boundary_accepted(self) -> None:
-        mods = build_modifier_set(spec_clarity=0.8)
-        assert mods.spec_clarity == pytest.approx(0.8)
+        mods = build_modifier_set(spec_clarity=0.3)
+        assert mods.spec_clarity == pytest.approx(0.3)
 
     def test_spec_clarity_upper_boundary_accepted(self) -> None:
         mods = build_modifier_set(spec_clarity=1.3)
@@ -28,7 +28,7 @@ class TestSpecClarityBoundaries:
 
     def test_spec_clarity_below_lower_raises(self) -> None:
         with pytest.raises(ValueError, match="spec_clarity"):
-            build_modifier_set(spec_clarity=0.79)
+            build_modifier_set(spec_clarity=0.29)
 
     def test_spec_clarity_above_upper_raises(self) -> None:
         with pytest.raises(ValueError, match="spec_clarity"):
@@ -42,8 +42,8 @@ class TestSpecClarityBoundaries:
 
 class TestWarmContextBoundaries:
     def test_warm_context_lower_boundary_accepted(self) -> None:
-        mods = build_modifier_set(warm_context=0.85)
-        assert mods.warm_context == pytest.approx(0.85)
+        mods = build_modifier_set(warm_context=0.3)
+        assert mods.warm_context == pytest.approx(0.3)
 
     def test_warm_context_upper_boundary_accepted(self) -> None:
         mods = build_modifier_set(warm_context=1.15)
@@ -51,7 +51,7 @@ class TestWarmContextBoundaries:
 
     def test_warm_context_below_lower_raises(self) -> None:
         with pytest.raises(ValueError, match="warm_context"):
-            build_modifier_set(warm_context=0.84)
+            build_modifier_set(warm_context=0.29)
 
     def test_warm_context_above_upper_raises(self) -> None:
         with pytest.raises(ValueError, match="warm_context"):
@@ -93,8 +93,12 @@ class TestCombinedModifierProduct:
         assert mods.combined == pytest.approx(sc * wc * af)
 
     def test_all_lower_boundaries_product(self) -> None:
-        mods = build_modifier_set(spec_clarity=0.8, warm_context=0.85, agent_fit=0.9)
-        assert mods.combined == pytest.approx(0.8 * 0.85 * 0.9)
+        mods = build_modifier_set(spec_clarity=0.3, warm_context=0.3, agent_fit=0.9)
+        assert mods.combined == pytest.approx(0.3 * 0.3 * 0.9)
+
+    def test_spec_clarity_and_warm_context_at_new_floor(self) -> None:
+        mods = build_modifier_set(spec_clarity=0.3, warm_context=0.3)
+        assert mods.combined == pytest.approx(0.09)
 
     def test_all_upper_boundaries_product(self) -> None:
         mods = build_modifier_set(spec_clarity=1.3, warm_context=1.15, agent_fit=1.2)
@@ -122,8 +126,8 @@ class TestApplyModifiers:
         assert apply_modifiers(100.0, mods) == pytest.approx(130.0)
 
     def test_scale_down(self) -> None:
-        mods = build_modifier_set(spec_clarity=0.8, warm_context=0.85, agent_fit=0.9)
-        expected = 200.0 * 0.8 * 0.85 * 0.9
+        mods = build_modifier_set(spec_clarity=0.3, warm_context=0.3, agent_fit=0.9)
+        expected = 200.0 * 0.3 * 0.3 * 0.9
         assert apply_modifiers(200.0, mods) == pytest.approx(expected)
 
     def test_zero_base_gives_zero(self) -> None:
