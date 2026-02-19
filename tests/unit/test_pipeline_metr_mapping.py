@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from agent_estimate.cli.commands import _pipeline
 from agent_estimate.cli.commands._pipeline import run_estimate_pipeline
 from agent_estimate.core.models import (
     AgentProfile,
     EstimationConfig,
     ProjectSettings,
     ReviewMode,
+    SizeTier,
+    SizingResult,
+    TaskType,
 )
 
 
@@ -32,9 +36,21 @@ def _claude_frontier_config() -> EstimationConfig:
 
 
 class TestPipelineMetrMapping:
-    def test_claude_assigned_task_uses_opus_threshold(self) -> None:
+    def test_claude_assigned_task_uses_opus_threshold(self, monkeypatch) -> None:
+        monkeypatch.setattr(
+            _pipeline,
+            "classify_task",
+            lambda _description: SizingResult(
+                tier=SizeTier.XL,
+                baseline_optimistic=90.0,
+                baseline_most_likely=180.0,
+                baseline_pessimistic=360.0,
+                task_type=TaskType.FEATURE,
+                signals=("test",),
+            ),
+        )
         report = run_estimate_pipeline(
-            ["Massive rewrite auth pipeline"],
+            ["deterministic"],
             _claude_frontier_config(),
             review_mode=ReviewMode.NONE,
         )
@@ -44,9 +60,21 @@ class TestPipelineMetrMapping:
         assert "opus" in task.metr_warning
         assert "(90m)" in task.metr_warning
 
-    def test_no_false_positive_for_claude_task_at_or_below_90m(self) -> None:
+    def test_no_false_positive_for_claude_task_at_or_below_90m(self, monkeypatch) -> None:
+        monkeypatch.setattr(
+            _pipeline,
+            "classify_task",
+            lambda _description: SizingResult(
+                tier=SizeTier.S,
+                baseline_optimistic=12.0,
+                baseline_most_likely=23.0,
+                baseline_pessimistic=40.0,
+                task_type=TaskType.FEATURE,
+                signals=("test",),
+            ),
+        )
         report = run_estimate_pipeline(
-            ["do the thing with the stuff"],
+            ["deterministic"],
             _claude_frontier_config(),
             review_mode=ReviewMode.TWO_LGTM,
         )

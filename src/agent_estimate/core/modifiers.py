@@ -24,7 +24,7 @@ def build_modifier_set(
         spec_clarity: How clear/complete the spec is (0.3=crystal clear spec with design doc,
             1.0=normal, 1.3=vague).
         warm_context: Whether the agent has prior context (0.3=agent just completed closely
-            related work, 0.5=same project recently, 1.0=cold).
+            related work, 0.5=same project recently, 1.0=cold, 1.15=very cold/new domain).
         agent_fit: How well the agent suits this task type (0.9=great, 1.2=poor).
 
     Raises:

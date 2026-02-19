@@ -52,6 +52,8 @@ def _resolve_threshold_model_key(model_key: str, *, agent_name: str | None = Non
         normalized_agent = _normalize_model_token(agent_name)
         if "claude" in normalized_agent:
             return "opus"
+        if "codex" in normalized_agent:
+            return "gpt_5_3"
         if "gemini" in normalized_agent:
             return "gemini_3_pro"
 

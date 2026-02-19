@@ -260,6 +260,7 @@ class TestMetrThresholds:
     def test_frontier_model_tier_resolves_by_assigned_agent(self) -> None:
         thresholds = {
             "opus": 90.0,
+            "gpt_5_3": 60.0,
             "gemini_3_pro": 45.0,
         }
         claude_result = check_metr_threshold(
@@ -276,7 +277,17 @@ class TestMetrThresholds:
             fallback_threshold=45.0,
             agent_name="Gemini",
         )
+        codex_result = check_metr_threshold(
+            "frontier",
+            70.0,
+            thresholds=thresholds,
+            fallback_threshold=45.0,
+            agent_name="Codex",
+        )
         assert claude_result is None
+        assert codex_result is not None
+        assert codex_result.model_key == "gpt_5_3"
+        assert codex_result.threshold_minutes == pytest.approx(60.0)
         assert gemini_result is not None
         assert gemini_result.model_key == "gemini_3_pro"
         assert gemini_result.threshold_minutes == pytest.approx(45.0)
