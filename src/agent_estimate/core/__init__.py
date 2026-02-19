@@ -3,6 +3,7 @@
 from agent_estimate.core.human_comparison import compute_human_equivalent, get_human_multiplier
 from agent_estimate.core.models import (
     AgentProfile,
+    AgentProfileProtocol,
     EstimationConfig,
     MetrWarning,
     ModifierSet,
@@ -34,6 +35,7 @@ from agent_estimate.core.wave_planner import plan_waves
 
 __all__ = [
     "AgentProfile",
+    "AgentProfileProtocol",
     "EstimationConfig",
     "MetrWarning",
     "ModifierSet",

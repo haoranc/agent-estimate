@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from agent_estimate.adapters import config_loader
 from agent_estimate.adapters.config_loader import load_config, load_default_config
 
 VALID_CONFIG = """\
@@ -23,6 +24,11 @@ settings:
   review_overhead: 0.15
   metr_fallback_threshold: 40.0
 """
+
+
+@pytest.fixture(autouse=True)
+def _disable_real_entry_point_discovery(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(config_loader, "_iter_agent_entry_points", lambda: [])
 
 
 def _write(tmp_path: Path, filename: str, content: str) -> Path:
@@ -121,3 +127,89 @@ def test_load_default_config_has_expected_profiles() -> None:
     config = load_default_config()
 
     assert [agent.name for agent in config.agents] == ["Claude", "Codex", "Gemini"]
+
+
+def test_entry_point_group_is_stable() -> None:
+    assert config_loader.ENTRY_POINT_GROUP == "agent_estimate.agents"
+
+
+class _FakeEntryPoint:
+    def __init__(self, name: str, loaded: object) -> None:
+        self.name = name
+        self._loaded = loaded
+
+    def load(self) -> object:
+        return self._loaded
+
+
+class _CodexPluginProfile:
+    name = "Codex"
+    capabilities = ("implementation", "debugging", "testing", "profiling")
+    parallelism = 5
+    cost_per_turn = 0.2
+    model_tier = "gpt-5.3"
+
+    def adjust_estimate(self, minutes: float) -> float:
+        return minutes * 0.95
+
+
+def test_load_config_merges_plugin_profiles_with_plugin_precedence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with_codex = """\
+agents:
+  - name: Codex
+    capabilities: [implementation]
+    parallelism: 1
+    cost_per_turn: 0.08
+    model_tier: production
+settings:
+  friction_multiplier: 1.1
+  inter_wave_overhead: 0.25
+  review_overhead: 0.15
+  metr_fallback_threshold: 40.0
+"""
+    config_path = _write(tmp_path, "with-codex.yaml", with_codex)
+    monkeypatch.setattr(
+        config_loader,
+        "_iter_agent_entry_points",
+        lambda: [_FakeEntryPoint("codex_plugin", _CodexPluginProfile())],
+    )
+
+    config = load_config(config_path)
+
+    assert len(config.agents) == 1
+    assert config.agents[0].name == "Codex"
+    assert config.agents[0].parallelism == 5
+    assert config.agents[0].capabilities == [
+        "implementation",
+        "debugging",
+        "testing",
+        "profiling",
+    ]
+    assert config.agents[0].model_tier == "gpt-5.3"
+
+
+def test_load_config_discovers_callable_entry_point_profiles(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def _gemini_profile_factory() -> dict[str, object]:
+        return {
+            "name": "Gemini",
+            "capabilities": ["research", "synthesis", "review"],
+            "parallelism": 2,
+            "cost_per_turn": 0.09,
+            "model_tier": "gemini-3-pro",
+        }
+
+    config_path = _write(tmp_path, "config.yaml", VALID_CONFIG)
+    monkeypatch.setattr(
+        config_loader,
+        "_iter_agent_entry_points",
+        lambda: [_FakeEntryPoint("gemini_plugin", _gemini_profile_factory)],
+    )
+
+    config = load_config(config_path)
+
+    assert [agent.name for agent in config.agents] == ["Claude", "Gemini"]
+    assert config.agents[1].model_tier == "gemini-3-pro"
