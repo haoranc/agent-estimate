@@ -120,7 +120,7 @@ class TestEstimateModifierFlags:
             [
                 "estimate",
                 "--issues",
-                "11,12",
+                "#11 #12",
                 "--repo",
                 "haoranc/agent-estimate",
                 "--spec-clarity",
@@ -131,6 +131,34 @@ class TestEstimateModifierFlags:
         )
         assert result.exit_code == 0
         assert result.output.count("spec 0.70 x warm 0.60 x fit 1.00 = 0.42") == 2
+
+    def test_modifier_out_of_range_with_issues_is_user_facing_error(
+        self, monkeypatch
+    ) -> None:
+        class _FakeGitHubAdapter:
+            def fetch_task_descriptions_by_numbers(
+                self, repo: str, issue_numbers: list[int]
+            ) -> list[str]:
+                assert repo == "haoranc/agent-estimate"
+                assert issue_numbers == [11, 12]
+                return ["Implement auth flow", "Add tests"]
+
+        monkeypatch.setattr(estimate_command, "GitHubGhCliAdapter", _FakeGitHubAdapter)
+        result = runner.invoke(
+            app,
+            [
+                "estimate",
+                "--issues",
+                "11,12",
+                "--repo",
+                "haoranc/agent-estimate",
+                "--spec-clarity",
+                "0.2",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "Estimation error:" in result.output
+        assert "spec_clarity must be between 0.3 and 1.3" in result.output
 
     def test_modifier_out_of_range_is_user_facing_error(self) -> None:
         result = runner.invoke(
