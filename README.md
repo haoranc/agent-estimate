@@ -48,7 +48,7 @@ agent-estimate --version
 
 ### Install
 
-**Option 1 — From marketplace (recommended):**
+**Option 1 — From marketplace:**
 
 ```
 /plugin marketplace add haoranc/agent-estimate

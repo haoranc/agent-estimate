@@ -22,3 +22,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PyPI package: `pip install agent-estimate`
 
 [0.1.0]: https://github.com/haoranc/agent-estimate/releases/tag/v0.1.0
+
