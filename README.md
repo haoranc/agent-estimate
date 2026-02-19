@@ -64,6 +64,18 @@ agent-estimate --version
 /calibrate
 ```
 
+## Codex Skill Layout
+
+For Codex-oriented tooling, this repo includes a Codex-specific skill at:
+
+- `.agent/skills/estimate/SKILL.md`
+
+The Claude plugin skill remains at:
+
+- `skills/estimate/SKILL.md`
+
+Both skills cover the same CLI capabilities (`estimate`, `validate`, `calibrate`) but are phrased for their respective ecosystems.
+
 ## Usage Examples
 
 Estimate tasks from a text file:
