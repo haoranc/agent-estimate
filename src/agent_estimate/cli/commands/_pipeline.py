@@ -53,6 +53,9 @@ def run_estimate_pipeline(
     config: EstimationConfig,
     review_mode: ReviewMode = ReviewMode.TWO_LGTM,
     title: str = "Agent Estimate Report",
+    spec_clarity: float = 1.0,
+    warm_context: float = 1.0,
+    agent_fit: float = 1.0,
 ) -> EstimationReport:
     """Run the full estimation pipeline and produce a report."""
     if not config.agents:
@@ -67,13 +70,17 @@ def run_estimate_pipeline(
 
     names: list[str] = []
     estimates: list[TaskEstimate] = []
+    modifiers = build_modifier_set(
+        spec_clarity=spec_clarity,
+        warm_context=warm_context,
+        agent_fit=agent_fit,
+    )
 
     for desc in descriptions:
         name = _truncate_name(desc)
         logger.debug("Estimating task: %s", name)
 
         sizing = classify_task(desc)
-        modifiers = build_modifier_set()
 
         # First pass — get total_expected_minutes
         est = estimate_task(
