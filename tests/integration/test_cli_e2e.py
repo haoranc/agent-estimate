@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -11,6 +12,8 @@ from agent_estimate.cli.commands import estimate as estimate_command
 
 runner = CliRunner()
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
+
+_ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 # ---------------------------------------------------------------------------
@@ -146,12 +149,14 @@ class TestEstimateModifierFlags:
     def test_estimate_help_includes_modifier_flags(self) -> None:
         result = runner.invoke(app, ["estimate", "--help"])
         assert result.exit_code == 0
-        assert "--spec-clarity" in result.output
-        assert "--warm-context" in result.output
-        assert "--agent-fit" in result.output
-        assert "0.3 to 1.3" in result.output
-        assert "0.3 to 1.15" in result.output
-        assert "0.9 to 1.2" in result.output
+        normalized = _ANSI_ESCAPE_RE.sub("", result.output)
+        compact = re.sub(r"\s+", "", normalized)
+        assert "--spec-clarity" in compact
+        assert "--warm-context" in compact
+        assert "--agent-fit" in compact
+        assert "0.3to1.3" in compact
+        assert "0.3to1.15" in compact
+        assert "0.9to1.2" in compact
 
 
 # ---------------------------------------------------------------------------
