@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import enum
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Annotated
 
@@ -145,7 +146,7 @@ class TaskEstimate:
 
 
 # ---------------------------------------------------------------------------
-# Wave planner dataclasses
+# Wave planner dataclasses (frozen, output-only)
 # ---------------------------------------------------------------------------
 
 
@@ -186,7 +187,7 @@ class WavePlan:
     waves: tuple[Wave, ...]
     critical_path: tuple[str, ...]
     critical_path_minutes: float
-    agent_utilization: dict[str, float]
+    agent_utilization: Mapping[str, float]
     parallel_efficiency: float
     total_wall_clock_minutes: float
     total_sequential_minutes: float

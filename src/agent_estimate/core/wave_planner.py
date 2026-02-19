@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Sequence
 
-import networkx as nx
+import networkx as nx  # type: ignore[import-untyped]
 
 from agent_estimate.core.models import (
     AgentProfile,
@@ -32,9 +32,15 @@ def plan_waves(
         A ``WavePlan`` with waves, critical path, and utilisation metrics.
 
     Raises:
-        ValueError: If the dependency graph contains a cycle, or a task requires
-            capabilities that no agent provides.
+        ValueError: If the dependency graph contains a cycle, a task requires
+            capabilities that no agent provides, a dependency references an
+            unknown task, or no agents are provided.
     """
+    if inter_wave_overhead_hours < 0:
+        raise ValueError(
+            f"inter_wave_overhead_hours must be >= 0, got {inter_wave_overhead_hours}"
+        )
+
     if not tasks:
         return WavePlan(
             waves=(),
@@ -56,6 +62,10 @@ def plan_waves(
         G.add_node(t.task_id, duration_minutes=t.duration_minutes)
     for t in tasks:
         for dep in t.dependencies:
+            if dep not in task_map:
+                raise ValueError(
+                    f"Task {t.task_id!r} depends on unknown task {dep!r}"
+                )
             G.add_edge(dep, t.task_id)
 
     # ------------------------------------------------------------------
@@ -63,12 +73,15 @@ def plan_waves(
     # ------------------------------------------------------------------
     if not nx.is_directed_acyclic_graph(G):
         cycle = nx.find_cycle(G, orientation="original")
-        cycle_path = [u for u, _v, _dir in cycle]
+        cycle_path = [u for u, _v, _dir in cycle] + [cycle[0][0]]
         raise ValueError(f"Dependency cycle detected: {' -> '.join(cycle_path)}")
 
     # ------------------------------------------------------------------
     # 3. Expand agent slots
     # ------------------------------------------------------------------
+    if not agents:
+        raise ValueError("At least one agent is required to schedule tasks.")
+
     # Each slot is (agent_name, slot_index) with a set of capabilities.
     slots: list[tuple[str, int, set[str]]] = []
     for agent in agents:
@@ -154,16 +167,16 @@ def plan_waves(
     # DP over topological order: dist[v] = duration[v] + max(dist[u] for u in preds).
     topo_order = list(nx.topological_sort(G))
     dist: dict[str, float] = {}
-    pred: dict[str, str | None] = {}
+    prev: dict[str, str | None] = {}
     for v in topo_order:
         predecessors = list(G.predecessors(v))
         if not predecessors:
             dist[v] = G.nodes[v]["duration_minutes"]
-            pred[v] = None
+            prev[v] = None
         else:
             best_pred = max(predecessors, key=lambda u: dist[u])
             dist[v] = dist[best_pred] + G.nodes[v]["duration_minutes"]
-            pred[v] = best_pred
+            prev[v] = best_pred
 
     # Reconstruct path from the node with maximum distance
     end_node = max(topo_order, key=lambda v: dist[v])
@@ -172,7 +185,7 @@ def plan_waves(
     node: str | None = end_node
     while node is not None:
         path.append(node)
-        node = pred[node]
+        node = prev[node]
     path.reverse()
     critical_path = tuple(path)
 
@@ -191,7 +204,7 @@ def plan_waves(
         agent_utilization = {
             name: busy / total_wall_clock for name, busy in sorted(agent_busy.items())
         }
-        parallel_efficiency = total_sequential / (len(slots) * total_wall_clock)
+        parallel_efficiency = min(1.0, total_sequential / (len(slots) * total_wall_clock))
     else:
         agent_utilization = {}
         parallel_efficiency = 0.0

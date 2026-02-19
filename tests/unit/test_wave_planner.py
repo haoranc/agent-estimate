@@ -85,14 +85,14 @@ class TestFanOutFanIn:
 
 
 class TestCycleDetection:
-    """A→B→A should raise ValueError with cycle info."""
+    """A→B→A should raise ValueError with cycle info including closing node."""
 
     def test_cycle_detection(self) -> None:
         tasks = [
             _node("A", 10, deps=("B",)),
             _node("B", 10, deps=("A",)),
         ]
-        with pytest.raises(ValueError, match="cycle"):
+        with pytest.raises(ValueError, match=r"A -> B -> A|B -> A -> B"):
             plan_waves(tasks, [_agent()])
 
 
@@ -213,6 +213,47 @@ class TestInterWaveOverhead:
         assert plan.waves[1].end_minutes == pytest.approx(90.0)
         # Total wall clock = end of last wave
         assert plan.total_wall_clock_minutes == pytest.approx(90.0)
+
+
+class TestInterWaveOverheadZero:
+    """Overhead=0 produces contiguous waves with no gap."""
+
+    def test_zero_overhead(self) -> None:
+        tasks = [
+            _node("A", 30),
+            _node("B", 20, deps=("A",)),
+        ]
+        plan = plan_waves(tasks, [_agent()], inter_wave_overhead_hours=0)
+
+        assert len(plan.waves) == 2
+        assert plan.waves[1].start_minutes == pytest.approx(plan.waves[0].end_minutes)
+        assert plan.total_wall_clock_minutes == pytest.approx(50.0)
+
+
+class TestUnknownDependency:
+    """Referencing a non-existent task ID raises ValueError."""
+
+    def test_unknown_dep_raises(self) -> None:
+        tasks = [_node("A", 10, deps=("GHOST",))]
+        with pytest.raises(ValueError, match="unknown task"):
+            plan_waves(tasks, [_agent()])
+
+
+class TestNoAgents:
+    """Empty agents list raises ValueError."""
+
+    def test_no_agents_raises(self) -> None:
+        tasks = [_node("A", 10)]
+        with pytest.raises(ValueError, match="At least one agent"):
+            plan_waves(tasks, [])
+
+
+class TestNegativeOverhead:
+    """Negative overhead raises ValueError."""
+
+    def test_negative_overhead_raises(self) -> None:
+        with pytest.raises(ValueError, match="inter_wave_overhead_hours"):
+            plan_waves([_node("A", 10)], [_agent()], inter_wave_overhead_hours=-0.5)
 
 
 class TestEmptyInput:
