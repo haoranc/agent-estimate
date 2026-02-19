@@ -19,6 +19,7 @@ from agent_estimate.core.models import (
     WaveAssignment,
     WavePlan,
 )
+from agent_estimate.core.history import WarmContextResult, infer_warm_context
 from agent_estimate.core.modifiers import (
     apply_modifiers,
     build_modifier_set,
@@ -49,6 +50,7 @@ __all__ = [
     "TaskType",
     "Wave",
     "WaveAssignment",
+    "WarmContextResult",
     "WavePlan",
     "apply_modifiers",
     "build_modifier_set",
@@ -59,6 +61,7 @@ __all__ = [
     "compute_review_overhead",
     "estimate_task",
     "get_human_multiplier",
+    "infer_warm_context",
     "load_metr_thresholds",
     "plan_waves",
 ]

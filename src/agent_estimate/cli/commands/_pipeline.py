@@ -53,6 +53,7 @@ def run_estimate_pipeline(
     config: EstimationConfig,
     review_mode: ReviewMode = ReviewMode.TWO_LGTM,
     title: str = "Agent Estimate Report",
+    warm_context: float | None = None,
 ) -> EstimationReport:
     """Run the full estimation pipeline and produce a report."""
     if not config.agents:
@@ -73,7 +74,11 @@ def run_estimate_pipeline(
         logger.debug("Estimating task: %s", name)
 
         sizing = classify_task(desc)
-        modifiers = build_modifier_set()
+        modifiers = (
+            build_modifier_set(warm_context=warm_context)
+            if warm_context is not None
+            else build_modifier_set()
+        )
 
         # First pass — get total_expected_minutes
         est = estimate_task(

@@ -14,6 +14,7 @@ from agent_estimate.adapters.github_ghcli import GitHubGhCliAdapter
 from agent_estimate.cli.commands._pipeline import run_estimate_pipeline
 from agent_estimate.cli.commands.github import parse_issue_selection
 from agent_estimate.core import ReviewMode
+from agent_estimate.core.history import infer_warm_context
 from agent_estimate.render import render_json_report, render_markdown_report
 
 logger = logging.getLogger("agent_estimate")
@@ -41,6 +42,11 @@ def run(
     ),
     title: str = typer.Option(
         "Agent Estimate Report", "--title", "-t", help="Report title."
+    ),
+    history_file: Optional[Path] = typer.Option(
+        None,
+        "--history-file",
+        help="Dispatch history JSON for auto warm-context detection.",
     ),
 ) -> None:
     """Estimate effort for one or more task descriptions."""
@@ -96,10 +102,25 @@ def run(
     except ValueError as exc:
         _error(f"Config validation error: {exc}", 2)
 
+    # --- Infer warm context from dispatch history ---
+    history_path = history_file
+    if history_path is None:
+        default_history = Path("data.json")
+        if default_history.exists():
+            history_path = default_history
+
+    warm_ctx = infer_warm_context(history_path)
+    warm_context_kwarg: dict[str, float] = {}
+    if warm_ctx.value != 1.0:
+        warm_context_kwarg["warm_context"] = warm_ctx.value
+        logger.info(
+            "warm_context: %.2f (auto: %s)", warm_ctx.value, warm_ctx.detail
+        )
+
     # --- Run pipeline ---
     try:
         report = run_estimate_pipeline(
-            descriptions, cfg, review_mode=mode, title=title
+            descriptions, cfg, review_mode=mode, title=title, **warm_context_kwarg
         )
     except ValueError as exc:
         _error(f"Estimation error: {exc}", 2)
