@@ -366,29 +366,44 @@ class TestEstimateHistoryFile:
         assert result.exit_code == 0
         assert "Agent Estimate Report" in result.output
 
-    def test_history_file_warm_context_in_json_output(self) -> None:
+    def test_history_file_warm_context_in_json_output(self, tmp_path: Path) -> None:
         import json
+        from datetime import datetime, timedelta, timezone
 
-        history = str(FIXTURES / "dispatch_history.json")
+        recent = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+        history = tmp_path / "history.json"
+        history.write_text(
+            json.dumps({"dispatches": [
+                {"agent": "codex", "project": "proj", "completed_at": recent}
+            ]})
+        )
         result = runner.invoke(
-            app, ["estimate", "--history-file", history, "--format", "json", "Add a button"]
+            app, ["estimate", "--history-file", str(history), "--format", "json", "Add a button"]
         )
         assert result.exit_code == 0
         data = json.loads(result.output)
         task = data["tasks"][0]
         assert task["modifiers"]["warm_context"] < 1.0
 
-    def test_history_agent_filter_scopes_inference(self) -> None:
+    def test_history_agent_filter_scopes_inference(self, tmp_path: Path) -> None:
         import json
+        from datetime import datetime, timedelta, timezone
 
-        history = str(FIXTURES / "dispatch_history.json")
-        # gemini's dispatch is >24h old in the fixture -> 1.0
+        recent = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+        stale = (datetime.now(timezone.utc) - timedelta(hours=48)).isoformat()
+        history = tmp_path / "history.json"
+        history.write_text(
+            json.dumps({"dispatches": [
+                {"agent": "gemini", "project": "proj", "completed_at": recent},
+                {"agent": "codex", "project": "proj", "completed_at": stale},
+            ]})
+        )
         result = runner.invoke(
             app,
             [
                 "estimate",
-                "--history-file", history,
-                "--history-agent", "gemini",
+                "--history-file", str(history),
+                "--history-agent", "codex",
                 "--format", "json",
                 "Add a button",
             ],
