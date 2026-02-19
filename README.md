@@ -42,6 +42,28 @@ Show version:
 agent-estimate --version
 ```
 
+## Claude Code Plugin
+
+`agent-estimate` includes a Claude Code plugin for interactive estimation in Claude Code sessions.
+
+### Install
+
+```bash
+/install-plugin haoranc/agent-estimate
+```
+
+**Prerequisite**: The CLI must be installed first: `pip install agent-estimate`
+
+### Plugin Usage
+
+```
+/estimate Add a login page with OAuth
+/estimate --file spec.md
+/estimate --issues 1,2,3 --repo myorg/myrepo
+/validate-estimate observation.yaml
+/calibrate
+```
+
 ## Usage Examples
 
 Estimate tasks from a text file:
