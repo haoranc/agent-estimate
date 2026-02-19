@@ -12,7 +12,7 @@ requires-python = ">=3.10"
 authors = [{ name = "haoranc" }]
 keywords = ["ai", "agents", "estimation", "pert", "planning"]
 classifiers = [
-  "Development Status :: 1 - Planning",
+  "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",

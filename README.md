@@ -81,6 +81,19 @@ pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://
 
 Or run the GitHub Actions workflow `TestPyPI Dry Run` to publish and smoke-test install end-to-end.
 
+## Default METR Thresholds
+
+The default model thresholds are defined in `src/agent_estimate/metr_thresholds.yaml`:
+
+| Model | p80 threshold |
+| --- | --- |
+| Opus | 90 minutes |
+| GPT-5.3 | 60 minutes |
+| GPT-5 | 50 minutes |
+| GPT-5.2 | 55 minutes |
+| Gemini 3 Pro | 45 minutes |
+| Sonnet | 30 minutes |
+
 ## Agent Config Example
 
 Pass a custom config file with `--config`:
