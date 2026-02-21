@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from typing import NoReturn, Sequence
 
 from agent_estimate.core import (
+    EstimationCategory,
     EstimationConfig,
     ReviewMode,
     TaskEstimate,
@@ -16,6 +18,11 @@ from agent_estimate.core import (
     build_modifier_set,
     check_metr_threshold,
     compute_human_equivalent,
+    detect_estimation_category,
+    estimate_brainstorm,
+    estimate_config_sre,
+    estimate_documentation,
+    estimate_research,
     estimate_task,
     load_metr_thresholds,
     plan_waves,
@@ -49,6 +56,117 @@ def _truncate_name(desc: str, max_len: int = 60) -> str:
     return desc[: max_len - 1] + "\u2026"
 
 
+def _estimate_by_category(
+    category: EstimationCategory,
+    desc: str,
+    modifiers,
+    *,
+    review_mode: ReviewMode,
+    model_key: str,
+    thresholds,
+    fallback: float,
+    agent_name: str | None,
+    sizing,
+    auto_tier: bool,
+    estimated_tests: int | None,
+    estimated_lines: int | None,
+    num_concerns: int | None,
+) -> tuple[TaskEstimate, list[str]]:
+    """Route estimation to the correct model based on category.
+
+    Returns (estimate, tier_warnings).
+    """
+    task_tier_warnings: list[str] = []
+
+    if category == EstimationCategory.BRAINSTORM:
+        est = estimate_brainstorm(
+            desc,
+            modifiers,
+            review_mode=review_mode,
+            model_key=model_key,
+            thresholds=thresholds,
+            fallback_threshold=fallback,
+            agent_name=agent_name,
+        )
+        return est, task_tier_warnings
+
+    if category == EstimationCategory.RESEARCH:
+        est = estimate_research(
+            desc,
+            modifiers,
+            review_mode=review_mode,
+            model_key=model_key,
+            thresholds=thresholds,
+            fallback_threshold=fallback,
+            agent_name=agent_name,
+        )
+        return est, task_tier_warnings
+
+    if category == EstimationCategory.CONFIG_SRE:
+        est = estimate_config_sre(
+            desc,
+            modifiers,
+            review_mode=review_mode,
+            model_key=model_key,
+            thresholds=thresholds,
+            fallback_threshold=fallback,
+            agent_name=agent_name,
+        )
+        return est, task_tier_warnings
+
+    if category == EstimationCategory.DOCUMENTATION:
+        est = estimate_documentation(
+            desc,
+            modifiers,
+            review_mode=review_mode,
+            model_key=model_key,
+            thresholds=thresholds,
+            fallback_threshold=fallback,
+            agent_name=agent_name,
+        )
+        return est, task_tier_warnings
+
+    # Default: CODING — PERT tier model with auto-correction
+    if auto_tier:
+        correction = auto_correct_tier(
+            sizing,
+            estimated_tests=estimated_tests,
+            estimated_lines=estimated_lines,
+            num_concerns=num_concerns,
+        )
+        if correction.warnings:
+            for w in correction.warnings:
+                logger.warning("auto-tier: %s", w)
+                task_tier_warnings.append(w)
+        sizing = correction.sizing
+
+    # First pass — get total_expected_minutes
+    est = estimate_task(
+        sizing,
+        modifiers,
+        review_mode=review_mode,
+        model_key=model_key,
+        thresholds=thresholds,
+        fallback_threshold=fallback,
+        agent_name=agent_name,
+    )
+    # Compute human equivalent and re-estimate with it filled in
+    human_eq = compute_human_equivalent(est.total_expected_minutes, sizing.task_type)
+    est = estimate_task(
+        sizing,
+        modifiers,
+        review_mode=review_mode,
+        model_key=model_key,
+        thresholds=thresholds,
+        fallback_threshold=fallback,
+        agent_name=agent_name,
+        human_equivalent_minutes=human_eq,
+    )
+    # Attach category to the estimate
+    est = replace(est, estimation_category=EstimationCategory.CODING)
+    return est, task_tier_warnings
+
+
 def run_estimate_pipeline(
     descriptions: Sequence[str],
     config: EstimationConfig,
@@ -62,6 +180,7 @@ def run_estimate_pipeline(
     estimated_tests: int | None = None,
     estimated_lines: int | None = None,
     num_concerns: int | None = None,
+    task_category: EstimationCategory | None = None,
 ) -> EstimationReport:
     """Run the full estimation pipeline and produce a report."""
     if not config.agents:
@@ -87,49 +206,31 @@ def run_estimate_pipeline(
         name = _truncate_name(desc)
         logger.debug("Estimating task: %s", name)
 
-        sizing = classify_task(desc)
+        # Determine the estimation category for this task
+        if task_category is not None:
+            category = task_category
+        else:
+            category = detect_estimation_category(desc)
 
-        # Apply tier auto-correction if enabled
-        task_tier_warnings: list[str] = []
-        if auto_tier:
-            correction = auto_correct_tier(
-                sizing,
-                estimated_tests=estimated_tests,
-                estimated_lines=estimated_lines,
-                num_concerns=num_concerns,
-            )
-            if correction.warnings:
-                for w in correction.warnings:
-                    logger.warning("auto-tier: %s", w)
-                    task_tier_warnings.append(w)
-            sizing = correction.sizing
+        # classify_task runs the PERT coding model; skip it for non-coding categories
+        sizing = classify_task(desc) if category == EstimationCategory.CODING else None
+
+        est, task_tier_warnings = _estimate_by_category(
+            category,
+            desc,
+            modifiers,
+            review_mode=review_mode,
+            model_key=initial_model_key,
+            thresholds=thresholds,
+            fallback=fallback,
+            agent_name=initial_agent_name,
+            sizing=sizing,
+            auto_tier=auto_tier,
+            estimated_tests=estimated_tests,
+            estimated_lines=estimated_lines,
+            num_concerns=num_concerns,
+        )
         tier_warnings.append(task_tier_warnings)
-
-        # First pass — get total_expected_minutes
-        est = estimate_task(
-            sizing,
-            modifiers,
-            review_mode=review_mode,
-            model_key=initial_model_key,
-            thresholds=thresholds,
-            fallback_threshold=fallback,
-            agent_name=initial_agent_name,
-        )
-
-        # Compute human equivalent and re-estimate with it filled in
-        human_eq = compute_human_equivalent(
-            est.total_expected_minutes, sizing.task_type
-        )
-        est = estimate_task(
-            sizing,
-            modifiers,
-            review_mode=review_mode,
-            model_key=initial_model_key,
-            thresholds=thresholds,
-            fallback_threshold=fallback,
-            agent_name=initial_agent_name,
-            human_equivalent_minutes=human_eq,
-        )
 
         names.append(name)
         estimates.append(est)
@@ -216,6 +317,7 @@ def _build_report(
                 metr_warning=warning_message,
                 warm_context_detail=warm_context_detail,
                 tier_correction_warnings=tuple(task_tier_warnings),
+                estimation_category=est.estimation_category,
             )
         )
     report_tasks = tuple(report_task_list)

@@ -4,6 +4,7 @@ from agent_estimate.core.human_comparison import compute_human_equivalent, get_h
 from agent_estimate.core.models import (
     AgentProfile,
     AgentProfileProtocol,
+    EstimationCategory,
     EstimationConfig,
     MetrWarning,
     ModifierSet,
@@ -32,11 +33,19 @@ from agent_estimate.core.pert import (
     load_metr_thresholds,
 )
 from agent_estimate.core.sizing import TierCorrection, auto_correct_tier, classify_task
+from agent_estimate.core.task_type_models import (
+    detect_estimation_category,
+    estimate_brainstorm,
+    estimate_config_sre,
+    estimate_documentation,
+    estimate_research,
+)
 from agent_estimate.core.wave_planner import plan_waves
 
 __all__ = [
     "AgentProfile",
     "AgentProfileProtocol",
+    "EstimationCategory",
     "EstimationConfig",
     "MetrWarning",
     "ModifierSet",
@@ -61,6 +70,11 @@ __all__ = [
     "compute_human_equivalent",
     "compute_pert",
     "compute_review_overhead",
+    "detect_estimation_category",
+    "estimate_brainstorm",
+    "estimate_config_sre",
+    "estimate_documentation",
+    "estimate_research",
     "estimate_task",
     "get_human_multiplier",
     "infer_warm_context",

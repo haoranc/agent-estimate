@@ -96,6 +96,23 @@ class TaskType(enum.Enum):
     UNKNOWN = "unknown"
 
 
+class EstimationCategory(enum.Enum):
+    """Top-level task category that determines which estimation model to use.
+
+    CODING       — default; uses PERT tiers (XS-XL) with modifiers
+    BRAINSTORM   — flat model; ~10m independent, ~5m synthesis
+    RESEARCH     — time-boxed; 15-45m depending on depth
+    CONFIG_SRE   — flat + verification; ~15-30m
+    DOCUMENTATION — line-count based; similar to coding but lower floor
+    """
+
+    CODING = "coding"
+    BRAINSTORM = "brainstorm"
+    RESEARCH = "research"
+    CONFIG_SRE = "config"
+    DOCUMENTATION = "documentation"
+
+
 class ReviewMode(enum.Enum):
     """Code-review overhead model (additive minutes).
 
@@ -185,6 +202,7 @@ class TaskEstimate:
     total_expected_minutes: float
     human_equivalent_minutes: float | None
     metr_warning: MetrWarning | None
+    estimation_category: "EstimationCategory | None" = None
 
 
 # ---------------------------------------------------------------------------

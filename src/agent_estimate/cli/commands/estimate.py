@@ -13,7 +13,7 @@ from agent_estimate.adapters.github_adapter import GitHubAdapterError
 from agent_estimate.adapters.github_ghcli import GitHubGhCliAdapter
 from agent_estimate.cli.commands._pipeline import run_estimate_pipeline
 from agent_estimate.cli.commands.github import parse_issue_selection
-from agent_estimate.core import ReviewMode
+from agent_estimate.core import EstimationCategory, ReviewMode
 from agent_estimate.core.history import infer_warm_context
 from agent_estimate.render import render_json_report, render_markdown_report
 
@@ -98,6 +98,14 @@ def run(
         "--num-concerns",
         help="Number of distinct modules/APIs/schemas involved (used for tier auto-correction).",
     ),
+    task_type: Optional[str] = typer.Option(
+        None,
+        "--type",
+        help=(
+            "Task category: coding (default), brainstorm, research, config, documentation. "
+            "Auto-detected from description when not provided."
+        ),
+    ),
 ) -> None:
     """Estimate effort for one or more task descriptions."""
     # --- Resolve input source (exactly one) ---
@@ -172,6 +180,15 @@ def run(
             "warm_context: %.2f (auto: %s)", warm_ctx.value, warm_ctx.detail
         )
 
+    # --- Resolve task category ---
+    estimation_category: EstimationCategory | None = None
+    if task_type is not None:
+        try:
+            estimation_category = EstimationCategory(task_type.lower())
+        except ValueError:
+            valid = ", ".join(c.value for c in EstimationCategory)
+            _error(f"Invalid task type: {task_type!r}. Use one of: {valid}.", 2)
+
     # --- Run pipeline ---
     try:
         report = run_estimate_pipeline(
@@ -187,6 +204,7 @@ def run(
             estimated_tests=estimated_tests,
             estimated_lines=estimated_lines,
             num_concerns=num_concerns,
+            task_category=estimation_category,
         )
     except ValueError as exc:
         _error(f"Estimation error: {exc}", 2)

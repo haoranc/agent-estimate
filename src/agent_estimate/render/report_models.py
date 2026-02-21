@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from agent_estimate.core.models import TaskEstimate
+from agent_estimate.core.models import EstimationCategory, TaskEstimate
 
 
 @dataclass(frozen=True)
@@ -28,6 +28,7 @@ class ReportTask:
     metr_warning: str | None = None
     warm_context_detail: str | None = None
     tier_correction_warnings: tuple[str, ...] = ()
+    estimation_category: EstimationCategory | None = None
 
     @property
     def base_pert_expected_minutes(self) -> float:
