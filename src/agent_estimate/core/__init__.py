@@ -31,7 +31,7 @@ from agent_estimate.core.pert import (
     estimate_task,
     load_metr_thresholds,
 )
-from agent_estimate.core.sizing import classify_task
+from agent_estimate.core.sizing import TierCorrection, auto_correct_tier, classify_task
 from agent_estimate.core.wave_planner import plan_waves
 
 __all__ = [
@@ -55,6 +55,8 @@ __all__ = [
     "apply_modifiers",
     "build_modifier_set",
     "check_metr_threshold",
+    "TierCorrection",
+    "auto_correct_tier",
     "classify_task",
     "compute_human_equivalent",
     "compute_pert",

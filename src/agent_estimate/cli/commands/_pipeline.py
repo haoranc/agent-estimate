@@ -11,6 +11,7 @@ from agent_estimate.core import (
     TaskEstimate,
     TaskNode,
     WavePlan,
+    auto_correct_tier,
     classify_task,
     build_modifier_set,
     check_metr_threshold,
@@ -57,6 +58,10 @@ def run_estimate_pipeline(
     warm_context: float = 1.0,
     agent_fit: float = 1.0,
     warm_context_detail: str | None = None,
+    auto_tier: bool = True,
+    estimated_tests: int | None = None,
+    estimated_lines: int | None = None,
+    num_concerns: int | None = None,
 ) -> EstimationReport:
     """Run the full estimation pipeline and produce a report."""
     if not config.agents:
@@ -71,6 +76,7 @@ def run_estimate_pipeline(
 
     names: list[str] = []
     estimates: list[TaskEstimate] = []
+    tier_warnings: list[list[str]] = []
     modifiers = build_modifier_set(
         spec_clarity=spec_clarity,
         warm_context=warm_context,
@@ -82,6 +88,22 @@ def run_estimate_pipeline(
         logger.debug("Estimating task: %s", name)
 
         sizing = classify_task(desc)
+
+        # Apply tier auto-correction if enabled
+        task_tier_warnings: list[str] = []
+        if auto_tier:
+            correction = auto_correct_tier(
+                sizing,
+                estimated_tests=estimated_tests,
+                estimated_lines=estimated_lines,
+                num_concerns=num_concerns,
+            )
+            if correction.warnings:
+                for w in correction.warnings:
+                    logger.warning("auto-tier: %s", w)
+                    task_tier_warnings.append(w)
+            sizing = correction.sizing
+        tier_warnings.append(task_tier_warnings)
 
         # First pass — get total_expected_minutes
         est = estimate_task(
@@ -131,6 +153,7 @@ def run_estimate_pipeline(
     return _build_report(
         names, estimates, wave_plan, config, title, thresholds, fallback,
         warm_context_detail=warm_context_detail,
+        tier_warnings=tier_warnings,
     )
 
 
@@ -143,6 +166,7 @@ def _build_report(
     thresholds: dict[str, float] | None = None,
     fallback: float = 40.0,
     warm_context_detail: str | None = None,
+    tier_warnings: list[list[str]] | None = None,
 ) -> EstimationReport:
     """Map wave planner outputs back to report models."""
     # Build assignment map: task_id -> agent_name
@@ -173,6 +197,7 @@ def _build_report(
         )
         warning_message = corrected_warning.message if corrected_warning is not None else None
 
+        task_tier_warnings = tier_warnings[i] if tier_warnings else []
         report_task_list.append(
             ReportTask(
                 name=names[i],
@@ -190,6 +215,7 @@ def _build_report(
                 review_overhead_minutes=est.review_minutes,
                 metr_warning=warning_message,
                 warm_context_detail=warm_context_detail,
+                tier_correction_warnings=tuple(task_tier_warnings),
             )
         )
     report_tasks = tuple(report_task_list)
