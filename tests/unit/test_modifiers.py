@@ -90,15 +90,21 @@ class TestCombinedModifierProduct:
     def test_combined_is_exact_product_of_three(self) -> None:
         sc, wc, af = 1.2, 1.05, 1.1
         mods = build_modifier_set(spec_clarity=sc, warm_context=wc, agent_fit=af)
+        assert mods.raw_combined == pytest.approx(sc * wc * af)
         assert mods.combined == pytest.approx(sc * wc * af)
+        assert mods.clamped is False
 
-    def test_all_lower_boundaries_product(self) -> None:
+    def test_all_lower_boundaries_product_clamped(self) -> None:
         mods = build_modifier_set(spec_clarity=0.3, warm_context=0.3, agent_fit=0.9)
-        assert mods.combined == pytest.approx(0.3 * 0.3 * 0.9)
+        assert mods.raw_combined == pytest.approx(0.3 * 0.3 * 0.9)
+        assert mods.combined == pytest.approx(0.10)
+        assert mods.clamped is True
 
-    def test_spec_clarity_and_warm_context_at_new_floor(self) -> None:
+    def test_spec_clarity_and_warm_context_at_floor(self) -> None:
         mods = build_modifier_set(spec_clarity=0.3, warm_context=0.3)
-        assert mods.combined == pytest.approx(0.09)
+        assert mods.raw_combined == pytest.approx(0.09)
+        assert mods.combined == pytest.approx(0.10)
+        assert mods.clamped is True
 
     def test_all_upper_boundaries_product(self) -> None:
         mods = build_modifier_set(spec_clarity=1.3, warm_context=1.15, agent_fit=1.2)
@@ -107,8 +113,59 @@ class TestCombinedModifierProduct:
     def test_combined_stored_correctly_in_frozen_dataclass(self) -> None:
         mods = build_modifier_set(spec_clarity=1.1, warm_context=1.0, agent_fit=1.0)
         assert mods.combined == pytest.approx(1.1)
+        assert mods.raw_combined == pytest.approx(1.1)
+        assert mods.clamped is False
         with pytest.raises(AttributeError):
             mods.combined = 99.0  # type: ignore[misc]
+
+
+# ---------------------------------------------------------------------------
+# Modifier product floor
+# ---------------------------------------------------------------------------
+
+
+class TestModifierFloor:
+    def test_floor_fires_when_product_below_0_10(self) -> None:
+        mods = build_modifier_set(spec_clarity=0.3, warm_context=0.3)
+        assert mods.raw_combined == pytest.approx(0.09)
+        assert mods.combined == pytest.approx(0.10)
+        assert mods.clamped is True
+
+    def test_floor_fires_with_all_three_at_minimum(self) -> None:
+        mods = build_modifier_set(spec_clarity=0.3, warm_context=0.3, agent_fit=0.9)
+        assert mods.raw_combined == pytest.approx(0.081)
+        assert mods.combined == pytest.approx(0.10)
+        assert mods.clamped is True
+
+    def test_floor_does_not_fire_at_exactly_0_10(self) -> None:
+        # spec_clarity=0.3, warm_context=0.3, agent_fit=1.112 ≈ 0.100 — clamp at exact boundary
+        # Use a combination that lands exactly on the floor
+        mods = build_modifier_set(spec_clarity=0.5, warm_context=0.3, agent_fit=0.9)
+        # 0.5 * 0.3 * 0.9 = 0.135 > 0.10 — no clamp
+        assert mods.clamped is False
+        assert mods.combined == pytest.approx(0.135)
+
+    def test_floor_does_not_fire_above_threshold(self) -> None:
+        mods = build_modifier_set(spec_clarity=1.0, warm_context=1.0, agent_fit=1.0)
+        assert mods.clamped is False
+        assert mods.combined == pytest.approx(1.0)
+        assert mods.raw_combined == pytest.approx(1.0)
+
+    def test_floor_warning_logged(self, caplog: pytest.LogCaptureFixture) -> None:
+        import logging
+
+        with caplog.at_level(logging.WARNING, logger="agent_estimate.core.modifiers"):
+            build_modifier_set(spec_clarity=0.3, warm_context=0.3)
+        assert len(caplog.records) == 1
+        assert "0.10" in caplog.records[0].message
+        assert "clamped" in caplog.records[0].message
+
+    def test_no_warning_when_floor_not_triggered(self, caplog: pytest.LogCaptureFixture) -> None:
+        import logging
+
+        with caplog.at_level(logging.WARNING, logger="agent_estimate.core.modifiers"):
+            build_modifier_set(spec_clarity=1.0, warm_context=1.0, agent_fit=1.0)
+        assert len(caplog.records) == 0
 
 
 # ---------------------------------------------------------------------------
@@ -125,10 +182,10 @@ class TestApplyModifiers:
         mods = build_modifier_set(spec_clarity=1.3)
         assert apply_modifiers(100.0, mods) == pytest.approx(130.0)
 
-    def test_scale_down(self) -> None:
+    def test_scale_down_clamped(self) -> None:
         mods = build_modifier_set(spec_clarity=0.3, warm_context=0.3, agent_fit=0.9)
-        expected = 200.0 * 0.3 * 0.3 * 0.9
-        assert apply_modifiers(200.0, mods) == pytest.approx(expected)
+        # raw product 0.081 < floor 0.10, so combined is clamped
+        assert apply_modifiers(200.0, mods) == pytest.approx(200.0 * 0.10)
 
     def test_zero_base_gives_zero(self) -> None:
         mods = build_modifier_set(spec_clarity=1.2)

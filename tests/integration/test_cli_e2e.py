@@ -84,7 +84,7 @@ class TestEstimateModifierFlags:
             ],
         )
         assert result.exit_code == 0
-        assert "spec 0.30 x warm 0.30 x fit 1.00 = 0.09" in result.output
+        assert "spec 0.30 x warm 0.30 x fit 1.00 = 0.10" in result.output
 
     def test_modifier_flags_work_with_file_input(self) -> None:
         task_file = str(FIXTURES / "tasks_multi.txt")

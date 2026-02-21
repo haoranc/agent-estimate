@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
+import logging
+
 from agent_estimate.core.models import ModifierSet, ReviewMode
+
+logger = logging.getLogger(__name__)
+
+_MODIFIER_FLOOR = 0.10
 
 # Review overhead constants (additive, minutes)
 # Evidence from 33 validated dispatches — see issue #46.
@@ -35,12 +41,23 @@ def build_modifier_set(
     _validate_range("warm_context", warm_context, 0.3, 1.15)
     _validate_range("agent_fit", agent_fit, 0.9, 1.2)
 
-    combined = spec_clarity * warm_context * agent_fit
+    raw_combined = spec_clarity * warm_context * agent_fit
+    clamped = raw_combined < _MODIFIER_FLOOR
+    combined = raw_combined
+    if clamped:
+        combined = _MODIFIER_FLOOR
+        logger.warning(
+            "Modifier product %.4f clamped to %.2f (prevents sub-10m pathology)",
+            raw_combined,
+            _MODIFIER_FLOOR,
+        )
     return ModifierSet(
         spec_clarity=spec_clarity,
         warm_context=warm_context,
         agent_fit=agent_fit,
         combined=combined,
+        raw_combined=raw_combined,
+        clamped=clamped,
     )
 
 
