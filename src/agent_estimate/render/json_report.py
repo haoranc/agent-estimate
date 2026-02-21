@@ -85,4 +85,5 @@ def _wave_payload(wave: ReportWave) -> dict[str, Any]:
         "tasks": sorted(wave.tasks),
         "duration_minutes": wave.duration_minutes,
         "agent_assignments": assignments,
+        "agent_review_minutes": dict(sorted(wave.agent_review_minutes.items())),
     }

@@ -104,10 +104,10 @@ def plan_waves(
     slot_load: dict[tuple[str, int], float] = defaultdict(float)
 
     for gen_index, generation in enumerate(generations):
-        # Sort tasks longest-first (LPT)
+        # Sort tasks longest-first (LPT) using work-only duration
         sorted_tasks = sorted(generation, key=lambda tid: task_map[tid].duration_minutes, reverse=True)
 
-        # Per-wave bin loads (reset each wave)
+        # Per-wave bin loads (work-only, reset each wave)
         wave_bin_load: dict[tuple[str, int], float] = defaultdict(float)
         assignments: list[WaveAssignment] = []
 
@@ -130,7 +130,7 @@ def plan_waves(
                     f"(requires {sorted(required)})"
                 )
 
-            # Pick the eligible slot with minimum current wave load
+            # Pick the eligible slot with minimum current wave load (work-only)
             best = min(eligible, key=lambda s: wave_bin_load[s])
             wave_bin_load[best] += node.duration_minutes
             slot_load[best] += node.duration_minutes
@@ -183,8 +183,42 @@ def plan_waves(
                 )
             assignments = revised_assignments
 
-        # Wave makespan = max bin load in this wave
-        wave_makespan = max(wave_bin_load.values()) if wave_bin_load else 0.0
+        # ------------------------------------------------------------------
+        # Batch review amortization: charge a single review cycle per agent
+        # per wave, not one per task.  The amortized review for an agent is
+        # the maximum per-task review_minutes across all its tasks in this
+        # wave (same review mode → same value; max is a safe fallback for
+        # heterogeneous inputs).  This is added to the agent's leading slot
+        # load for makespan purposes only — utilisation tracking stays
+        # work-only to avoid double-counting.
+        # ------------------------------------------------------------------
+        agent_review: dict[str, float] = {}
+        for agent_name, tids in agent_wave_tasks.items():
+            # Single review cycle covers all PRs from this agent in the wave.
+            agent_review[agent_name] = max(
+                task_map[tid].review_minutes for tid in tids
+            )
+
+        # Per-agent leading slot: the slot that carries the heaviest work load.
+        # We add the amortized review overhead to that slot's bin load so the
+        # wave makespan reflects the true wall-clock time.
+        agent_leading_slot: dict[str, tuple[str, int]] = {}
+        for a in assignments:
+            slot = (a.agent_name, a.slot_index)
+            prev = agent_leading_slot.get(a.agent_name)
+            if prev is None or wave_bin_load[slot] > wave_bin_load[prev]:
+                agent_leading_slot[a.agent_name] = slot
+
+        # Build a copy of bin loads with review added to the leading slot.
+        wave_bin_load_with_review = dict(wave_bin_load)
+        for agent_name, leading_slot in agent_leading_slot.items():
+            wave_bin_load_with_review[leading_slot] = (
+                wave_bin_load_with_review.get(leading_slot, 0.0)
+                + agent_review.get(agent_name, 0.0)
+            )
+
+        # Wave makespan = max bin load (work + amortized review) in this wave
+        wave_makespan = max(wave_bin_load_with_review.values()) if wave_bin_load_with_review else 0.0
         wave_start = current_time
         wave_end = wave_start + wave_makespan
 
@@ -194,6 +228,7 @@ def plan_waves(
                 start_minutes=wave_start,
                 end_minutes=wave_end,
                 assignments=tuple(assignments),
+                agent_review_minutes=agent_review,
             )
         )
 
@@ -235,7 +270,8 @@ def plan_waves(
     # 7. Metrics
     # ------------------------------------------------------------------
     total_wall_clock = waves[-1].end_minutes if waves else 0.0
-    total_sequential = sum(t.duration_minutes for t in tasks)
+    # Sequential baseline includes per-task review (no amortization when running solo)
+    total_sequential = sum(t.duration_minutes + t.review_minutes for t in tasks)
 
     # Per-agent utilisation: busy_time / wall_clock
     # Initialise all input agents to 0.0 so idle agents appear in the output.

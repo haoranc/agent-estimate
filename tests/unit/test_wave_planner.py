@@ -385,3 +385,127 @@ class TestCoDispatchMixedWaves:
         wave1_by_id = {a.task_id: a for a in plan.waves[1].assignments}
         assert wave1_by_id["C"].co_dispatch_group == ()
         assert wave1_by_id["C"].duration_minutes == pytest.approx(25.0)
+
+
+# ---------------------------------------------------------------------------
+# Batch review amortization tests
+# ---------------------------------------------------------------------------
+
+
+def _rnode(
+    task_id: str,
+    duration: float = 30.0,
+    review: float = 15.0,
+    deps: tuple[str, ...] = (),
+) -> TaskNode:
+    """Helper: TaskNode with explicit work + review minutes."""
+    return TaskNode(
+        task_id=task_id,
+        duration_minutes=duration,
+        review_minutes=review,
+        dependencies=deps,
+    )
+
+
+class TestBatchReviewSingleAgentTwoTasks:
+    """Two tasks on one agent: wave makespan = sum(work) + single_review_cycle."""
+
+    def test_makespan_amortized(self) -> None:
+        # Task A: 40 work + 15 review; Task B: 30 work + 15 review
+        # Naive: (40+15) + (30+15) = 100m
+        # Amortized: 40 + 30*0.5 (co-dispatch) + 15 (single review) = 70m
+        tasks = [_rnode("A", 40, 15), _rnode("B", 30, 15)]
+        plan = plan_waves(tasks, [_agent(parallelism=1)], inter_wave_overhead_hours=0)
+
+        # Co-dispatch: A=40 (first), B=15 (0.5x); amortized review = 15
+        # Leading slot load = 40, after review = 55
+        # Slot load (A+B adjusted): 40 + 15 = 55; plus review 15 → wave makespan 70
+        assert plan.waves[0].end_minutes == pytest.approx(70.0)
+
+    def test_agent_review_minutes_populated(self) -> None:
+        tasks = [_rnode("A", 40, 15), _rnode("B", 30, 15)]
+        plan = plan_waves(tasks, [_agent(parallelism=1)], inter_wave_overhead_hours=0)
+
+        wave = plan.waves[0]
+        assert "claude" in wave.agent_review_minutes
+        assert wave.agent_review_minutes["claude"] == pytest.approx(15.0)
+
+    def test_total_sequential_includes_per_task_review(self) -> None:
+        # Sequential baseline = sum(work + review per task) = (40+15) + (30+15) = 100
+        tasks = [_rnode("A", 40, 15), _rnode("B", 30, 15)]
+        plan = plan_waves(tasks, [_agent(parallelism=1)], inter_wave_overhead_hours=0)
+
+        assert plan.total_sequential_minutes == pytest.approx(100.0)
+
+
+class TestBatchReviewNoReviewOverhead:
+    """When review_minutes=0, wave makespan is unchanged from work-only."""
+
+    def test_zero_review_unchanged(self) -> None:
+        tasks = [
+            TaskNode("A", duration_minutes=40, review_minutes=0.0),
+            TaskNode("B", duration_minutes=30, review_minutes=0.0),
+        ]
+        plan = plan_waves(tasks, [_agent(parallelism=1)], inter_wave_overhead_hours=0)
+
+        # Co-dispatch: A=40, B=15; no review → 55
+        assert plan.waves[0].end_minutes == pytest.approx(55.0)
+        assert plan.waves[0].agent_review_minutes["claude"] == pytest.approx(0.0)
+
+
+class TestBatchReviewSingleTask:
+    """Single task per agent: full review cycle still charged."""
+
+    def test_single_task_full_review(self) -> None:
+        tasks = [_rnode("A", 30, 15)]
+        plan = plan_waves(tasks, [_agent(parallelism=1)], inter_wave_overhead_hours=0)
+
+        # Work=30 + review=15 = 45
+        assert plan.waves[0].end_minutes == pytest.approx(45.0)
+        assert plan.waves[0].agent_review_minutes["claude"] == pytest.approx(15.0)
+
+
+class TestBatchReviewTwoAgentsTwoTasks:
+    """One task per agent: each agent pays its own review cycle."""
+
+    def test_two_agents_independent_review(self) -> None:
+        tasks = [_rnode("A", 30, 15), _rnode("B", 40, 15)]
+        agents = [_agent("alpha"), _agent("beta")]
+        plan = plan_waves(tasks, agents, inter_wave_overhead_hours=0)
+
+        wave = plan.waves[0]
+        # alpha: A(30+15=45), beta: B(40+15=55) → makespan = 55
+        assert wave.end_minutes == pytest.approx(55.0)
+        assert wave.agent_review_minutes["alpha"] == pytest.approx(15.0)
+        assert wave.agent_review_minutes["beta"] == pytest.approx(15.0)
+
+
+class TestBatchReviewThreeTasksSameAgent:
+    """Three tasks on one agent: only one review cycle, not three."""
+
+    def test_three_tasks_single_review(self) -> None:
+        # Tasks: A=60w, B=40w, C=20w — all same agent, review=15 each
+        # Co-dispatch: A=60 (first), B=20 (0.5x), C=10 (0.5x)
+        # Slot total work = 60 + 20 + 10 = 90; plus single review 15 → 105
+        tasks = [_rnode("A", 60, 15), _rnode("B", 40, 15), _rnode("C", 20, 15)]
+        plan = plan_waves(tasks, [_agent(parallelism=1)], inter_wave_overhead_hours=0)
+
+        assert plan.waves[0].end_minutes == pytest.approx(105.0)
+        assert plan.waves[0].agent_review_minutes["claude"] == pytest.approx(15.0)
+
+
+class TestBatchReviewAcrossWaves:
+    """Each wave charges its own amortized review independently."""
+
+    def test_review_per_wave(self) -> None:
+        # Wave 0: A(30w, 15r); Wave 1: B(20w, 15r) depends on A
+        tasks = [_rnode("A", 30, 15), _rnode("B", 20, 15, deps=("A",))]
+        plan = plan_waves(tasks, [_agent(parallelism=1)], inter_wave_overhead_hours=0)
+
+        assert len(plan.waves) == 2
+        # Wave 0: 30 + 15 = 45
+        assert plan.waves[0].end_minutes == pytest.approx(45.0)
+        # Wave 1: starts at 45; 20 + 15 = 35; ends at 80
+        assert plan.waves[1].end_minutes == pytest.approx(80.0)
+        assert plan.waves[0].agent_review_minutes["claude"] == pytest.approx(15.0)
+        assert plan.waves[1].agent_review_minutes["claude"] == pytest.approx(15.0)

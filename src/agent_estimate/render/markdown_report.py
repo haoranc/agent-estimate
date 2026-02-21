@@ -70,7 +70,7 @@ def _render_wave_table(report: EstimationReport) -> list[str]:
     lines = [
         "## Wave Plan",
         "",
-        "| Wave | Tasks | Duration | Agent Assignments |",
+        "| Wave | Tasks | Duration | Agent Assignments (amortized review) |",
         "| --- | --- | --- | --- |",
     ]
     for wave in report.waves:
@@ -78,7 +78,9 @@ def _render_wave_table(report: EstimationReport) -> list[str]:
         assignments: list[str] = []
         for agent in sorted(wave.agent_assignments):
             assigned_tasks = ", ".join(_escape_cell(task) for task in wave.agent_assignments[agent])
-            assignments.append(f"{_escape_cell(agent)}: {assigned_tasks or 'none'}")
+            review_m = wave.agent_review_minutes.get(agent, 0.0)
+            review_note = f" +{_format_minutes(review_m)} review" if review_m > 0 else ""
+            assignments.append(f"{_escape_cell(agent)}: {assigned_tasks or 'none'}{review_note}")
         assignment_text = "; ".join(assignments) if assignments else "N/A"
         lines.append(
             f"| {wave.number} | {tasks} | {_format_minutes(wave.duration_minutes)} | "
@@ -99,20 +101,23 @@ def _render_timeline_summary(report: EstimationReport) -> list[str]:
         f"| Worst case | {_format_minutes(timeline.worst_case_minutes)} |",
         f"| Human-speed equivalent | {_format_minutes(timeline.human_equivalent_minutes)} |",
         f"| Compression ratio | {timeline.compression_ratio:.2f}x |",
-        f"| Review overhead (additive) | {_format_minutes(report.review_overhead_minutes)} |",
+        f"| Review overhead (per-task, pre-amortization) | {_format_minutes(report.review_overhead_minutes)} |",
     ]
 
 
 def _render_review_overhead(report: EstimationReport) -> list[str]:
     lines = [
-        "## Review Overhead (Additive)",
+        "## Review Overhead",
+        "",
+        "Review is amortized per agent per wave: one review cycle covers all PRs from that",
+        "agent in the wave.  Per-task values below are the naive (pre-amortization) figures.",
         "",
         "| Task | Review Overhead |",
         "| --- | --- |",
     ]
     for task in report.tasks:
         lines.append(f"| {_escape_cell(task.name)} | {_format_minutes(task.review_overhead_minutes)} |")
-    lines.append(f"| **Total** | **{_format_minutes(report.review_overhead_minutes)}** |")
+    lines.append(f"| **Total (naive)** | **{_format_minutes(report.review_overhead_minutes)}** |")
     return lines
 
 

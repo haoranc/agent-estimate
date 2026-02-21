@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 from collections.abc import Mapping
 from dataclasses import dataclass
 
@@ -62,12 +63,18 @@ class ReportTask:
 
 @dataclass(frozen=True)
 class ReportWave:
-    """One scheduling wave in the report."""
+    """One scheduling wave in the report.
+
+    ``agent_review_minutes`` maps each agent name to the single amortized
+    review cycle charged for that agent in this wave.  Empty when all tasks
+    have review_minutes=0 (i.e. ReviewMode.NONE).
+    """
 
     number: int
     tasks: tuple[str, ...]
     duration_minutes: float
     agent_assignments: Mapping[str, tuple[str, ...]]
+    agent_review_minutes: Mapping[str, float] = dataclasses.field(default_factory=dict)  # type: ignore[assignment]
 
 
 @dataclass(frozen=True)
