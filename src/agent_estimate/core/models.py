@@ -188,6 +188,14 @@ class WaveAssignment:
     agent_name: str
     slot_index: int
     duration_minutes: float
+    co_dispatch_group: tuple[str, ...] = ()
+    """Task IDs co-dispatched to the same agent in the same wave.
+
+    Non-empty only when two or more tasks are assigned to the same agent within
+    a single wave.  The first task in the group receives no warm-context
+    reduction; subsequent tasks have their ``duration_minutes`` reduced by 0.5x
+    to model implicit warm context carried over from the first task.
+    """
 
 
 @dataclass(frozen=True)

@@ -111,6 +111,9 @@ def plan_waves(
         wave_bin_load: dict[tuple[str, int], float] = defaultdict(float)
         assignments: list[WaveAssignment] = []
 
+        # Track which tasks land on each agent in this wave (for co-dispatch detection)
+        agent_wave_tasks: dict[str, list[str]] = defaultdict(list)
+
         for tid in sorted_tasks:
             node = task_map[tid]
             required = set(node.required_capabilities)
@@ -131,6 +134,7 @@ def plan_waves(
             best = min(eligible, key=lambda s: wave_bin_load[s])
             wave_bin_load[best] += node.duration_minutes
             slot_load[best] += node.duration_minutes
+            agent_wave_tasks[best[0]].append(tid)
 
             assignments.append(
                 WaveAssignment(
@@ -140,6 +144,44 @@ def plan_waves(
                     duration_minutes=node.duration_minutes,
                 )
             )
+
+        # ------------------------------------------------------------------
+        # Co-dispatch: for each agent with 2+ tasks in this wave, apply 0.5x
+        # warm-context reduction to all tasks beyond the first.
+        # ------------------------------------------------------------------
+        # Build a mapping from task_id → co_dispatch_group for agents with
+        # multiple tasks.  Then rebuild assignments with adjusted durations
+        # and co_dispatch_group populated.
+        co_dispatch_group_map: dict[str, tuple[str, ...]] = {}
+        adjusted_duration_map: dict[str, float] = {}
+        for agent_name, tids in agent_wave_tasks.items():
+            if len(tids) < 2:
+                continue
+            group = tuple(tids)
+            for position, tid in enumerate(tids):
+                co_dispatch_group_map[tid] = group
+                if position > 0:
+                    adjusted_duration_map[tid] = task_map[tid].duration_minutes * 0.5
+
+        if co_dispatch_group_map:
+            # Recalculate wave_bin_load with adjusted durations.
+            wave_bin_load = defaultdict(float)
+            revised_assignments: list[WaveAssignment] = []
+            for a in assignments:
+                adj_duration = adjusted_duration_map.get(a.task_id, a.duration_minutes)
+                wave_bin_load[(a.agent_name, a.slot_index)] += adj_duration
+                slot_load[(a.agent_name, a.slot_index)] -= a.duration_minutes
+                slot_load[(a.agent_name, a.slot_index)] += adj_duration
+                revised_assignments.append(
+                    WaveAssignment(
+                        task_id=a.task_id,
+                        agent_name=a.agent_name,
+                        slot_index=a.slot_index,
+                        duration_minutes=adj_duration,
+                        co_dispatch_group=co_dispatch_group_map.get(a.task_id, ()),
+                    )
+                )
+            assignments = revised_assignments
 
         # Wave makespan = max bin load in this wave
         wave_makespan = max(wave_bin_load.values()) if wave_bin_load else 0.0
