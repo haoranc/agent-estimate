@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import pytest
-
-from agent_estimate.core.models import SizeTier, TaskType
-from agent_estimate.core.sizing import TierCorrection, auto_correct_tier, classify_task
+from agent_estimate.core.models import SizeTier, SizingResult
+from agent_estimate.core.sizing import auto_correct_tier, classify_task
 
 
-def _sizing(tier: SizeTier) -> "agent_estimate.core.models.SizingResult":
+def _sizing(tier: SizeTier) -> SizingResult:
     return classify_task(
         {
             SizeTier.XS: "trivial one-liner rename",
