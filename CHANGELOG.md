@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-02-21
+
 ### Changed
 - Review overhead model is now additive (0m / 15m / 25m) instead of percentage-based. ReviewMode values: `none`, `standard`, `complex`. Legacy `self` and `2x-lgtm` still accepted for backwards compatibility. (#46)
 
@@ -17,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Batch wave estimation: amortizes review overhead across same-agent tasks per wave — single review cycle per agent instead of per task. `TaskNode.review_minutes` separates review from work duration. (#49)
 - Non-coding task type estimation: `--type` flag for brainstorm, research, config, and documentation tasks with category-specific models. Auto-detection heuristic from description keywords. (#55)
 - Multi-agent session estimation: `agent-estimate session` subcommand for coordinated workflows. Wall-clock vs agent-minutes distinction with `--agents`, `--rounds`, `--type` flags. (#56)
+
+### Fixed
+- 11 post-LGTM nits from ae-task-models blitz: fractional minute rounding, deterministic wave tie-breaking, tightened keyword patterns, parallel efficiency calculation, and JSON report completeness. (#63)
 
 ## [0.1.0] - 2026-02-18
 
@@ -34,5 +39,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modifier flags: `--warm-context`, `--spec-clarity`, `--issues`
 - PyPI package: `pip install agent-estimate`
 
+[0.2.0]: https://github.com/haoranc/agent-estimate/releases/tag/v0.2.0
 [0.1.0]: https://github.com/haoranc/agent-estimate/releases/tag/v0.1.0
 
