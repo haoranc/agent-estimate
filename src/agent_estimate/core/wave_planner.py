@@ -130,8 +130,9 @@ def plan_waves(
                     f"(requires {sorted(required)})"
                 )
 
-            # Pick the eligible slot with minimum current wave load (work-only)
-            best = min(eligible, key=lambda s: wave_bin_load[s])
+            # Pick the eligible slot with minimum current wave load (work-only).
+            # Slot index is included as a secondary key for deterministic tie-breaking.
+            best = min(eligible, key=lambda s: (wave_bin_load[s], s[1]))
             wave_bin_load[best] += node.duration_minutes
             slot_load[best] += node.duration_minutes
             agent_wave_tasks[best[0]].append(tid)
@@ -270,8 +271,14 @@ def plan_waves(
     # 7. Metrics
     # ------------------------------------------------------------------
     total_wall_clock = waves[-1].end_minutes if waves else 0.0
-    # Sequential baseline includes per-task review (no amortization when running solo)
-    total_sequential = sum(t.duration_minutes + t.review_minutes for t in tasks)
+    # Sequential baseline uses amortized review to match the wall-clock model:
+    # sum of all work durations + one review cycle per agent per wave
+    # (not one review per task, which overstates the sequential baseline).
+    total_work = sum(t.duration_minutes for t in tasks)
+    total_amortized_review = sum(
+        sum(wave.agent_review_minutes.values()) for wave in waves
+    )
+    total_sequential = total_work + total_amortized_review
 
     # Per-agent utilisation: busy_time / wall_clock
     # Initialise all input agents to 0.0 so idle agents appear in the output.

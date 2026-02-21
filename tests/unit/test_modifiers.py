@@ -137,9 +137,10 @@ class TestModifierFloor:
         assert mods.combined == pytest.approx(0.10)
         assert mods.clamped is True
 
-    def test_floor_does_not_fire_at_exactly_0_10(self) -> None:
-        # spec_clarity=0.3, warm_context=0.3, agent_fit=1.112 ≈ 0.100 — clamp at exact boundary
-        # Use a combination that lands exactly on the floor
+    def test_floor_does_not_fire_well_above_threshold(self) -> None:
+        # The exact 0.10 boundary is hard to construct from the three constrained
+        # factor inputs (spec_clarity ∈ [0.3, 1.3], warm_context ∈ [0.3, 1.15],
+        # agent_fit ∈ [0.9, 1.2]), so we use a combination comfortably above it.
         mods = build_modifier_set(spec_clarity=0.5, warm_context=0.3, agent_fit=0.9)
         # 0.5 * 0.3 * 0.9 = 0.135 > 0.10 — no clamp
         assert mods.clamped is False

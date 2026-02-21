@@ -44,7 +44,10 @@ class TestDetectEstimationCategory:
         assert detect_estimation_category("Discovery session for API design") == EstimationCategory.BRAINSTORM
 
     def test_sync_keyword(self) -> None:
-        assert detect_estimation_category("Team sync on architecture direction") == EstimationCategory.BRAINSTORM
+        # "Team sync" alone is ambiguous — tightened pattern requires brainstorm context
+        assert detect_estimation_category("Brainstorm sync on architecture direction") == EstimationCategory.BRAINSTORM
+        # Plain "team sync" falls through to coding (no longer matched as brainstorm)
+        assert detect_estimation_category("Team sync on architecture direction") == EstimationCategory.CODING
 
     def test_whiteboard_keyword(self) -> None:
         assert detect_estimation_category("Whiteboard the new data model") == EstimationCategory.BRAINSTORM

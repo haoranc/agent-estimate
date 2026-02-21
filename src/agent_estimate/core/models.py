@@ -105,6 +105,11 @@ class EstimationCategory(enum.Enum):
     RESEARCH     — time-boxed; 15-45m depending on depth
     CONFIG_SRE   — flat + verification; ~15-30m
     DOCUMENTATION — line-count based; similar to coding but lower floor
+
+    Aliases accepted via ``_missing_``:
+      "sre"        → CONFIG_SRE
+      "config_sre" → CONFIG_SRE
+      "docs"       → DOCUMENTATION
     """
 
     CODING = "coding"
@@ -112,6 +117,18 @@ class EstimationCategory(enum.Enum):
     RESEARCH = "research"
     CONFIG_SRE = "config"
     DOCUMENTATION = "documentation"
+
+    @classmethod
+    def _missing_(cls, value: object) -> "EstimationCategory | None":
+        """Accept common aliases for category names."""
+        _aliases: dict[str, "EstimationCategory"] = {
+            "sre": cls.CONFIG_SRE,
+            "config_sre": cls.CONFIG_SRE,
+            "docs": cls.DOCUMENTATION,
+        }
+        if isinstance(value, str):
+            return _aliases.get(value.lower())
+        return None
 
 
 class ReviewMode(enum.Enum):

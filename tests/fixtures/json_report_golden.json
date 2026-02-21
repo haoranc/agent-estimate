@@ -33,12 +33,15 @@
         "pessimistic_minutes": 90.0
       },
       "effective_duration_minutes": 57.8,
+      "estimation_category": null,
       "human_equivalent_minutes": 160.0,
       "is_critical_path": true,
       "metr_warning": "Estimate exceeds threshold",
       "modifiers": {
         "agent_fit": 1.0,
+        "clamped": false,
         "combined": 1.1,
+        "raw_combined": 1.1,
         "spec_clarity": 1.1,
         "warm_context": 1.0
       },
@@ -55,12 +58,15 @@
         "pessimistic_minutes": 40.0
       },
       "effective_duration_minutes": 24.0,
+      "estimation_category": null,
       "human_equivalent_minutes": 75.0,
       "is_critical_path": true,
       "metr_warning": null,
       "modifiers": {
         "agent_fit": 1.0,
+        "clamped": false,
         "combined": 1.0,
+        "raw_combined": 1.0,
         "spec_clarity": 1.0,
         "warm_context": 1.0
       },

@@ -23,6 +23,8 @@ class ReportTask:
     modifier_warm_context: float
     modifier_agent_fit: float
     modifier_combined: float
+    modifier_raw_combined: float
+    modifier_clamped: bool
     effective_duration_minutes: float
     human_equivalent_minutes: float | None
     review_overhead_minutes: float
@@ -55,6 +57,8 @@ class ReportTask:
             modifier_warm_context=estimate.modifiers.warm_context,
             modifier_agent_fit=estimate.modifiers.agent_fit,
             modifier_combined=estimate.modifiers.combined,
+            modifier_raw_combined=estimate.modifiers.raw_combined,
+            modifier_clamped=estimate.modifiers.clamped,
             effective_duration_minutes=estimate.pert.expected,
             human_equivalent_minutes=estimate.human_equivalent_minutes,
             review_overhead_minutes=estimate.review_minutes,

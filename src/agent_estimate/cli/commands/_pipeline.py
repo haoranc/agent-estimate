@@ -12,6 +12,7 @@ from agent_estimate.core import (
     ReviewMode,
     TaskEstimate,
     TaskNode,
+    TaskType,
     WavePlan,
     auto_correct_tier,
     classify_task,
@@ -88,6 +89,8 @@ def _estimate_by_category(
             fallback_threshold=fallback,
             agent_name=agent_name,
         )
+        human_eq = compute_human_equivalent(est.total_expected_minutes, TaskType.UNKNOWN)
+        est = replace(est, human_equivalent_minutes=human_eq)
         return est, task_tier_warnings
 
     if category == EstimationCategory.RESEARCH:
@@ -100,6 +103,8 @@ def _estimate_by_category(
             fallback_threshold=fallback,
             agent_name=agent_name,
         )
+        human_eq = compute_human_equivalent(est.total_expected_minutes, TaskType.UNKNOWN)
+        est = replace(est, human_equivalent_minutes=human_eq)
         return est, task_tier_warnings
 
     if category == EstimationCategory.CONFIG_SRE:
@@ -112,6 +117,8 @@ def _estimate_by_category(
             fallback_threshold=fallback,
             agent_name=agent_name,
         )
+        human_eq = compute_human_equivalent(est.total_expected_minutes, TaskType.UNKNOWN)
+        est = replace(est, human_equivalent_minutes=human_eq)
         return est, task_tier_warnings
 
     if category == EstimationCategory.DOCUMENTATION:
@@ -124,6 +131,8 @@ def _estimate_by_category(
             fallback_threshold=fallback,
             agent_name=agent_name,
         )
+        human_eq = compute_human_equivalent(est.total_expected_minutes, TaskType.UNKNOWN)
+        est = replace(est, human_equivalent_minutes=human_eq)
         return est, task_tier_warnings
 
     # Default: CODING — PERT tier model with auto-correction
@@ -243,6 +252,7 @@ def run_estimate_pipeline(
         TaskNode(
             task_id=str(i),
             duration_minutes=est.pert.expected * friction,
+            # review_minutes is flat additive overhead, not scaled by friction
             review_minutes=est.review_minutes,
         )
         for i, est in enumerate(estimates)
@@ -314,6 +324,8 @@ def _build_report(
                 modifier_warm_context=est.modifiers.warm_context,
                 modifier_agent_fit=est.modifiers.agent_fit,
                 modifier_combined=est.modifiers.combined,
+                modifier_raw_combined=est.modifiers.raw_combined,
+                modifier_clamped=est.modifiers.clamped,
                 effective_duration_minutes=est.pert.expected,
                 human_equivalent_minutes=est.human_equivalent_minutes,
                 review_overhead_minutes=est.review_minutes,
