@@ -32,7 +32,7 @@ _CATEGORY_PATTERNS: list[tuple[re.Pattern[str], EstimationCategory]] = [
     (
         re.compile(
             r"\b(brainstorm|ideate|explore ideas?|design session|whiteboard|discuss|"
-            r"spike|discovery|kickoff|alignment|sync)\b",
+            r"spike|discovery|kickoff|alignment)\b",
             re.I,
         ),
         EstimationCategory.BRAINSTORM,
@@ -49,9 +49,10 @@ _CATEGORY_PATTERNS: list[tuple[re.Pattern[str], EstimationCategory]] = [
     # Config / SRE — infrastructure, deployment, ops
     (
         re.compile(
-            r"\b(config(?:ure|uration)?|deploy(?:ment)?|infra(?:structure)?|"
+            r"\b(configure|configuration|deploy(?:ment)?|infra(?:structure)?|"
             r"sre|devops|terraform|helm|ansible|k8s|kubernetes|"
-            r"ci/?cd|pipeline|monitoring|alerting|oncall|runbook|"
+            r"ci/?cd|ci pipeline|deploy pipeline|monitoring|alerting|oncall|runbook|"
+            r"config (?:file|change|update|migration|setting)|"
             r"env(?:ironment)? var(?:iable)?s?|secret(?:s| management)?)\b",
             re.I,
         ),

@@ -9,6 +9,7 @@ import typer
 from agent_estimate.core.session import (
     DEFAULT_COORDINATION_OVERHEAD_MINUTES,
     SESSION_TYPE_DURATIONS,
+    SessionEstimate,
     estimate_session,
 )
 
@@ -100,13 +101,11 @@ def run(
 # ---------------------------------------------------------------------------
 
 
-def _render_markdown(result: "SessionEstimate") -> None:  # type: ignore[name-defined]  # noqa: F821
-    from agent_estimate.core.session import SessionEstimate  # noqa: PLC0415
-
+def _render_markdown(result: SessionEstimate) -> None:
     assert isinstance(result, SessionEstimate)
 
-    wall_h, wall_m = divmod(int(result.wall_clock_minutes), 60)
-    agent_h, agent_m = divmod(int(result.agent_minutes), 60)
+    wall_h, wall_m = divmod(round(result.wall_clock_minutes), 60)
+    agent_h, agent_m = divmod(round(result.agent_minutes), 60)
 
     wall_str = f"{wall_h}h {wall_m}m" if wall_h else f"{wall_m}m"
     agent_str = f"{agent_h}h {agent_m}m" if agent_h else f"{agent_m}m"
@@ -129,7 +128,7 @@ def _render_markdown(result: "SessionEstimate") -> None:  # type: ignore[name-de
     if len(result.rounds_breakdown) > 1:
         typer.echo("\n### Round breakdown\n")
         for i, rd in enumerate(result.rounds_breakdown, 1):
-            h, m = divmod(int(rd + result.coordination_overhead_minutes), 60)
+            h, m = divmod(round(rd + result.coordination_overhead_minutes), 60)
             rstr = f"{h}h {m}m" if h else f"{m}m"
             typer.echo(f"- Round {i}: {rstr} wall-clock")
 

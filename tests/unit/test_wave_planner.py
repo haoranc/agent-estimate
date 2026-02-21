@@ -430,12 +430,14 @@ class TestBatchReviewSingleAgentTwoTasks:
         assert "claude" in wave.agent_review_minutes
         assert wave.agent_review_minutes["claude"] == pytest.approx(15.0)
 
-    def test_total_sequential_includes_per_task_review(self) -> None:
-        # Sequential baseline = sum(work + review per task) = (40+15) + (30+15) = 100
+    def test_total_sequential_uses_amortized_review(self) -> None:
+        # Sequential baseline = sum(work) + amortized review per agent per wave
+        # = (40 + 30) + 1 review cycle of 15 = 85
+        # (not per-task: (40+15) + (30+15) = 100)
         tasks = [_rnode("A", 40, 15), _rnode("B", 30, 15)]
         plan = plan_waves(tasks, [_agent(parallelism=1)], inter_wave_overhead_hours=0)
 
-        assert plan.total_sequential_minutes == pytest.approx(100.0)
+        assert plan.total_sequential_minutes == pytest.approx(85.0)
 
 
 class TestBatchReviewNoReviewOverhead:
