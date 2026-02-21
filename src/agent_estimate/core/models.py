@@ -159,7 +159,9 @@ class ModifierSet:
     spec_clarity: float  # multiplier (0.3–1.3)
     warm_context: float  # multiplier (0.3–1.15)
     agent_fit: float  # multiplier (0.9–1.2)
-    combined: float  # product of the three
+    combined: float  # clamped product (floor applied)
+    raw_combined: float  # raw product before floor
+    clamped: bool  # True when floor was applied
 
 
 @dataclass(frozen=True)
