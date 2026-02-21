@@ -10,7 +10,9 @@
 - three-point PERT estimates
 - METR-style model reliability thresholds
 - dependency-aware wave planning
-- explicit review overhead modes (`none`, `self`, `2x-lgtm`)
+- explicit review overhead modes (`none`, `standard`, `complex`)
+- non-coding task type estimation (brainstorm, research, config, docs)
+- multi-agent session estimation
 
 ## Installation
 
