@@ -151,7 +151,7 @@ class TestMultiTaskParallelFanout:
 
     def test_review_overhead_positive_for_default_mode(self) -> None:
         output = self._run()
-        # Default review mode is 2x-lgtm, so overhead should be > 0
+        # Default review mode is standard (15 m), so overhead should be > 0
         section = _extract_section(output, "Review Overhead (Additive)")
         total_line = [ln for ln in section.splitlines() if "**Total**" in ln]
         assert len(total_line) == 1

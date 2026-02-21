@@ -5,10 +5,11 @@ from __future__ import annotations
 from agent_estimate.core.models import ModifierSet, ReviewMode
 
 # Review overhead constants (additive, minutes)
+# Evidence from 33 validated dispatches — see issue #46.
 _REVIEW_OVERHEAD: dict[ReviewMode, float] = {
-    ReviewMode.NONE: 0.0,
-    ReviewMode.SELF: 7.5,
-    ReviewMode.TWO_LGTM: 17.5,
+    ReviewMode.NONE: 0.0,      # self-merge, no cross-agent review
+    ReviewMode.STANDARD: 15.0,  # clean 2x-LGTM, 1-2 rounds
+    ReviewMode.COMPLEX: 25.0,   # 3+ rounds, security-sensitive, new algorithms
 }
 
 

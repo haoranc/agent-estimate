@@ -174,11 +174,11 @@ class TestReviewOverhead:
     def test_none_is_zero(self) -> None:
         assert compute_review_overhead(ReviewMode.NONE) == pytest.approx(0.0)
 
-    def test_self_review(self) -> None:
-        assert compute_review_overhead(ReviewMode.SELF) == pytest.approx(7.5)
+    def test_standard_is_fifteen(self) -> None:
+        assert compute_review_overhead(ReviewMode.STANDARD) == pytest.approx(15.0)
 
-    def test_two_lgtm(self) -> None:
-        assert compute_review_overhead(ReviewMode.TWO_LGTM) == pytest.approx(17.5)
+    def test_complex_is_twenty_five(self) -> None:
+        assert compute_review_overhead(ReviewMode.COMPLEX) == pytest.approx(25.0)
 
 
 # ---------------------------------------------------------------------------
@@ -354,17 +354,29 @@ class TestEstimateTask:
         assert result.review_minutes == pytest.approx(0.0)
         assert result.total_expected_minutes == pytest.approx(result.pert.expected)
 
-    def test_with_review_overhead(self) -> None:
+    def test_with_review_overhead_standard(self) -> None:
         sizing = self._make_sizing()
         mods = build_modifier_set()
         thresholds = {"opus": 90.0}
 
         result = estimate_task(
-            sizing, mods, review_mode=ReviewMode.TWO_LGTM, thresholds=thresholds
+            sizing, mods, review_mode=ReviewMode.STANDARD, thresholds=thresholds
         )
 
-        assert result.review_minutes == pytest.approx(17.5)
-        assert result.total_expected_minutes == pytest.approx(result.pert.expected + 17.5)
+        assert result.review_minutes == pytest.approx(15.0)
+        assert result.total_expected_minutes == pytest.approx(result.pert.expected + 15.0)
+
+    def test_with_review_overhead_complex(self) -> None:
+        sizing = self._make_sizing()
+        mods = build_modifier_set()
+        thresholds = {"opus": 90.0}
+
+        result = estimate_task(
+            sizing, mods, review_mode=ReviewMode.COMPLEX, thresholds=thresholds
+        )
+
+        assert result.review_minutes == pytest.approx(25.0)
+        assert result.total_expected_minutes == pytest.approx(result.pert.expected + 25.0)
 
     def test_with_modifiers(self) -> None:
         sizing = self._make_sizing()
