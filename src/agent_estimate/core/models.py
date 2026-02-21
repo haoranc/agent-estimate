@@ -97,11 +97,31 @@ class TaskType(enum.Enum):
 
 
 class ReviewMode(enum.Enum):
-    """Code-review overhead model."""
+    """Code-review overhead model (additive minutes).
+
+    NONE     — self-merge, no cross-agent review (0 m)
+    STANDARD — clean 2x-LGTM, 1-2 rounds        (15 m)
+    COMPLEX  — 3+ rounds, security-sensitive     (25 m)
+
+    Legacy aliases kept for backwards compatibility:
+      "self"    → NONE (maps to 0 m; was previously 7.5 m)
+      "2x-lgtm" → STANDARD
+    """
 
     NONE = "none"
-    SELF = "self"
-    TWO_LGTM = "2x-lgtm"
+    STANDARD = "standard"
+    COMPLEX = "complex"
+
+    @classmethod
+    def _missing_(cls, value: object) -> "ReviewMode | None":
+        """Accept legacy CLI values."""
+        _legacy: dict[str, "ReviewMode"] = {
+            "self": cls.NONE,
+            "2x-lgtm": cls.STANDARD,
+        }
+        if isinstance(value, str):
+            return _legacy.get(value)
+        return None
 
 
 # ---------------------------------------------------------------------------

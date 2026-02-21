@@ -223,18 +223,28 @@ class TestEstimateReviewModes:
         result = runner.invoke(app, ["estimate", "--review-mode", "none", "Add button"])
         assert result.exit_code == 0
 
-    def test_review_mode_self(self) -> None:
-        result = runner.invoke(app, ["estimate", "--review-mode", "self", "Add button"])
+    def test_review_mode_standard(self) -> None:
+        result = runner.invoke(app, ["estimate", "--review-mode", "standard", "Add button"])
         assert result.exit_code == 0
 
-    def test_review_mode_2x_lgtm(self) -> None:
-        result = runner.invoke(app, ["estimate", "--review-mode", "2x-lgtm", "Add button"])
+    def test_review_mode_complex(self) -> None:
+        result = runner.invoke(app, ["estimate", "--review-mode", "complex", "Add button"])
         assert result.exit_code == 0
 
     def test_review_mode_invalid(self) -> None:
         result = runner.invoke(app, ["estimate", "--review-mode", "bogus", "Add button"])
         assert result.exit_code != 0
         assert "Invalid review mode" in result.output
+
+    def test_review_mode_legacy_self_accepted(self) -> None:
+        """Legacy 'self' mode still accepted for backwards compatibility."""
+        result = runner.invoke(app, ["estimate", "--review-mode", "self", "Add button"])
+        assert result.exit_code == 0
+
+    def test_review_mode_legacy_2x_lgtm_accepted(self) -> None:
+        """Legacy '2x-lgtm' mode still accepted for backwards compatibility."""
+        result = runner.invoke(app, ["estimate", "--review-mode", "2x-lgtm", "Add button"])
+        assert result.exit_code == 0
 
 
 # ---------------------------------------------------------------------------

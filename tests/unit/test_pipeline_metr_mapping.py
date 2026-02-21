@@ -76,7 +76,7 @@ class TestPipelineMetrMapping:
         report = run_estimate_pipeline(
             ["deterministic"],
             _claude_frontier_config(),
-            review_mode=ReviewMode.TWO_LGTM,
+            review_mode=ReviewMode.STANDARD,
         )
         task = report.tasks[0]
         assert task.agent == "Claude"

@@ -32,7 +32,9 @@ def run(
         "markdown", "--format", help="Output format: markdown or json."
     ),
     review_mode: str = typer.Option(
-        "2x-lgtm", "--review-mode", help="Review mode: none, self, 2x-lgtm."
+        "standard",
+        "--review-mode",
+        help="Review overhead tier: none (0 m, self-merge), standard (15 m, 2x-LGTM), complex (25 m, 3+ rounds).",
     ),
     issues: Optional[str] = typer.Option(
         None,
@@ -119,7 +121,7 @@ def run(
         mode = ReviewMode(review_mode)
     except ValueError:
         _error(
-            f"Invalid review mode: {review_mode!r}. Use none, self, or 2x-lgtm.", 2
+            f"Invalid review mode: {review_mode!r}. Use none, standard, or complex.", 2
         )
 
     # --- Load config ---

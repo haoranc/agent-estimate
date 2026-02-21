@@ -51,7 +51,7 @@ def _truncate_name(desc: str, max_len: int = 60) -> str:
 def run_estimate_pipeline(
     descriptions: Sequence[str],
     config: EstimationConfig,
-    review_mode: ReviewMode = ReviewMode.TWO_LGTM,
+    review_mode: ReviewMode = ReviewMode.STANDARD,
     title: str = "Agent Estimate Report",
     spec_clarity: float = 1.0,
     warm_context: float = 1.0,

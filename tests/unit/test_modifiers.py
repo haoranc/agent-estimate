@@ -141,16 +141,53 @@ class TestApplyModifiers:
 
 
 class TestComputeReviewOverhead:
+    """Verify additive overhead values from issue #46 evidence."""
+
     def test_none_mode_is_zero(self) -> None:
+        """Self-merge: no cross-agent review, 0 m overhead."""
         assert compute_review_overhead(ReviewMode.NONE) == pytest.approx(0.0)
 
-    def test_self_mode_is_seven_and_half(self) -> None:
-        assert compute_review_overhead(ReviewMode.SELF) == pytest.approx(7.5)
+    def test_standard_mode_is_fifteen_minutes(self) -> None:
+        """Clean 2x-LGTM, 1-2 rounds: 15 m flat overhead."""
+        assert compute_review_overhead(ReviewMode.STANDARD) == pytest.approx(15.0)
 
-    def test_two_lgtm_mode_is_seventeen_and_half(self) -> None:
-        assert compute_review_overhead(ReviewMode.TWO_LGTM) == pytest.approx(17.5)
+    def test_complex_mode_is_twenty_five_minutes(self) -> None:
+        """3+ rounds, security-sensitive, new algorithms: 25 m overhead."""
+        assert compute_review_overhead(ReviewMode.COMPLEX) == pytest.approx(25.0)
 
     def test_all_review_modes_covered(self) -> None:
         for mode in ReviewMode:
             overhead = compute_review_overhead(mode)
             assert overhead >= 0.0
+
+    def test_overhead_is_additive_not_percentage(self) -> None:
+        """Review overhead is a flat additive value — not a % of work estimate."""
+        # Same overhead regardless of base estimate size
+        assert compute_review_overhead(ReviewMode.STANDARD) == pytest.approx(15.0)
+        assert compute_review_overhead(ReviewMode.COMPLEX) == pytest.approx(25.0)
+
+    def test_standard_overhead_dominates_fast_tasks(self) -> None:
+        """For a 5-minute XS task, 15 m review overhead is 3x the work — proves additive model matters."""
+        work_estimate = 5.0
+        overhead = compute_review_overhead(ReviewMode.STANDARD)
+        assert overhead > work_estimate
+
+    # ---------------------------------------------------------------------------
+    # Legacy alias backwards compatibility
+    # ---------------------------------------------------------------------------
+
+    def test_legacy_self_maps_to_none(self) -> None:
+        """'self' was the old mode string — now aliases to NONE (0 m)."""
+        mode = ReviewMode("self")
+        assert mode is ReviewMode.NONE
+        assert compute_review_overhead(mode) == pytest.approx(0.0)
+
+    def test_legacy_2x_lgtm_maps_to_standard(self) -> None:
+        """'2x-lgtm' was the old mode string — now aliases to STANDARD (15 m)."""
+        mode = ReviewMode("2x-lgtm")
+        assert mode is ReviewMode.STANDARD
+        assert compute_review_overhead(mode) == pytest.approx(15.0)
+
+    def test_unknown_mode_string_raises(self) -> None:
+        with pytest.raises(ValueError):
+            ReviewMode("bogus")
