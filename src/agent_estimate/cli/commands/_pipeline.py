@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from typing import NoReturn, Sequence
 
 from agent_estimate.core import (
@@ -162,7 +163,6 @@ def _estimate_by_category(
         human_equivalent_minutes=human_eq,
     )
     # Attach category to the estimate
-    from dataclasses import replace
     est = replace(est, estimation_category=EstimationCategory.CODING)
     return est, task_tier_warnings
 
@@ -212,7 +212,8 @@ def run_estimate_pipeline(
         else:
             category = detect_estimation_category(desc)
 
-        sizing = classify_task(desc)
+        # classify_task runs the PERT coding model; skip it for non-coding categories
+        sizing = classify_task(desc) if category == EstimationCategory.CODING else None
 
         est, task_tier_warnings = _estimate_by_category(
             category,

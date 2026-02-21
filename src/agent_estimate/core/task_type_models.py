@@ -14,6 +14,7 @@ import re
 from agent_estimate.core.models import (
     EstimationCategory,
     ModifierSet,
+    ReviewMode,
     SizeTier,
     SizingResult,
     TaskEstimate,
@@ -136,10 +137,10 @@ def estimate_brainstorm(
     Uses a flat ~10m model. Modifiers still apply so warm context and agent fit
     can reduce time for follow-up sessions.
     """
-    from agent_estimate.core.models import ReviewMode as _ReviewMode
+    _ = description  # reserved for future heuristics
 
     if review_mode is None:
-        review_mode = _ReviewMode.NONE
+        review_mode = ReviewMode.NONE
 
     o, m, p = _BRAINSTORM_BASELINES
     sizing = _make_non_coding_sizing(o, m, p, "brainstorm-flat-model")
@@ -187,10 +188,8 @@ def estimate_research(
 
     Uses a time-boxed model: 15-30m for shallow, 25-50m for deep research.
     """
-    from agent_estimate.core.models import ReviewMode as _ReviewMode
-
     if review_mode is None:
-        review_mode = _ReviewMode.NONE
+        review_mode = ReviewMode.NONE
 
     if _RESEARCH_DEEP_PATTERNS.search(description or ""):
         o, m, p = _RESEARCH_BASELINES_DEEP
@@ -244,10 +243,10 @@ def estimate_config_sre(
 
     Uses a flat + verification model: ~15-30m.
     """
-    from agent_estimate.core.models import ReviewMode as _ReviewMode
+    _ = description  # reserved for future heuristics
 
     if review_mode is None:
-        review_mode = _ReviewMode.NONE
+        review_mode = ReviewMode.NONE
 
     o, m, p = _CONFIG_SRE_BASELINES
     sizing = _make_non_coding_sizing(o, m, p, "config-sre-flat-model")
@@ -295,10 +294,10 @@ def estimate_documentation(
 
     Uses a line-count-based model similar to coding but with a lower floor: 10-45m.
     """
-    from agent_estimate.core.models import ReviewMode as _ReviewMode
+    _ = description  # reserved for future heuristics
 
     if review_mode is None:
-        review_mode = _ReviewMode.NONE
+        review_mode = ReviewMode.NONE
 
     o, m, p = _DOCUMENTATION_BASELINES
     sizing = _make_non_coding_sizing(o, m, p, "documentation-model")
