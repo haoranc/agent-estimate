@@ -27,6 +27,7 @@ class ReportTask:
     review_overhead_minutes: float
     metr_warning: str | None = None
     warm_context_detail: str | None = None
+    tier_correction_warnings: tuple[str, ...] = ()
 
     @property
     def base_pert_expected_minutes(self) -> float:

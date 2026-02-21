@@ -78,6 +78,26 @@ def run(
         "--history-project",
         help="Filter dispatch history by project name.",
     ),
+    no_auto_tier: bool = typer.Option(
+        False,
+        "--no-auto-tier/--auto-tier",
+        help="Disable tier auto-correction based on scope signals.",
+    ),
+    estimated_tests: Optional[int] = typer.Option(
+        None,
+        "--estimated-tests",
+        help="Expected number of tests (used for tier auto-correction).",
+    ),
+    estimated_lines: Optional[int] = typer.Option(
+        None,
+        "--estimated-lines",
+        help="Expected lines of code changed (used for tier auto-correction).",
+    ),
+    num_concerns: Optional[int] = typer.Option(
+        None,
+        "--num-concerns",
+        help="Number of distinct modules/APIs/schemas involved (used for tier auto-correction).",
+    ),
 ) -> None:
     """Estimate effort for one or more task descriptions."""
     # --- Resolve input source (exactly one) ---
@@ -163,6 +183,10 @@ def run(
             warm_context=effective_warm_context,
             agent_fit=agent_fit,
             warm_context_detail=effective_detail,
+            auto_tier=not no_auto_tier,
+            estimated_tests=estimated_tests,
+            estimated_lines=estimated_lines,
+            num_concerns=num_concerns,
         )
     except ValueError as exc:
         _error(f"Estimation error: {exc}", 2)
