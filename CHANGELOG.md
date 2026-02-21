@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Tier auto-correction heuristics: auto-upgrades to L when scope signals exceed thresholds (tests > 20, lines > 200, concerns >= 3) and auto-downgrades to XS for trivial tasks. `--no-auto-tier` flag to disable. (#47)
 - Co-dispatch warm context: when 2+ tasks target the same agent in one wave, auto-applies 0.5x warm context duration reduction to tasks beyond the first. (#48)
+- Modifier product floor of 0.10 to prevent sub-10m pathology when modifiers stack aggressively. Warning logged when floor fires. (#50)
+- Batch wave estimation: amortizes review overhead across same-agent tasks per wave — single review cycle per agent instead of per task. `TaskNode.review_minutes` separates review from work duration. (#49)
+- Non-coding task type estimation: `--type` flag for brainstorm, research, config, and documentation tasks with category-specific models. Auto-detection heuristic from description keywords. (#55)
+- Multi-agent session estimation: `agent-estimate session` subcommand for coordinated workflows. Wall-clock vs agent-minutes distinction with `--agents`, `--rounds`, `--type` flags. (#56)
 
 ## [0.1.0] - 2026-02-18
 
