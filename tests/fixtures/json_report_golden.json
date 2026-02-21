@@ -88,6 +88,7 @@
           "Implement auth"
         ]
       },
+      "agent_review_minutes": {},
       "duration_minutes": 85.0,
       "number": 1,
       "tasks": [

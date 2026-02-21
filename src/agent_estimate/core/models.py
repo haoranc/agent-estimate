@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import enum
 from collections.abc import Mapping, Sequence
+import dataclasses
 from dataclasses import dataclass
 from typing import Annotated, Protocol, runtime_checkable
 
@@ -212,12 +213,19 @@ class TaskEstimate:
 
 @dataclass(frozen=True)
 class TaskNode:
-    """Input: one task to be scheduled."""
+    """Input: one task to be scheduled.
+
+    ``duration_minutes`` is the work-only duration (no review).
+    ``review_minutes`` is the per-task review overhead; the wave planner
+    amortizes this across same-agent tasks in each wave so only a single
+    review cycle is charged per agent per wave.
+    """
 
     task_id: str
     duration_minutes: float
     dependencies: tuple[str, ...] = ()
     required_capabilities: tuple[str, ...] = ()
+    review_minutes: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -240,12 +248,18 @@ class WaveAssignment:
 
 @dataclass(frozen=True)
 class Wave:
-    """A single scheduling wave."""
+    """A single scheduling wave.
+
+    ``agent_review_minutes`` maps each agent to the single amortized review
+    cycle charged for that agent in this wave (0.0 when review_mode is NONE
+    or the agent has no tasks in the wave).
+    """
 
     wave_number: int
     start_minutes: float
     end_minutes: float
     assignments: tuple[WaveAssignment, ...]
+    agent_review_minutes: Mapping[str, float] = dataclasses.field(default_factory=dict)  # type: ignore[assignment]
 
 
 @dataclass(frozen=True)

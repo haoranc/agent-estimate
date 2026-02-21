@@ -62,7 +62,7 @@ class TestSingleTaskSimpleLinear:
             "Per-Task Estimates",
             "Wave Plan",
             "Timeline Summary",
-            "Review Overhead (Additive)",
+            "Review Overhead",
             "Agent Load Summary",
             "Critical Path",
             "METR Warnings",
@@ -87,7 +87,7 @@ class TestSingleTaskSimpleLinear:
 
     def test_review_overhead_zero_for_none_mode(self) -> None:
         output = self._run()
-        section = _extract_section(output, "Review Overhead (Additive)")
+        section = _extract_section(output, "Review Overhead")
         # The total review overhead should be 0m for review_mode=none
         assert "0m" in section
 
@@ -152,8 +152,8 @@ class TestMultiTaskParallelFanout:
     def test_review_overhead_positive_for_default_mode(self) -> None:
         output = self._run()
         # Default review mode is standard (15 m), so overhead should be > 0
-        section = _extract_section(output, "Review Overhead (Additive)")
-        total_line = [ln for ln in section.splitlines() if "**Total**" in ln]
+        section = _extract_section(output, "Review Overhead")
+        total_line = [ln for ln in section.splitlines() if "**Total" in ln]
         assert len(total_line) == 1
         match = re.search(r"(\d+(?:\.\d+)?)m", total_line[0])
         assert match

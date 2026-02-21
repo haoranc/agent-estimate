@@ -235,12 +235,15 @@ def run_estimate_pipeline(
         names.append(name)
         estimates.append(est)
 
-    # Build TaskNodes for wave planning (friction applied here)
+    # Build TaskNodes for wave planning (friction applied to work only).
+    # review_minutes is kept separate so the wave planner can amortize it
+    # across same-agent tasks in each wave (batch review amortization).
     friction = config.settings.friction_multiplier
     task_nodes = [
         TaskNode(
             task_id=str(i),
-            duration_minutes=est.total_expected_minutes * friction,
+            duration_minutes=est.pert.expected * friction,
+            review_minutes=est.review_minutes,
         )
         for i, est in enumerate(estimates)
     ]
@@ -336,6 +339,7 @@ def _build_report(
                 )
                 for agent_name in {a.agent_name for a in wave.assignments}
             },
+            agent_review_minutes=dict(wave.agent_review_minutes),
         )
         for wave in wave_plan.waves
     )

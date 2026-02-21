@@ -186,8 +186,8 @@ def test_render_markdown_report_contains_required_sections() -> None:
     assert "## Agent Load Summary" in rendered
     assert "## Critical Path" in rendered
     assert "## METR Warnings" in rendered
-    assert "| Review overhead (additive) | 25m |" in rendered
-    assert "| **Total** | **25m** |" in rendered
+    assert "| Review overhead (per-task, pre-amortization) | 25m |" in rendered
+    assert "| **Total (naive)** | **25m** |" in rendered
     assert "**Implement auth**" in rendered
     assert "Claude: Add tests; Codex: Implement auth" in rendered
     assert "Compression ratio | 2.78x" in rendered
