@@ -33,13 +33,14 @@ def _render_task_table(report: EstimationReport) -> list[str]:
     lines = [
         "## Per-Task Estimates",
         "",
-        "| Task | Tier | Agent | Base PERT (O/M/P) | Modifiers | Effective Duration | Human Equivalent |",
-        "| --- | --- | --- | --- | --- | --- | --- |",
+        "| Task | Model | Tier | Agent | Base PERT (O/M/P) | Modifiers | Effective Duration | Human Equivalent |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for task in report.tasks:
         task_name = _escape_cell(task.name)
         if task.name in critical_tasks:
             task_name = f"**{task_name}**"
+        model_label = task.estimation_category.value if task.estimation_category else "coding"
         base_pert = (
             f"{_format_minutes(task.base_pert_optimistic_minutes)} / "
             f"{_format_minutes(task.base_pert_most_likely_minutes)} / "
@@ -60,7 +61,7 @@ def _render_task_table(report: EstimationReport) -> list[str]:
             else "N/A"
         )
         lines.append(
-            f"| {task_name} | {task.tier} | {_escape_cell(task.agent)} | {base_pert} | "
+            f"| {task_name} | {model_label} | {task.tier} | {_escape_cell(task.agent)} | {base_pert} | "
             f"{modifiers} | {_format_minutes(task.effective_duration_minutes)} | {human} |"
         )
     return lines
