@@ -7,6 +7,7 @@ import typer
 
 from agent_estimate.cli.commands.calibrate import run as run_calibrate
 from agent_estimate.cli.commands.estimate import run as run_estimate
+from agent_estimate.cli.commands.session import run as run_session
 from agent_estimate.cli.commands.validate import run as run_validate
 from agent_estimate.version import __version__
 
@@ -44,6 +45,7 @@ def _global_options(
 app.command("estimate")(run_estimate)
 app.command("calibrate")(run_calibrate)
 app.command("validate")(run_validate)
+app.command("session")(run_session)
 
 
 def main() -> None:
