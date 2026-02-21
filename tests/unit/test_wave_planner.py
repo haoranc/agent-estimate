@@ -97,7 +97,7 @@ class TestCycleDetection:
 
 
 class TestSingleAgent:
-    """All independent tasks with 1 agent slot → all in one wave, sequential."""
+    """All independent tasks with 1 agent slot → all in one wave, co-dispatched."""
 
     def test_single_agent(self) -> None:
         tasks = [_node("A", 10), _node("B", 20), _node("C", 30)]
@@ -105,17 +105,23 @@ class TestSingleAgent:
 
         # All tasks in a single generation (no deps) → 1 wave
         assert len(plan.waves) == 1
-        # Wave makespan = sum of durations (all in one bin)
-        assert plan.waves[0].end_minutes == pytest.approx(60.0)
+        # LPT order: C(30), B(20), A(10) — 3 tasks on same agent → co-dispatch
+        # C is first (no reduction), B and A get 0.5x: 30 + 10 + 5 = 45
+        assert plan.waves[0].end_minutes == pytest.approx(45.0)
 
 
 class TestUnbalancedLoad:
-    """LPT should produce better balance than naive assignment."""
+    """LPT should produce better balance than naive assignment.
+
+    With co-dispatch: all 4 tasks land on the same agent across 2 slots.
+    LPT assigns A(40)→slot0, B(30)→slot1, C(20)→slot1, D(10)→slot0.
+    agent_wave_tasks['claude'] = ['A', 'B', 'C', 'D'] — A is first (no reduction),
+    B, C, D get 0.5x: B=15, C=10, D=5.
+    Revised slot loads: slot0=A(40)+D(5)=45, slot1=B(15)+C(10)=25 → makespan=45.
+    """
 
     def test_unbalanced_load(self) -> None:
-        # Durations: 40, 30, 20, 10 → LPT with 2 bins:
-        # Bin 0: 40 + 10 = 50, Bin 1: 30 + 20 = 50 → makespan 50
-        # Naive sequential: 40, 30 → bin0=70, 20, 10 → bin1=30 → makespan 70
+        # Durations: 40, 30, 20, 10 → LPT with 2 bins (same agent, parallelism=2)
         tasks = [
             _node("A", 40),
             _node("B", 30),
@@ -125,8 +131,8 @@ class TestUnbalancedLoad:
         plan = plan_waves(tasks, [_agent(parallelism=2)])
 
         assert len(plan.waves) == 1
-        # LPT optimal makespan is 50
-        assert plan.waves[0].end_minutes == pytest.approx(50.0)
+        # Co-dispatch reduces B, C, D by 0.5x; makespan = slot0 = 40+5 = 45
+        assert plan.waves[0].end_minutes == pytest.approx(45.0)
 
 
 class TestCapabilityFiltering:
@@ -266,3 +272,116 @@ class TestEmptyInput:
         assert plan.critical_path == ()
         assert plan.total_wall_clock_minutes == pytest.approx(0.0)
         assert plan.total_sequential_minutes == pytest.approx(0.0)
+
+
+class TestCoDispatchTwoTasks:
+    """2 tasks on the same agent → second gets 0.5x warm context reduction."""
+
+    def test_second_task_reduced(self) -> None:
+        # Single agent with parallelism=1; both tasks land in the same slot.
+        tasks = [_node("A", 40), _node("B", 30)]
+        plan = plan_waves(tasks, [_agent(parallelism=1)], inter_wave_overhead_hours=0)
+
+        wave = plan.waves[0]
+        by_id = {a.task_id: a for a in wave.assignments}
+
+        # First task: no reduction
+        assert by_id["A"].duration_minutes == pytest.approx(40.0)
+        # Second task: 0.5x → 15 min
+        assert by_id["B"].duration_minutes == pytest.approx(15.0)
+
+    def test_co_dispatch_group_populated(self) -> None:
+        tasks = [_node("A", 40), _node("B", 30)]
+        plan = plan_waves(tasks, [_agent(parallelism=1)], inter_wave_overhead_hours=0)
+
+        wave = plan.waves[0]
+        by_id = {a.task_id: a for a in wave.assignments}
+
+        # Both tasks should share the same co_dispatch_group tuple
+        assert set(by_id["A"].co_dispatch_group) == {"A", "B"}
+        assert set(by_id["B"].co_dispatch_group) == {"A", "B"}
+
+    def test_wave_makespan_uses_adjusted_durations(self) -> None:
+        # With 1 slot: A(40) + B(30*0.5=15) = 55 min makespan
+        tasks = [_node("A", 40), _node("B", 30)]
+        plan = plan_waves(tasks, [_agent(parallelism=1)], inter_wave_overhead_hours=0)
+
+        assert plan.waves[0].end_minutes == pytest.approx(55.0)
+
+
+class TestCoDispatchThreeTasks:
+    """3 tasks on the same agent → 2nd and 3rd both get 0.5x reduction."""
+
+    def test_third_task_also_reduced(self) -> None:
+        tasks = [_node("A", 60), _node("B", 40), _node("C", 20)]
+        plan = plan_waves(tasks, [_agent(parallelism=1)], inter_wave_overhead_hours=0)
+
+        wave = plan.waves[0]
+        by_id = {a.task_id: a for a in wave.assignments}
+
+        assert by_id["A"].duration_minutes == pytest.approx(60.0)
+        assert by_id["B"].duration_minutes == pytest.approx(20.0)  # 40 * 0.5
+        assert by_id["C"].duration_minutes == pytest.approx(10.0)  # 20 * 0.5
+
+    def test_three_task_group_membership(self) -> None:
+        tasks = [_node("A", 60), _node("B", 40), _node("C", 20)]
+        plan = plan_waves(tasks, [_agent(parallelism=1)], inter_wave_overhead_hours=0)
+
+        wave = plan.waves[0]
+        by_id = {a.task_id: a for a in wave.assignments}
+
+        for tid in ("A", "B", "C"):
+            assert set(by_id[tid].co_dispatch_group) == {"A", "B", "C"}
+
+
+class TestCoDispatchDifferentAgents:
+    """Tasks on different agents → no co-dispatch reduction."""
+
+    def test_no_reduction_across_agents(self) -> None:
+        tasks = [_node("A", 30), _node("B", 30)]
+        agents = [_agent("alpha"), _agent("beta")]
+        plan = plan_waves(tasks, agents, inter_wave_overhead_hours=0)
+
+        wave = plan.waves[0]
+        by_id = {a.task_id: a for a in wave.assignments}
+
+        # Each task goes to a different agent → no co-dispatch
+        assert by_id["A"].duration_minutes == pytest.approx(30.0)
+        assert by_id["B"].duration_minutes == pytest.approx(30.0)
+        assert by_id["A"].co_dispatch_group == ()
+        assert by_id["B"].co_dispatch_group == ()
+
+
+class TestCoDispatchSingleTask:
+    """Single task per agent → no co-dispatch, no group set."""
+
+    def test_single_task_no_group(self) -> None:
+        tasks = [_node("A", 30)]
+        plan = plan_waves(tasks, [_agent(parallelism=1)], inter_wave_overhead_hours=0)
+
+        wave = plan.waves[0]
+        assert wave.assignments[0].co_dispatch_group == ()
+        assert wave.assignments[0].duration_minutes == pytest.approx(30.0)
+
+
+class TestCoDispatchMixedWaves:
+    """Co-dispatch in wave 0 but solo in wave 1 — only wave 0 tasks are flagged."""
+
+    def test_mixed_waves(self) -> None:
+        # Wave 0: A + B on same agent; Wave 1: C alone (depends on A and B)
+        tasks = [
+            _node("A", 30),
+            _node("B", 20),
+            _node("C", 25, deps=("A", "B")),
+        ]
+        plan = plan_waves(tasks, [_agent(parallelism=1)], inter_wave_overhead_hours=0)
+
+        # Wave 0 assignments
+        wave0_by_id = {a.task_id: a for a in plan.waves[0].assignments}
+        assert set(wave0_by_id["A"].co_dispatch_group) == {"A", "B"}
+        assert set(wave0_by_id["B"].co_dispatch_group) == {"A", "B"}
+
+        # Wave 1: C is alone — no co-dispatch
+        wave1_by_id = {a.task_id: a for a in plan.waves[1].assignments}
+        assert wave1_by_id["C"].co_dispatch_group == ()
+        assert wave1_by_id["C"].duration_minutes == pytest.approx(25.0)
