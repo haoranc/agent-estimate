@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-02-23
+
+### Added
+- GitHub Action for CI/CD estimation (`uses: haoranc/agent-estimate@v0`). Supports job summary, PR comments, and step outputs. (#67)
+
 ## [0.2.0] - 2026-02-21
 
 ### Changed
@@ -39,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modifier flags: `--warm-context`, `--spec-clarity`, `--issues`
 - PyPI package: `pip install agent-estimate`
 
+[0.3.0]: https://github.com/haoranc/agent-estimate/releases/tag/v0.3.0
 [0.2.0]: https://github.com/haoranc/agent-estimate/releases/tag/v0.2.0
 [0.1.0]: https://github.com/haoranc/agent-estimate/releases/tag/v0.1.0
 
