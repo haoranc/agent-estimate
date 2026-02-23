@@ -75,6 +75,65 @@ claude --plugin-dir /path/to/agent-estimate
 /calibrate
 ```
 
+## GitHub Action
+
+Run estimations directly in your CI/CD pipelines:
+
+```yaml
+- uses: haoranc/agent-estimate@v0
+  with:
+    issues: '11,12,14'
+```
+
+### Full Workflow Example
+
+```yaml
+name: Estimate
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  estimate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: haoranc/agent-estimate@v0
+        with:
+          issues: '11,12,14'
+          output-mode: summary+pr-comment
+```
+
+### Action Inputs
+
+| Input | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `issues` | yes | — | GitHub issue numbers (comma-separated) |
+| `repo` | no | current repo | GitHub repo (owner/name) |
+| `format` | no | `markdown` | Output format: `markdown` or `json` |
+| `output-mode` | no | `summary` | `summary`, `pr-comment`, `step-output`, `summary+pr-comment` |
+| `config` | no | — | Path to agent config YAML |
+| `title` | no | `Agent Estimate Report` | Report title |
+| `review-mode` | no | `standard` | Review tier: `none`, `standard`, `complex` |
+| `spec-clarity` | no | `1.0` | Spec clarity modifier (0.3-1.3) |
+| `warm-context` | no | `1.0` | Warm context modifier (0.3-1.15) |
+| `agent-fit` | no | `1.0` | Agent fit modifier (0.9-1.2) |
+| `task-type` | no | — | Task category: `coding`, `brainstorm`, `research`, `config`, `documentation` |
+| `python-version` | no | `3.12` | Python version to use |
+| `version` | no | latest | `agent-estimate` version to install |
+| `token` | no | `${{ github.token }}` | GitHub token |
+
+### Action Outputs
+
+| Output | Description |
+|--------|-------------|
+| `report` | Full estimation report content |
+| `expected-minutes` | Expected minutes (when `format: json`) |
+
 ## Codex Skill Layout
 
 For Codex-oriented tooling, this repo includes a Codex-specific skill at:

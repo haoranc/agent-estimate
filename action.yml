@@ -1,0 +1,166 @@
+name: 'agent-estimate'
+description: 'Run AI agent effort estimation in CI — PERT + METR + wave planning'
+author: 'haoranc'
+
+branding:
+  icon: 'clock'
+  color: 'blue'
+
+inputs:
+  issues:
+    description: 'GitHub issue numbers (comma-separated, e.g. "1,2,3")'
+    required: true
+  repo:
+    description: 'GitHub repo (owner/name)'
+    required: false
+    default: ${{ github.repository }}
+  format:
+    description: 'Output format: markdown or json'
+    required: false
+    default: 'markdown'
+  output-mode:
+    description: 'Where to send the report: summary, pr-comment, step-output, summary+pr-comment'
+    required: false
+    default: 'summary'
+  config:
+    description: 'Path to agent config YAML'
+    required: false
+  title:
+    description: 'Report title'
+    required: false
+    default: 'Agent Estimate Report'
+  review-mode:
+    description: 'Review overhead tier: none, standard, complex'
+    required: false
+    default: 'standard'
+  spec-clarity:
+    description: 'Spec clarity modifier (0.3-1.3; lower = clearer)'
+    required: false
+    default: '1.0'
+  warm-context:
+    description: 'Warm context modifier (0.3-1.15; lower = warmer)'
+    required: false
+    default: '1.0'
+  agent-fit:
+    description: 'Agent fit modifier (0.9-1.2; lower = better fit)'
+    required: false
+    default: '1.0'
+  task-type:
+    description: 'Task category: coding, brainstorm, research, config, documentation'
+    required: false
+  python-version:
+    description: 'Python version to use'
+    required: false
+    default: '3.12'
+  version:
+    description: 'agent-estimate version to install (e.g. "0.3.0"). Omit for latest.'
+    required: false
+  token:
+    description: 'GitHub token for issue fetching and PR comments'
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  report:
+    description: 'Full estimation report content'
+    value: ${{ steps.estimate.outputs.report }}
+  expected-minutes:
+    description: 'Expected minutes (available when format is json)'
+    value: ${{ steps.extract.outputs.expected-minutes }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install agent-estimate
+      shell: bash
+      env:
+        AE_VERSION: ${{ inputs.version }}
+      run: |
+        if [ -n "$AE_VERSION" ]; then
+          pip install "agent-estimate==${AE_VERSION}"
+        elif python -c "import agent_estimate" 2>/dev/null; then
+          echo "agent-estimate already importable, skipping install"
+        else
+          pip install agent-estimate
+        fi
+
+    - name: Run estimation
+      id: estimate
+      shell: bash
+      env:
+        AE_ISSUES: ${{ inputs.issues }}
+        AE_REPO: ${{ inputs.repo }}
+        AE_FORMAT: ${{ inputs.format }}
+        AE_CONFIG: ${{ inputs.config }}
+        AE_TITLE: ${{ inputs.title }}
+        AE_REVIEW_MODE: ${{ inputs.review-mode }}
+        AE_SPEC_CLARITY: ${{ inputs.spec-clarity }}
+        AE_WARM_CONTEXT: ${{ inputs.warm-context }}
+        AE_AGENT_FIT: ${{ inputs.agent-fit }}
+        AE_TASK_TYPE: ${{ inputs.task-type }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+      run: |
+        args=("--issues" "$AE_ISSUES" "--repo" "$AE_REPO" "--format" "$AE_FORMAT")
+        args+=("--title" "$AE_TITLE" "--review-mode" "$AE_REVIEW_MODE")
+        args+=("--spec-clarity" "$AE_SPEC_CLARITY" "--warm-context" "$AE_WARM_CONTEXT")
+        args+=("--agent-fit" "$AE_AGENT_FIT")
+
+        if [ -n "$AE_CONFIG" ]; then
+          args+=("--config" "$AE_CONFIG")
+        fi
+
+        if [ -n "$AE_TASK_TYPE" ]; then
+          args+=("--type" "$AE_TASK_TYPE")
+        fi
+
+        output=$(agent-estimate estimate "${args[@]}")
+
+        # Set multiline output
+        {
+          echo "report<<AE_EOF"
+          echo "$output"
+          echo "AE_EOF"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Extract expected minutes
+      id: extract
+      if: ${{ inputs.format == 'json' }}
+      shell: bash
+      env:
+        AE_REPORT: ${{ steps.estimate.outputs.report }}
+      run: |
+        minutes=$(echo "$AE_REPORT" | python -c "import sys,json; print(json.load(sys.stdin)['timeline']['expected_case_minutes'])" 2>/dev/null || echo "")
+        echo "expected-minutes=${minutes}" >> "$GITHUB_OUTPUT"
+
+    - name: Write job summary
+      if: contains(inputs.output-mode, 'summary')
+      shell: bash
+      env:
+        AE_REPORT: ${{ steps.estimate.outputs.report }}
+      run: |
+        echo "$AE_REPORT" >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Post PR comment
+      if: contains(inputs.output-mode, 'pr-comment')
+      shell: bash
+      env:
+        AE_REPORT: ${{ steps.estimate.outputs.report }}
+        GH_TOKEN: ${{ inputs.token }}
+        GH_EVENT: ${{ github.event_name }}
+        GH_PR_NUMBER: ${{ github.event.pull_request.number }}
+        GH_REPO: ${{ github.repository }}
+      run: |
+        if [ "$GH_EVENT" != "pull_request" ] && [ "$GH_EVENT" != "pull_request_target" ]; then
+          echo "::warning::output-mode includes pr-comment but event is '${GH_EVENT}', not a pull request. Skipping."
+          exit 0
+        fi
+
+        # Truncate at 60KB to respect GitHub API limits
+        body=$(echo "$AE_REPORT" | head -c 61440)
+
+        gh pr comment "$GH_PR_NUMBER" --repo "$GH_REPO" --body "$body"

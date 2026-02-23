@@ -3,6 +3,7 @@
 AGENTS.md
 CLAUDE.md
 .claude/
+reports/
 
 # Python
 __pycache__/
