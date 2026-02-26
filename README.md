@@ -243,4 +243,4 @@ agent-estimate estimate "Ship packaging flow" --config ./my_agents.yaml
 
 ## License
 
-MIT
+Apache License 2.0
