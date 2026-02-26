@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-02-26
+
+### Changed
+- Relicensed the project from MIT to Apache License 2.0; added `NOTICE` and updated license metadata across package and plugin artifacts. (#73)
+
 ## [0.3.0] - 2026-02-23
 
 ### Added
@@ -44,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modifier flags: `--warm-context`, `--spec-clarity`, `--issues`
 - PyPI package: `pip install agent-estimate`
 
+[0.4.0]: https://github.com/haoranc/agent-estimate/releases/tag/v0.4.0
 [0.3.0]: https://github.com/haoranc/agent-estimate/releases/tag/v0.3.0
 [0.2.0]: https://github.com/haoranc/agent-estimate/releases/tag/v0.2.0
 [0.1.0]: https://github.com/haoranc/agent-estimate/releases/tag/v0.1.0
-

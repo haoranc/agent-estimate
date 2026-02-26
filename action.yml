@@ -53,7 +53,7 @@ inputs:
     required: false
     default: '3.12'
   version:
-    description: 'agent-estimate version to install (e.g. "0.3.0"). Omit for latest.'
+    description: 'agent-estimate version to install (e.g. "0.4.0"). Omit for latest.'
     required: false
   token:
     description: 'GitHub token for issue fetching and PR comments'
