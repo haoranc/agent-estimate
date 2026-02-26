@@ -7,6 +7,6 @@
   },
   "repository": "https://github.com/haoranc/agent-estimate",
   "homepage": "https://github.com/haoranc/agent-estimate",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "keywords": ["ai", "agents", "estimation", "pert", "planning", "wave-planning", "metr"]
 }
