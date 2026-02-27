@@ -23,6 +23,12 @@ source .venv/bin/activate
 pip install -e '.[dev]'
 ```
 
+Windows PowerShell activation:
+
+```powershell
+.venv\\Scripts\\Activate.ps1
+```
+
 ## Local Validation
 
 Run before opening a pull request:

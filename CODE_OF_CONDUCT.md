@@ -59,8 +59,11 @@ representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the community leaders responsible for enforcement at:
-https://github.com/haoranc/agent-estimate/issues
+reported privately to the community leaders responsible for enforcement at:
+https://github.com/haoranc/agent-estimate/security/advisories/new
+
+For Code of Conduct reports, include `[CoC]` in the advisory title so it can be
+triaged appropriately.
 
 All complaints will be reviewed and investigated promptly and fairly.
 
