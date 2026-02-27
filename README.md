@@ -229,6 +229,10 @@ agent-estimate estimate "Ship packaging flow" --config ./my_agents.yaml
 
 ## Contributing
 
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for full workflow and expectations.
+
+Quick start:
+
 1. Fork and create a branch from `main`.
 2. Install dev dependencies:
    ```bash
@@ -240,6 +244,13 @@ agent-estimate estimate "Ship packaging flow" --config ./my_agents.yaml
    pytest -q
    ```
 4. Open a pull request with a clear summary and test evidence.
+
+## Community
+
+- Code of Conduct: [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
+- Security Policy: [SECURITY.md](./SECURITY.md)
+- Support: [SUPPORT.md](./SUPPORT.md)
+- Changelog: [CHANGELOG.md](./CHANGELOG.md)
 
 ## License
 

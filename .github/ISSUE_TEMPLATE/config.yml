@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability report
+    url: https://github.com/haoranc/agent-estimate/security/advisories/new
+    about: Report security issues privately through GitHub Security Advisories.
+  - name: Support and usage questions
+    url: https://github.com/haoranc/agent-estimate/blob/main/SUPPORT.md
+    about: Read support options and troubleshooting guidance.

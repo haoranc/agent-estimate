@@ -38,6 +38,9 @@ dev = [
 Homepage = "https://github.com/haoranc/agent-estimate"
 Repository = "https://github.com/haoranc/agent-estimate"
 Issues = "https://github.com/haoranc/agent-estimate/issues"
+Changelog = "https://github.com/haoranc/agent-estimate/blob/main/CHANGELOG.md"
+Security = "https://github.com/haoranc/agent-estimate/security/policy"
+Support = "https://github.com/haoranc/agent-estimate/blob/main/SUPPORT.md"
 
 [project.scripts]
 agent-estimate = "agent_estimate.cli.app:main"
