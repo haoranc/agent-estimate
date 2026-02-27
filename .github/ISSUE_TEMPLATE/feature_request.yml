@@ -1,0 +1,46 @@
+name: Feature request
+description: Propose an improvement or new capability
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: checkboxes
+    id: precheck
+    attributes:
+      label: Pre-flight checklist
+      options:
+        - label: I searched existing issues and did not find a duplicate proposal.
+          required: true
+        - label: This request is for agent-estimate itself (not only a local workflow).
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What user problem are you trying to solve?
+      placeholder: As a user, I cannot...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe what you want to happen.
+      placeholder: Add a new flag/subcommand/behavior...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What have you tried, and why is it insufficient?
+      placeholder: Current workaround is...
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and impact
+      description: Who benefits and what areas are touched (CLI, action, plugin, docs)?
+      placeholder: Impacts estimate command and docs...
