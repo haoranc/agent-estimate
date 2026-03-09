@@ -1,0 +1,569 @@
+{
+  "$defs": {
+    "ApiRequestPayload": {
+      "additionalProperties": false,
+      "description": "Customer-visible API request trace.",
+      "properties": {
+        "method": {
+          "enum": [
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE"
+          ],
+          "title": "Method",
+          "type": "string"
+        },
+        "request_id": {
+          "minLength": 1,
+          "title": "Request Id",
+          "type": "string"
+        },
+        "request_size_bytes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Request Size Bytes"
+        },
+        "route": {
+          "minLength": 1,
+          "title": "Route",
+          "type": "string"
+        }
+      },
+      "required": [
+        "request_id",
+        "method",
+        "route"
+      ],
+      "title": "ApiRequestPayload",
+      "type": "object"
+    },
+    "ApiRequestTrace": {
+      "additionalProperties": false,
+      "description": "External trace for inbound API requests.",
+      "properties": {
+        "customer_id": {
+          "minLength": 1,
+          "title": "Customer Id",
+          "type": "string"
+        },
+        "environment": {
+          "enum": [
+            "dev",
+            "staging",
+            "prod"
+          ],
+          "title": "Environment",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "api_request",
+          "default": "api_request",
+          "title": "Event Type",
+          "type": "string"
+        },
+        "extensions": {
+          "patternProperties": {
+            "^[a-z][a-z0-9_.-]*$": {
+              "$ref": "#/$defs/JsonValue"
+            }
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "title": "Extensions",
+          "type": "object"
+        },
+        "payload": {
+          "$ref": "#/$defs/ApiRequestPayload"
+        },
+        "producer": {
+          "minLength": 1,
+          "title": "Producer",
+          "type": "string"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "v1",
+          "default": "v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "surface": {
+          "const": "external",
+          "default": "external",
+          "title": "Surface",
+          "type": "string"
+        },
+        "trace_id": {
+          "minLength": 1,
+          "title": "Trace Id",
+          "type": "string"
+        },
+        "workspace_id": {
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "trace_id",
+        "recorded_at",
+        "producer",
+        "customer_id",
+        "workspace_id",
+        "environment",
+        "payload"
+      ],
+      "title": "ApiRequestTrace",
+      "type": "object"
+    },
+    "ApiResponsePayload": {
+      "additionalProperties": false,
+      "description": "Customer-visible API response trace.",
+      "properties": {
+        "cache_hit": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Hit"
+        },
+        "latency_ms": {
+          "minimum": 0,
+          "title": "Latency Ms",
+          "type": "integer"
+        },
+        "request_id": {
+          "minLength": 1,
+          "title": "Request Id",
+          "type": "string"
+        },
+        "response_size_bytes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Response Size Bytes"
+        },
+        "status_code": {
+          "maximum": 599,
+          "minimum": 100,
+          "title": "Status Code",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "request_id",
+        "status_code",
+        "latency_ms"
+      ],
+      "title": "ApiResponsePayload",
+      "type": "object"
+    },
+    "ApiResponseTrace": {
+      "additionalProperties": false,
+      "description": "External trace for API response outcomes.",
+      "properties": {
+        "customer_id": {
+          "minLength": 1,
+          "title": "Customer Id",
+          "type": "string"
+        },
+        "environment": {
+          "enum": [
+            "dev",
+            "staging",
+            "prod"
+          ],
+          "title": "Environment",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "api_response",
+          "default": "api_response",
+          "title": "Event Type",
+          "type": "string"
+        },
+        "extensions": {
+          "patternProperties": {
+            "^[a-z][a-z0-9_.-]*$": {
+              "$ref": "#/$defs/JsonValue"
+            }
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "title": "Extensions",
+          "type": "object"
+        },
+        "payload": {
+          "$ref": "#/$defs/ApiResponsePayload"
+        },
+        "producer": {
+          "minLength": 1,
+          "title": "Producer",
+          "type": "string"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "v1",
+          "default": "v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "surface": {
+          "const": "external",
+          "default": "external",
+          "title": "Surface",
+          "type": "string"
+        },
+        "trace_id": {
+          "minLength": 1,
+          "title": "Trace Id",
+          "type": "string"
+        },
+        "workspace_id": {
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "trace_id",
+        "recorded_at",
+        "producer",
+        "customer_id",
+        "workspace_id",
+        "environment",
+        "payload"
+      ],
+      "title": "ApiResponseTrace",
+      "type": "object"
+    },
+    "BillingEventPayload": {
+      "additionalProperties": false,
+      "description": "Billing event emitted to customer-visible ledgers.",
+      "properties": {
+        "amount_usd": {
+          "minimum": 0,
+          "title": "Amount Usd",
+          "type": "number"
+        },
+        "billable": {
+          "default": true,
+          "title": "Billable",
+          "type": "boolean"
+        },
+        "billing_event_id": {
+          "minLength": 1,
+          "title": "Billing Event Id",
+          "type": "string"
+        },
+        "currency": {
+          "default": "USD",
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        },
+        "meter": {
+          "minLength": 1,
+          "title": "Meter",
+          "type": "string"
+        },
+        "quantity": {
+          "minimum": 0,
+          "title": "Quantity",
+          "type": "number"
+        },
+        "unit": {
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "billing_event_id",
+        "meter",
+        "quantity",
+        "unit",
+        "amount_usd"
+      ],
+      "title": "BillingEventPayload",
+      "type": "object"
+    },
+    "BillingEventTrace": {
+      "additionalProperties": false,
+      "description": "External trace for customer billing events.",
+      "properties": {
+        "customer_id": {
+          "minLength": 1,
+          "title": "Customer Id",
+          "type": "string"
+        },
+        "environment": {
+          "enum": [
+            "dev",
+            "staging",
+            "prod"
+          ],
+          "title": "Environment",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "billing_event",
+          "default": "billing_event",
+          "title": "Event Type",
+          "type": "string"
+        },
+        "extensions": {
+          "patternProperties": {
+            "^[a-z][a-z0-9_.-]*$": {
+              "$ref": "#/$defs/JsonValue"
+            }
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "title": "Extensions",
+          "type": "object"
+        },
+        "payload": {
+          "$ref": "#/$defs/BillingEventPayload"
+        },
+        "producer": {
+          "minLength": 1,
+          "title": "Producer",
+          "type": "string"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "v1",
+          "default": "v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "surface": {
+          "const": "external",
+          "default": "external",
+          "title": "Surface",
+          "type": "string"
+        },
+        "trace_id": {
+          "minLength": 1,
+          "title": "Trace Id",
+          "type": "string"
+        },
+        "workspace_id": {
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "trace_id",
+        "recorded_at",
+        "producer",
+        "customer_id",
+        "workspace_id",
+        "environment",
+        "payload"
+      ],
+      "title": "BillingEventTrace",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "PipelineStagePayload": {
+      "additionalProperties": false,
+      "description": "Customer-visible pipeline stage state.",
+      "properties": {
+        "duration_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duration Ms"
+        },
+        "pipeline_run_id": {
+          "minLength": 1,
+          "title": "Pipeline Run Id",
+          "type": "string"
+        },
+        "stage": {
+          "minLength": 1,
+          "title": "Stage",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "running",
+            "completed",
+            "failed",
+            "cancelled"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "visible_label": {
+          "minLength": 1,
+          "title": "Visible Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pipeline_run_id",
+        "stage",
+        "status",
+        "visible_label"
+      ],
+      "title": "PipelineStagePayload",
+      "type": "object"
+    },
+    "PipelineStageTrace": {
+      "additionalProperties": false,
+      "description": "External trace for visible execution pipeline stages.",
+      "properties": {
+        "customer_id": {
+          "minLength": 1,
+          "title": "Customer Id",
+          "type": "string"
+        },
+        "environment": {
+          "enum": [
+            "dev",
+            "staging",
+            "prod"
+          ],
+          "title": "Environment",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "pipeline_stage",
+          "default": "pipeline_stage",
+          "title": "Event Type",
+          "type": "string"
+        },
+        "extensions": {
+          "patternProperties": {
+            "^[a-z][a-z0-9_.-]*$": {
+              "$ref": "#/$defs/JsonValue"
+            }
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "title": "Extensions",
+          "type": "object"
+        },
+        "payload": {
+          "$ref": "#/$defs/PipelineStagePayload"
+        },
+        "producer": {
+          "minLength": 1,
+          "title": "Producer",
+          "type": "string"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "v1",
+          "default": "v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "surface": {
+          "const": "external",
+          "default": "external",
+          "title": "Surface",
+          "type": "string"
+        },
+        "trace_id": {
+          "minLength": 1,
+          "title": "Trace Id",
+          "type": "string"
+        },
+        "workspace_id": {
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "trace_id",
+        "recorded_at",
+        "producer",
+        "customer_id",
+        "workspace_id",
+        "environment",
+        "payload"
+      ],
+      "title": "PipelineStageTrace",
+      "type": "object"
+    }
+  },
+  "discriminator": {
+    "mapping": {
+      "api_request": "#/$defs/ApiRequestTrace",
+      "api_response": "#/$defs/ApiResponseTrace",
+      "billing_event": "#/$defs/BillingEventTrace",
+      "pipeline_stage": "#/$defs/PipelineStageTrace"
+    },
+    "propertyName": "event_type"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/ApiRequestTrace"
+    },
+    {
+      "$ref": "#/$defs/ApiResponseTrace"
+    },
+    {
+      "$ref": "#/$defs/BillingEventTrace"
+    },
+    {
+      "$ref": "#/$defs/PipelineStageTrace"
+    }
+  ]
+}

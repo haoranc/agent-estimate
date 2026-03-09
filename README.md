@@ -146,6 +146,22 @@ The Claude plugin skill remains at:
 
 Both skills cover the same CLI capabilities (`estimate`, `validate`, `calibrate`) but are phrased for their respective ecosystems.
 
+## Trace Schema Foundation
+
+The repo now includes strict trace schemas for two surfaces:
+
+- internal operational traces: agent coordination, inbox protocol, dispatch lifecycle
+- external customer-visible traces: API request/response, billing events, pipeline stages
+
+Source models live in `src/agent_estimate/tracing/schema.py`.
+Checked-in JSON Schema artifacts live in `schemas/trace/`.
+
+Regenerate the schema artifacts after model changes:
+
+```bash
+python scripts/render_trace_schemas.py
+```
+
 ## Usage Examples
 
 Estimate tasks from a text file:

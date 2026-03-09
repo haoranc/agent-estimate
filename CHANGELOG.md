@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Separate internal vs external trace schemas with strict Pydantic validation and checked-in JSON Schema artifacts for API, billing, pipeline, inbox, and dispatch events.
+
 ## [0.4.0] - 2026-02-26
 
 ### Changed

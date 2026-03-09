@@ -1,0 +1,462 @@
+{
+  "$defs": {
+    "AgentCoordinationPayload": {
+      "additionalProperties": false,
+      "description": "Coordination traces between agents or orchestrators.",
+      "properties": {
+        "action": {
+          "enum": [
+            "task_request",
+            "notification",
+            "question",
+            "handoff",
+            "review_request",
+            "review_feedback",
+            "review_lgtm",
+            "status_update"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "agent": {
+          "minLength": 1,
+          "title": "Agent",
+          "type": "string"
+        },
+        "context_keys": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Context Keys",
+          "type": "array"
+        },
+        "conversation_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Conversation Id"
+        },
+        "coordination_id": {
+          "minLength": 1,
+          "title": "Coordination Id",
+          "type": "string"
+        },
+        "peer_agent": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Peer Agent"
+        }
+      },
+      "required": [
+        "coordination_id",
+        "agent",
+        "action"
+      ],
+      "title": "AgentCoordinationPayload",
+      "type": "object"
+    },
+    "AgentCoordinationTrace": {
+      "additionalProperties": false,
+      "description": "Internal trace for agent coordination events.",
+      "properties": {
+        "environment": {
+          "enum": [
+            "dev",
+            "staging",
+            "prod"
+          ],
+          "title": "Environment",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "agent_coordination",
+          "default": "agent_coordination",
+          "title": "Event Type",
+          "type": "string"
+        },
+        "extensions": {
+          "patternProperties": {
+            "^[a-z][a-z0-9_.-]*$": {
+              "$ref": "#/$defs/JsonValue"
+            }
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "title": "Extensions",
+          "type": "object"
+        },
+        "payload": {
+          "$ref": "#/$defs/AgentCoordinationPayload"
+        },
+        "producer": {
+          "minLength": 1,
+          "title": "Producer",
+          "type": "string"
+        },
+        "project": {
+          "minLength": 1,
+          "title": "Project",
+          "type": "string"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "v1",
+          "default": "v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "surface": {
+          "const": "internal",
+          "default": "internal",
+          "title": "Surface",
+          "type": "string"
+        },
+        "trace_id": {
+          "minLength": 1,
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "trace_id",
+        "recorded_at",
+        "producer",
+        "project",
+        "environment",
+        "payload"
+      ],
+      "title": "AgentCoordinationTrace",
+      "type": "object"
+    },
+    "DispatchLifecyclePayload": {
+      "additionalProperties": false,
+      "description": "Dispatch state transition details.",
+      "properties": {
+        "actor": {
+          "minLength": 1,
+          "title": "Actor",
+          "type": "string"
+        },
+        "dispatch_id": {
+          "minLength": 1,
+          "title": "Dispatch Id",
+          "type": "string"
+        },
+        "dispatch_state": {
+          "enum": [
+            "queued",
+            "in_progress",
+            "blocked",
+            "awaiting_review",
+            "completed",
+            "cancelled"
+          ],
+          "title": "Dispatch State",
+          "type": "string"
+        },
+        "review_round": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Review Round"
+        },
+        "task_ref": {
+          "minLength": 1,
+          "title": "Task Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dispatch_id",
+        "dispatch_state",
+        "actor",
+        "task_ref"
+      ],
+      "title": "DispatchLifecyclePayload",
+      "type": "object"
+    },
+    "DispatchLifecycleTrace": {
+      "additionalProperties": false,
+      "description": "Internal trace for dispatch lifecycle transitions.",
+      "properties": {
+        "environment": {
+          "enum": [
+            "dev",
+            "staging",
+            "prod"
+          ],
+          "title": "Environment",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "dispatch_lifecycle",
+          "default": "dispatch_lifecycle",
+          "title": "Event Type",
+          "type": "string"
+        },
+        "extensions": {
+          "patternProperties": {
+            "^[a-z][a-z0-9_.-]*$": {
+              "$ref": "#/$defs/JsonValue"
+            }
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "title": "Extensions",
+          "type": "object"
+        },
+        "payload": {
+          "$ref": "#/$defs/DispatchLifecyclePayload"
+        },
+        "producer": {
+          "minLength": 1,
+          "title": "Producer",
+          "type": "string"
+        },
+        "project": {
+          "minLength": 1,
+          "title": "Project",
+          "type": "string"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "v1",
+          "default": "v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "surface": {
+          "const": "internal",
+          "default": "internal",
+          "title": "Surface",
+          "type": "string"
+        },
+        "trace_id": {
+          "minLength": 1,
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "trace_id",
+        "recorded_at",
+        "producer",
+        "project",
+        "environment",
+        "payload"
+      ],
+      "title": "DispatchLifecycleTrace",
+      "type": "object"
+    },
+    "InboxProtocolPayload": {
+      "additionalProperties": false,
+      "description": "Inbox / outbox protocol event details.",
+      "properties": {
+        "inbox_path": {
+          "minLength": 1,
+          "title": "Inbox Path",
+          "type": "string"
+        },
+        "message_id": {
+          "minLength": 1,
+          "title": "Message Id",
+          "type": "string"
+        },
+        "message_type": {
+          "enum": [
+            "task_request",
+            "question",
+            "notification",
+            "follow_up",
+            "handoff",
+            "handoff_complete",
+            "review_request",
+            "review_feedback",
+            "review_addressed",
+            "review_lgtm",
+            "brainstorm_request",
+            "brainstorm_followup"
+          ],
+          "title": "Message Type",
+          "type": "string"
+        },
+        "outbox_path": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Outbox Path"
+        },
+        "parent_message_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Message Id"
+        },
+        "recipient": {
+          "minLength": 1,
+          "title": "Recipient",
+          "type": "string"
+        },
+        "sender": {
+          "minLength": 1,
+          "title": "Sender",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message_id",
+        "message_type",
+        "sender",
+        "recipient",
+        "inbox_path"
+      ],
+      "title": "InboxProtocolPayload",
+      "type": "object"
+    },
+    "InboxProtocolTrace": {
+      "additionalProperties": false,
+      "description": "Internal trace for message protocol lifecycle events.",
+      "properties": {
+        "environment": {
+          "enum": [
+            "dev",
+            "staging",
+            "prod"
+          ],
+          "title": "Environment",
+          "type": "string"
+        },
+        "event_type": {
+          "const": "inbox_protocol",
+          "default": "inbox_protocol",
+          "title": "Event Type",
+          "type": "string"
+        },
+        "extensions": {
+          "patternProperties": {
+            "^[a-z][a-z0-9_.-]*$": {
+              "$ref": "#/$defs/JsonValue"
+            }
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "title": "Extensions",
+          "type": "object"
+        },
+        "payload": {
+          "$ref": "#/$defs/InboxProtocolPayload"
+        },
+        "producer": {
+          "minLength": 1,
+          "title": "Producer",
+          "type": "string"
+        },
+        "project": {
+          "minLength": 1,
+          "title": "Project",
+          "type": "string"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "v1",
+          "default": "v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "surface": {
+          "const": "internal",
+          "default": "internal",
+          "title": "Surface",
+          "type": "string"
+        },
+        "trace_id": {
+          "minLength": 1,
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "trace_id",
+        "recorded_at",
+        "producer",
+        "project",
+        "environment",
+        "payload"
+      ],
+      "title": "InboxProtocolTrace",
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "discriminator": {
+    "mapping": {
+      "agent_coordination": "#/$defs/AgentCoordinationTrace",
+      "dispatch_lifecycle": "#/$defs/DispatchLifecycleTrace",
+      "inbox_protocol": "#/$defs/InboxProtocolTrace"
+    },
+    "propertyName": "event_type"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/AgentCoordinationTrace"
+    },
+    {
+      "$ref": "#/$defs/InboxProtocolTrace"
+    },
+    {
+      "$ref": "#/$defs/DispatchLifecycleTrace"
+    }
+  ]
+}
