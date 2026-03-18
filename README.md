@@ -2,8 +2,8 @@
 
 [![PyPI Version](https://img.shields.io/pypi/v/agent-estimate)](https://pypi.org/project/agent-estimate/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/agent-estimate)](https://pypi.org/project/agent-estimate/)
-[![License](https://img.shields.io/pypi/l/agent-estimate)](https://github.com/haoranc/agent-estimate/blob/main/LICENSE)
-[![CI](https://github.com/haoranc/agent-estimate/actions/workflows/ci.yml/badge.svg)](https://github.com/haoranc/agent-estimate/actions/workflows/ci.yml)
+[![License](https://img.shields.io/pypi/l/agent-estimate)](https://github.com/kiloloop/agent-estimate/blob/main/LICENSE)
+[![CI](https://github.com/kiloloop/agent-estimate/actions/workflows/ci.yml/badge.svg)](https://github.com/kiloloop/agent-estimate/actions/workflows/ci.yml)
 
 `agent-estimate` is a CLI for estimating delivery time of AI-agent work using:
 
@@ -53,7 +53,7 @@ agent-estimate --version
 **Option 1 — From marketplace:**
 
 ```
-/plugin marketplace add haoranc/agent-estimate
+/plugin marketplace add kiloloop/agent-estimate
 /plugin install agent-estimate@agent-estimate-marketplace
 ```
 
@@ -80,7 +80,7 @@ claude --plugin-dir /path/to/agent-estimate
 Run estimations directly in your CI/CD pipelines:
 
 ```yaml
-- uses: haoranc/agent-estimate@v0
+- uses: kiloloop/agent-estimate@v0
   with:
     issues: '11,12,14'
 ```
@@ -102,7 +102,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: haoranc/agent-estimate@v0
+      - uses: kiloloop/agent-estimate@v0
         with:
           issues: '11,12,14'
           output-mode: summary+pr-comment
@@ -163,7 +163,7 @@ agent-estimate estimate "Refactor auth pipeline" --format json
 Estimate directly from GitHub issues:
 
 ```bash
-agent-estimate estimate --repo haoranc/agent-estimate --issues 11,12,14
+agent-estimate estimate --repo kiloloop/agent-estimate --issues 11,12,14
 ```
 
 Validate estimate vs observed outcome and persist to calibration DB:

@@ -5,7 +5,7 @@
 For usage questions and troubleshooting:
 
 1. Read the [README](./README.md) for install and command examples.
-2. Search existing [GitHub issues](https://github.com/haoranc/agent-estimate/issues).
+2. Search existing [GitHub issues](https://github.com/kiloloop/agent-estimate/issues).
 3. Open a new issue if needed.
 
 ## Bug Reports and Feature Requests

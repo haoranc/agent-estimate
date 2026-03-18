@@ -60,7 +60,7 @@ representative at an online or offline event.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported privately to the community leaders responsible for enforcement at:
-https://github.com/haoranc/agent-estimate/security/advisories/new
+https://github.com/kiloloop/agent-estimate/security/advisories/new
 
 For Code of Conduct reports, include `[CoC]` in the advisory title so it can be
 triaged appropriately.
