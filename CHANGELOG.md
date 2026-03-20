@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-03-20
+
+### Changed
+- README rewritten as a conversion page with real-data hero examples, human-multiplier compression ratios, and curated worked examples.
+- Updated METR threshold model fleet: added Opus 4.6 (90m), GPT-5.4 (60m), Gemini 3.1 Pro (45m), Sonnet 4.6 (30m), Haiku 4.5 (15m). Legacy keys preserved.
+- Updated model key aliases: `claude`→`opus_4_6`, `codex`→`gpt_5_4`, `gemini`→`gemini_3_1_pro`, `sonnet`→`sonnet_4_6`, `haiku`→`haiku_4_5`.
+- Fixed `frontier` model tier resolution to correctly disambiguate by agent name instead of alias short-circuit.
+- Updated pyproject.toml description to "Know what an AI task will cost before you run it".
+
+### Added
+- `examples/` directory with 5 curated worked examples: coding-s, coding-m, research, documentation, multi-agent.
+
 ## [0.5.0] - 2026-03-20
 
 ### Changed

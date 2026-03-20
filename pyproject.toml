@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agent-estimate"
-version = "0.5.0"
-description = "Effort estimation for AI coding agents — PERT + METR + wave planning"
+version = "0.6.0"
+description = "Know what an AI task will cost before you run it"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.10"
 authors = [{ name = "Kiloloop" }]
-keywords = ["ai", "agents", "estimation", "pert", "planning"]
+keywords = ["ai", "agents", "estimation", "pert", "planning", "claude", "codex", "task-planning", "cost-estimation"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
