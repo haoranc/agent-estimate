@@ -1,4 +1,20 @@
 models:
+  opus_4_6:
+    display_name: "Opus 4.6"
+    p80_minutes: 90
+  gpt_5_4:
+    display_name: "GPT-5.4"
+    p80_minutes: 60
+  gemini_3_1_pro:
+    display_name: "Gemini 3.1 Pro"
+    p80_minutes: 45
+  sonnet_4_6:
+    display_name: "Sonnet 4.6"
+    p80_minutes: 30
+  haiku_4_5:
+    display_name: "Haiku 4.5"
+    p80_minutes: 15
+  # Legacy keys — kept for backward compatibility with existing configs.
   opus:
     display_name: "Opus"
     p80_minutes: 90

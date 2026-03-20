@@ -236,9 +236,9 @@ class TestMetrThresholds:
     @pytest.mark.parametrize(
         ("model_key", "expected_model_key", "expected_threshold"),
         [
-            ("claude", "opus", 90.0),
-            ("codex", "gpt_5_3", 60.0),
-            ("gemini", "gemini_3_pro", 45.0),
+            ("claude", "opus_4_6", 90.0),
+            ("codex", "gpt_5_4", 60.0),
+            ("gemini", "gemini_3_1_pro", 45.0),
             ("gpt-5.3", "gpt_5_3", 60.0),
         ],
     )
@@ -246,9 +246,10 @@ class TestMetrThresholds:
         self, model_key: str, expected_model_key: str, expected_threshold: float
     ) -> None:
         thresholds = {
-            "opus": 90.0,
+            "opus_4_6": 90.0,
+            "gpt_5_4": 60.0,
+            "gemini_3_1_pro": 45.0,
             "gpt_5_3": 60.0,
-            "gemini_3_pro": 45.0,
         }
         result = check_metr_threshold(
             model_key, expected_threshold + 1.0, thresholds=thresholds, fallback_threshold=30.0
@@ -259,9 +260,9 @@ class TestMetrThresholds:
 
     def test_frontier_model_tier_resolves_by_assigned_agent(self) -> None:
         thresholds = {
-            "opus": 90.0,
-            "gpt_5_3": 60.0,
-            "gemini_3_pro": 45.0,
+            "opus_4_6": 90.0,
+            "gpt_5_4": 60.0,
+            "gemini_3_1_pro": 45.0,
         }
         claude_result = check_metr_threshold(
             "frontier",
@@ -284,12 +285,12 @@ class TestMetrThresholds:
             fallback_threshold=45.0,
             agent_name="Codex",
         )
-        assert claude_result is None
+        assert claude_result is None  # 70 < 90 opus threshold
         assert codex_result is not None
-        assert codex_result.model_key == "gpt_5_3"
+        assert codex_result.model_key == "gpt_5_4"
         assert codex_result.threshold_minutes == pytest.approx(60.0)
         assert gemini_result is not None
-        assert gemini_result.model_key == "gemini_3_pro"
+        assert gemini_result.model_key == "gemini_3_1_pro"
         assert gemini_result.threshold_minutes == pytest.approx(45.0)
 
     def test_unknown_model_logs_warning_when_falling_back(self, caplog: pytest.LogCaptureFixture) -> None:
