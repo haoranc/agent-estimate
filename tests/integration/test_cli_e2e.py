@@ -110,7 +110,7 @@ class TestEstimateModifierFlags:
             def fetch_task_descriptions_by_numbers(
                 self, repo: str, issue_numbers: list[int]
             ) -> list[str]:
-                assert repo == "haoranc/agent-estimate"
+                assert repo == "kiloloop/agent-estimate"
                 assert issue_numbers == [11, 12]
                 return ["Implement auth flow", "Add tests"]
 
@@ -122,7 +122,7 @@ class TestEstimateModifierFlags:
                 "--issues",
                 "#11 #12",
                 "--repo",
-                "haoranc/agent-estimate",
+                "kiloloop/agent-estimate",
                 "--spec-clarity",
                 "0.7",
                 "--warm-context",
@@ -139,7 +139,7 @@ class TestEstimateModifierFlags:
             def fetch_task_descriptions_by_numbers(
                 self, repo: str, issue_numbers: list[int]
             ) -> list[str]:
-                assert repo == "haoranc/agent-estimate"
+                assert repo == "kiloloop/agent-estimate"
                 assert issue_numbers == [11, 12]
                 return ["Implement auth flow", "Add tests"]
 
@@ -151,7 +151,7 @@ class TestEstimateModifierFlags:
                 "--issues",
                 "11,12",
                 "--repo",
-                "haoranc/agent-estimate",
+                "kiloloop/agent-estimate",
                 "--spec-clarity",
                 "0.2",
             ],

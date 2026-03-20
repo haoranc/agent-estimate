@@ -1,6 +1,6 @@
 name: 'agent-estimate'
 description: 'Run AI agent effort estimation in CI — PERT + METR + wave planning'
-author: 'haoranc'
+author: 'Kiloloop'
 
 branding:
   icon: 'clock'

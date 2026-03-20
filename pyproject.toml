@@ -9,7 +9,7 @@ description = "Effort estimation for AI coding agents — PERT + METR + wave pla
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.10"
-authors = [{ name = "haoranc" }]
+authors = [{ name = "Kiloloop" }]
 keywords = ["ai", "agents", "estimation", "pert", "planning"]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -35,12 +35,12 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/haoranc/agent-estimate"
-Repository = "https://github.com/haoranc/agent-estimate"
-Issues = "https://github.com/haoranc/agent-estimate/issues"
-Changelog = "https://github.com/haoranc/agent-estimate/blob/main/CHANGELOG.md"
-Security = "https://github.com/haoranc/agent-estimate/security/policy"
-Support = "https://github.com/haoranc/agent-estimate/blob/main/SUPPORT.md"
+Homepage = "https://github.com/kiloloop/agent-estimate"
+Repository = "https://github.com/kiloloop/agent-estimate"
+Issues = "https://github.com/kiloloop/agent-estimate/issues"
+Changelog = "https://github.com/kiloloop/agent-estimate/blob/main/CHANGELOG.md"
+Security = "https://github.com/kiloloop/agent-estimate/security/policy"
+Support = "https://github.com/kiloloop/agent-estimate/blob/main/SUPPORT.md"
 
 [project.scripts]
 agent-estimate = "agent_estimate.cli.app:main"

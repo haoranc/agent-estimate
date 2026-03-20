@@ -3,12 +3,12 @@
   "description": "Effort estimation for AI coding agents — PERT three-point estimation with METR reliability thresholds and wave planning",
   "version": "0.4.0",
   "author": {
-    "name": "haoranc"
+    "name": "Kiloloop"
   },
-  "repository": "https://github.com/haoranc/agent-estimate",
-  "homepage": "https://github.com/haoranc/agent-estimate",
+  "repository": "https://github.com/kiloloop/agent-estimate",
+  "homepage": "https://github.com/kiloloop/agent-estimate",
   "license": "Apache-2.0",
   "keywords": ["ai", "agents", "estimation", "pert", "planning", "wave-planning", "metr"],
-  "privacyPolicy": "https://github.com/haoranc/agent-estimate/blob/main/PRIVACY.md",
-  "support": "https://github.com/haoranc/agent-estimate/issues"
+  "privacyPolicy": "https://github.com/kiloloop/agent-estimate/blob/main/PRIVACY.md",
+  "support": "https://github.com/kiloloop/agent-estimate/issues"
 }

@@ -1,7 +1,7 @@
 {
     "name": "agent-estimate-marketplace",
     "owner": {
-        "name": "haoranc"
+        "name": "Kiloloop"
     },
     "metadata": {
         "description": "Effort estimation plugin for AI coding agents"

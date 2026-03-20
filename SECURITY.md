@@ -13,7 +13,7 @@ The project currently provides security fixes for the latest released minor line
 
 Please report suspected vulnerabilities through a private GitHub Security Advisory:
 
-- [Report a vulnerability](https://github.com/haoranc/agent-estimate/security/advisories/new)
+- [Report a vulnerability](https://github.com/kiloloop/agent-estimate/security/advisories/new)
 
 Do not open public GitHub issues for security vulnerabilities.
 

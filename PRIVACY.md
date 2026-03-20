@@ -20,4 +20,4 @@ This plugin does not integrate with any third-party analytics, advertising, or t
 
 ## Contact
 
-For questions about this policy, open an issue at <https://github.com/haoranc/agent-estimate/issues>.
+For questions about this policy, open an issue at <https://github.com/kiloloop/agent-estimate/issues>.
