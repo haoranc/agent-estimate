@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-03-20
+
+### Changed
+- Transferred repo from `haoranc/agent-estimate` to `kiloloop/agent-estimate`; updated all org references in pyproject.toml, README, action.yml, plugin manifests, and community health docs.
+
+### Added
+- Privacy policy and support URL for plugin directory verified status. (#75)
+- Community health docs: CODE_OF_CONDUCT, CONTRIBUTING, SECURITY, SUPPORT templates. (#76)
+- Updated copyright to Kiloloop LLC. (#77)
+
 ## [0.4.0] - 2026-02-26
 
 ### Changed
@@ -49,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modifier flags: `--warm-context`, `--spec-clarity`, `--issues`
 - PyPI package: `pip install agent-estimate`
 
+[0.5.0]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.5.0
 [0.4.0]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.4.0
 [0.3.0]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.3.0
 [0.2.0]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.2.0
