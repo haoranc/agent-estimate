@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-03-20
+
+### Fixed
+- `--version` CLI flag now reports correct version (was stuck at 0.4.0 due to `version.py` not being updated).
+- Synced version across all artifacts: pyproject.toml, version.py, plugin.json, action.yml, bug_report template.
+
 ## [0.6.0] - 2026-03-20
 
 ### Changed
