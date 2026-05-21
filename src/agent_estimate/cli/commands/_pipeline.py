@@ -12,7 +12,6 @@ from agent_estimate.core import (
     ReviewMode,
     TaskEstimate,
     TaskNode,
-    TaskType,
     WavePlan,
     auto_correct_tier,
     classify_task,
@@ -20,9 +19,11 @@ from agent_estimate.core import (
     check_metr_threshold,
     compute_human_equivalent,
     detect_estimation_category,
+    estimate_app_dev,
     estimate_brainstorm,
     estimate_config_sre,
     estimate_documentation,
+    estimate_frontend,
     estimate_research,
     estimate_task,
     load_metr_thresholds,
@@ -89,7 +90,7 @@ def _estimate_by_category(
             fallback_threshold=fallback,
             agent_name=agent_name,
         )
-        human_eq = compute_human_equivalent(est.total_expected_minutes, TaskType.UNKNOWN)
+        human_eq = compute_human_equivalent(est.total_expected_minutes, est.sizing.task_type)
         est = replace(est, human_equivalent_minutes=human_eq)
         return est, task_tier_warnings
 
@@ -103,7 +104,7 @@ def _estimate_by_category(
             fallback_threshold=fallback,
             agent_name=agent_name,
         )
-        human_eq = compute_human_equivalent(est.total_expected_minutes, TaskType.UNKNOWN)
+        human_eq = compute_human_equivalent(est.total_expected_minutes, est.sizing.task_type)
         est = replace(est, human_equivalent_minutes=human_eq)
         return est, task_tier_warnings
 
@@ -117,7 +118,7 @@ def _estimate_by_category(
             fallback_threshold=fallback,
             agent_name=agent_name,
         )
-        human_eq = compute_human_equivalent(est.total_expected_minutes, TaskType.UNKNOWN)
+        human_eq = compute_human_equivalent(est.total_expected_minutes, est.sizing.task_type)
         est = replace(est, human_equivalent_minutes=human_eq)
         return est, task_tier_warnings
 
@@ -131,7 +132,35 @@ def _estimate_by_category(
             fallback_threshold=fallback,
             agent_name=agent_name,
         )
-        human_eq = compute_human_equivalent(est.total_expected_minutes, TaskType.UNKNOWN)
+        human_eq = compute_human_equivalent(est.total_expected_minutes, est.sizing.task_type)
+        est = replace(est, human_equivalent_minutes=human_eq)
+        return est, task_tier_warnings
+
+    if category == EstimationCategory.FRONTEND:
+        est = estimate_frontend(
+            desc,
+            modifiers,
+            review_mode=review_mode,
+            model_key=model_key,
+            thresholds=thresholds,
+            fallback_threshold=fallback,
+            agent_name=agent_name,
+        )
+        human_eq = compute_human_equivalent(est.total_expected_minutes, est.sizing.task_type)
+        est = replace(est, human_equivalent_minutes=human_eq)
+        return est, task_tier_warnings
+
+    if category == EstimationCategory.APP_DEV:
+        est = estimate_app_dev(
+            desc,
+            modifiers,
+            review_mode=review_mode,
+            model_key=model_key,
+            thresholds=thresholds,
+            fallback_threshold=fallback,
+            agent_name=agent_name,
+        )
+        human_eq = compute_human_equivalent(est.total_expected_minutes, est.sizing.task_type)
         est = replace(est, human_equivalent_minutes=human_eq)
         return est, task_tier_warnings
 

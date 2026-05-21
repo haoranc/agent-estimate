@@ -16,6 +16,7 @@ from agent_estimate.adapters.github_adapter import (
     GitHubIssue,
     build_task_description,
 )
+from agent_estimate.audit import emit_audit_event
 
 BASE_URL = "https://api.github.com"
 
@@ -111,13 +112,34 @@ class GitHubRestAdapter:
         }
 
         for attempt in range(self._max_retries + 1):
+            started_at = time.perf_counter()
             status, response_headers, body = self._request_fn(url, headers)
+            duration_ms = (time.perf_counter() - started_at) * 1000.0
             normalized_headers = {key.lower(): value for key, value in response_headers.items()}
 
             if status < 400:
+                emit_audit_event(
+                    "api_call",
+                    action="github_rest_request",
+                    duration_ms=duration_ms,
+                    client="github_rest",
+                    endpoint=url,
+                    status_code=status,
+                )
                 return json.loads(body), normalized_headers
 
             if _is_rate_limited(status, normalized_headers) and attempt < self._max_retries:
+                emit_audit_event(
+                    "api_call",
+                    action="github_rest_request",
+                    outcome="retry",
+                    level="WARNING",
+                    duration_ms=duration_ms,
+                    client="github_rest",
+                    endpoint=url,
+                    status_code=status,
+                    retry_attempt=attempt + 1,
+                )
                 self._sleep_fn(
                     _compute_retry_delay(
                         headers=normalized_headers,
@@ -128,6 +150,16 @@ class GitHubRestAdapter:
                 )
                 continue
 
+            emit_audit_event(
+                "api_call",
+                action="github_rest_request",
+                outcome="error",
+                level="ERROR",
+                duration_ms=duration_ms,
+                client="github_rest",
+                endpoint=url,
+                status_code=status,
+            )
             raise GitHubAdapterError(
                 f"GitHub API request failed with status {status} for {url}: {body[:200]}",
             )
@@ -147,6 +179,12 @@ class GitHubRestAdapter:
 def _resolve_github_token() -> str:
     token = os.getenv("GITHUB_TOKEN")
     if token:
+        emit_audit_event(
+            "authentication_event",
+            action="resolve_github_token",
+            provider="env",
+            auth_target="github",
+        )
         return token
 
     result = subprocess.run(
@@ -157,10 +195,25 @@ def _resolve_github_token() -> str:
     )
     if result.returncode != 0 or not result.stdout.strip():
         message = result.stderr.strip() or "gh auth token returned no token"
+        emit_audit_event(
+            "authentication_event",
+            action="resolve_github_token",
+            outcome="error",
+            level="ERROR",
+            provider="gh",
+            auth_target="github",
+            error_type="gh_auth_failure",
+        )
         raise GitHubAdapterError(
             "GitHub authentication required. Set GITHUB_TOKEN or login with gh CLI. "
             f"Details: {message}",
         )
+    emit_audit_event(
+        "authentication_event",
+        action="resolve_github_token",
+        provider="gh",
+        auth_target="github",
+    )
     return result.stdout.strip()
 
 

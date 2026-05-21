@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from collections import defaultdict
 from collections.abc import Mapping
+from pathlib import Path
 
+import pytest
+
+from agent_estimate.audit import reset_audit_logger
+from agent_estimate.adapters import github_rest
+from agent_estimate.adapters.github_adapter import GitHubAdapterError
 from agent_estimate.adapters.github_ghcli import GitHubGhCliAdapter
 from agent_estimate.adapters.github_rest import GitHubRestAdapter
 
@@ -113,3 +120,102 @@ def test_gh_cli_adapter_fetches_issues_by_number_and_label() -> None:
 
     assert by_number == ["CLI title\n\nCLI body"]
     assert by_label == ["Label title\n\nBody", "Second title"]
+
+
+def test_rest_adapter_emits_auth_and_api_audit_events(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    audit_log = tmp_path / "audit.jsonl"
+    monkeypatch.setenv("AGENT_ESTIMATE_AUDIT_ENABLED", "1")
+    monkeypatch.setenv("AGENT_ESTIMATE_AUDIT_DESTINATION", str(audit_log))
+    monkeypatch.setenv("AGENT_ESTIMATE_AUDIT_LEVEL", "INFO")
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+    reset_audit_logger()
+
+    def request_fn(url: str, headers: Mapping[str, str]) -> tuple[int, dict[str, str], str]:
+        assert headers["Authorization"] == "Bearer test-token"
+        return (
+            200,
+            {},
+            json.dumps({"number": 5, "title": "Audit this", "body": "No secrets"}),
+        )
+
+    adapter = GitHubRestAdapter(request_fn=request_fn)
+    issues = adapter.fetch_issues_by_numbers("acme/repo", [5])
+
+    reset_audit_logger()
+    assert issues[0].number == 5
+    raw_log = audit_log.read_text(encoding="utf-8")
+    assert "test-token" not in raw_log
+    events = [json.loads(line) for line in raw_log.splitlines() if line.strip()]
+
+    auth_event = next(event for event in events if event["event_type"] == "authentication_event")
+    assert auth_event["details"]["provider"] == "env"
+
+    api_event = next(event for event in events if event["event_type"] == "api_call")
+    assert api_event["details"]["client"] == "github_rest"
+    assert api_event["details"]["status_code"] == 200
+    assert api_event["details"]["endpoint"].endswith("/repos/acme/repo/issues/5")
+
+
+def test_gh_cli_adapter_emits_api_audit_event(tmp_path: Path, monkeypatch) -> None:
+    audit_log = tmp_path / "audit.jsonl"
+    monkeypatch.setenv("AGENT_ESTIMATE_AUDIT_ENABLED", "1")
+    monkeypatch.setenv("AGENT_ESTIMATE_AUDIT_DESTINATION", str(audit_log))
+    monkeypatch.setenv("AGENT_ESTIMATE_AUDIT_LEVEL", "INFO")
+    reset_audit_logger()
+
+    def runner(args: list[str]) -> str:
+        assert args[:3] == ["gh", "issue", "view"]
+        return json.dumps({"number": 9, "title": "CLI title", "body": "CLI body"})
+
+    adapter = GitHubGhCliAdapter(runner=runner)
+    issues = adapter.fetch_issues_by_numbers("acme/repo", [9])
+
+    reset_audit_logger()
+    assert issues[0].number == 9
+    events = [
+        json.loads(line)
+        for line in audit_log.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    api_event = next(event for event in events if event["event_type"] == "api_call")
+    assert api_event["details"]["client"] == "gh"
+    assert api_event["details"]["endpoint"] == "gh issue view"
+    assert api_event["details"]["issue_number"] == 9
+    assert "status" not in api_event["details"]
+
+
+def test_rest_adapter_auth_failure_audit_event_redacts_raw_gh_output(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    audit_log = tmp_path / "audit.jsonl"
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setenv("AGENT_ESTIMATE_AUDIT_ENABLED", "1")
+    monkeypatch.setenv("AGENT_ESTIMATE_AUDIT_DESTINATION", str(audit_log))
+    monkeypatch.setenv("AGENT_ESTIMATE_AUDIT_LEVEL", "INFO")
+    reset_audit_logger()
+
+    def fake_run(*args, **kwargs) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(
+            args[0],
+            1,
+            stdout="",
+            stderr="gh auth token failed for /Users/testuser/.config/gh/hosts.yml",
+        )
+
+    monkeypatch.setattr(github_rest.subprocess, "run", fake_run)
+
+    with pytest.raises(GitHubAdapterError):
+        github_rest._resolve_github_token()
+
+    reset_audit_logger()
+    raw_log = audit_log.read_text(encoding="utf-8")
+    assert "/Users/testuser" not in raw_log
+    events = [json.loads(line) for line in raw_log.splitlines() if line.strip()]
+    auth_event = next(event for event in events if event["event_type"] == "authentication_event")
+    assert auth_event["outcome"] == "error"
+    assert auth_event["details"]["error_type"] == "gh_auth_failure"
+    assert "error" not in auth_event["details"]

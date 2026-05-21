@@ -28,6 +28,48 @@ from agent_estimate.core.pert import check_metr_threshold, compute_pert
 # ---------------------------------------------------------------------------
 
 _CATEGORY_PATTERNS: list[tuple[re.Pattern[str], EstimationCategory]] = [
+    # Research-grounded brainstorms must route to research before flat brainstorm.
+    (
+        re.compile(
+            r"(?=.*\b(brainstorm|ideate|explore ideas?|spike|discovery)\b)"
+            r"(?=.*\b(research|citation|citations|sources?|primary[- ]source|"
+            r"evidence|oss|open[- ]source|github|compare|survey|benchmark|"
+            r"landscape)\b)",
+            re.I,
+        ),
+        EstimationCategory.RESEARCH,
+    ),
+    # Config / SRE — infrastructure, deployment, ops
+    (
+        re.compile(
+            r"\b(configure|configuration|deploy(?:ment)?|infra(?:structure)?|"
+            r"sre|devops|terraform|helm|ansible|k8s|kubernetes|"
+            r"ci/?cd|ci pipeline|deploy pipeline|monitoring|alerting|oncall|runbook|"
+            r"config (?:file|change|update|migration|setting)|"
+            r"env(?:ironment)? var(?:iable)?s?|secret(?:s| management)?)\b",
+            re.I,
+        ),
+        EstimationCategory.CONFIG_SRE,
+    ),
+    # Frontend/UI — page content patches and page/component builds
+    (
+        re.compile(
+            r"\b(front[- ]?end|ui|ux|landing page|web page|page build|"
+            r"component page|design system|mdx|seo snippet|structured data|"
+            r"copy update|single[- ]section|hero section)\b",
+            re.I,
+        ),
+        EstimationCategory.FRONTEND,
+    ),
+    # App development — app shell, desktop/mobile apps, Electron/native shells
+    (
+        re.compile(
+            r"\b(app[- ]?dev|app shell|desktop app|mobile app|electron|tauri|"
+            r"native app|mac app|ios app|android app|application shell)\b",
+            re.I,
+        ),
+        EstimationCategory.APP_DEV,
+    ),
     # Brainstorm — ideation, design, discussion
     (
         re.compile(
@@ -45,18 +87,6 @@ _CATEGORY_PATTERNS: list[tuple[re.Pattern[str], EstimationCategory]] = [
             re.I,
         ),
         EstimationCategory.RESEARCH,
-    ),
-    # Config / SRE — infrastructure, deployment, ops
-    (
-        re.compile(
-            r"\b(configure|configuration|deploy(?:ment)?|infra(?:structure)?|"
-            r"sre|devops|terraform|helm|ansible|k8s|kubernetes|"
-            r"ci/?cd|ci pipeline|deploy pipeline|monitoring|alerting|oncall|runbook|"
-            r"config (?:file|change|update|migration|setting)|"
-            r"env(?:ironment)? var(?:iable)?s?|secret(?:s| management)?)\b",
-            re.I,
-        ),
-        EstimationCategory.CONFIG_SRE,
     ),
     # Documentation — writing, docs, readme
     (
@@ -87,10 +117,23 @@ _CONFIG_SRE_BASELINES = (10.0, 20.0, 35.0)
 # Documentation: line-count based — lower floor than coding
 _DOCUMENTATION_BASELINES = (10.0, 25.0, 45.0)
 
+# Frontend/UI: bimodal content-patch vs page-build regimes
+_FRONTEND_CONTENT_BASELINES = (15.0, 25.0, 40.0)
+_FRONTEND_BUILD_BASELINES = (40.0, 60.0, 90.0)
+
+# App development: generic cold L-style prior; modifiers collapse warm/specified work
+_APP_DEV_BASELINES = (45.0, 95.0, 180.0)
+
 # Depth keywords that push research to the "deep" band
 _RESEARCH_DEEP_PATTERNS = re.compile(
     r"\b(deep|thorough|comprehensive|in[-\s]?depth|extensive|detailed|"
     r"literature review|systematic|full|complete)\b",
+    re.I,
+)
+
+_FRONTEND_CONTENT_PATTERNS = re.compile(
+    r"\b(content|copy|seo|snippet|structured data|metadata|mdx|markdown|"
+    r"single[- ]section|text update|copy update|small patch|minor patch)\b",
     re.I,
 )
 
@@ -109,15 +152,21 @@ def detect_estimation_category(text: str) -> EstimationCategory:
 
 
 def _make_non_coding_sizing(
-    o: float, m: float, p: float, label: str
+    o: float,
+    m: float,
+    p: float,
+    label: str,
+    *,
+    task_type: TaskType = TaskType.UNKNOWN,
+    tier: SizeTier = SizeTier.S,
 ) -> SizingResult:
     """Build a synthetic SizingResult for non-coding tasks."""
     return SizingResult(
-        tier=SizeTier.S,  # tier is not meaningful for non-coding; use S as placeholder
+        tier=tier,
         baseline_optimistic=o,
         baseline_most_likely=m,
         baseline_pessimistic=p,
-        task_type=TaskType.UNKNOWN,
+        task_type=task_type,
         signals=(label,),
     )
 
@@ -328,4 +377,124 @@ def estimate_documentation(
         human_equivalent_minutes=human_equivalent_minutes,
         metr_warning=metr_warning,
         estimation_category=EstimationCategory.DOCUMENTATION,
+    )
+
+
+def estimate_frontend(
+    description: str,
+    modifiers: ModifierSet,
+    *,
+    review_mode=None,
+    model_key: str = "opus",
+    thresholds=None,
+    fallback_threshold: float = 40.0,
+    agent_name: str | None = None,
+    human_equivalent_minutes: float | None = None,
+) -> TaskEstimate:
+    """Estimate a frontend/UI task.
+
+    Frontend work is bimodal: content/patch tasks use a smaller band, while
+    page/component builds use a larger page-build band.
+    """
+    if review_mode is None:
+        review_mode = ReviewMode.NONE
+
+    if _FRONTEND_CONTENT_PATTERNS.search(description or ""):
+        o, m, p = _FRONTEND_CONTENT_BASELINES
+        label = "frontend-content-model"
+        tier = SizeTier.S
+    else:
+        o, m, p = _FRONTEND_BUILD_BASELINES
+        label = "frontend-build-model"
+        tier = SizeTier.M
+
+    sizing = _make_non_coding_sizing(
+        o,
+        m,
+        p,
+        label,
+        task_type=TaskType.FRONTEND,
+        tier=tier,
+    )
+
+    adjusted_o = o * modifiers.combined
+    adjusted_m = m * modifiers.combined
+    adjusted_p = p * modifiers.combined
+
+    pert = compute_pert(adjusted_o, adjusted_m, adjusted_p)
+    review_minutes = compute_review_overhead(review_mode)
+    total = pert.expected + review_minutes
+
+    metr_warning = check_metr_threshold(
+        model_key,
+        total,
+        thresholds=thresholds,
+        fallback_threshold=fallback_threshold,
+        agent_name=agent_name,
+    )
+
+    return TaskEstimate(
+        sizing=sizing,
+        pert=pert,
+        modifiers=modifiers,
+        review_minutes=review_minutes,
+        total_expected_minutes=total,
+        human_equivalent_minutes=human_equivalent_minutes,
+        metr_warning=metr_warning,
+        estimation_category=EstimationCategory.FRONTEND,
+    )
+
+
+def estimate_app_dev(
+    description: str,
+    modifiers: ModifierSet,
+    *,
+    review_mode=None,
+    model_key: str = "opus",
+    thresholds=None,
+    fallback_threshold: float = 40.0,
+    agent_name: str | None = None,
+    human_equivalent_minutes: float | None = None,
+) -> TaskEstimate:
+    """Estimate an app-development task using a generic cold L-style prior."""
+    _ = description  # modifiers handle warm/specified app-dev collapse
+
+    if review_mode is None:
+        review_mode = ReviewMode.NONE
+
+    o, m, p = _APP_DEV_BASELINES
+    sizing = _make_non_coding_sizing(
+        o,
+        m,
+        p,
+        "app-dev-generic-l-model",
+        task_type=TaskType.APP_DEV,
+        tier=SizeTier.L,
+    )
+
+    adjusted_o = o * modifiers.combined
+    adjusted_m = m * modifiers.combined
+    adjusted_p = p * modifiers.combined
+
+    pert = compute_pert(adjusted_o, adjusted_m, adjusted_p)
+    review_minutes = compute_review_overhead(review_mode)
+    total = pert.expected + review_minutes
+
+    metr_warning = check_metr_threshold(
+        model_key,
+        total,
+        thresholds=thresholds,
+        fallback_threshold=fallback_threshold,
+        agent_name=agent_name,
+    )
+
+    return TaskEstimate(
+        sizing=sizing,
+        pert=pert,
+        modifiers=modifiers,
+        review_minutes=review_minutes,
+        total_expected_minutes=total,
+        human_equivalent_minutes=human_equivalent_minutes,
+        metr_warning=metr_warning,
+        estimation_category=EstimationCategory.APP_DEV,
     )

@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-05-20
+
+### Added
+- Frontend/UI task category with separate content-patch (15/25/40) and page-build (40/60/90) bands.
+- App-development task category with a generic cold L-style prior and app/UI human-comparison multiplier.
+- `3-round` review mode with a 35 minute additive review tier.
+- METR threshold entries for Opus 4.7 (current) and GPT-5.5; `opus_4_x` retained as a forward-compatible alias.
+- Opt-in structured audit logging via `AGENT_ESTIMATE_AUDIT_*` environment variables, emitting secret-scrubbed JSON events to stdout, stderr, or a file.
+
+### Changed
+- Research-grounded brainstorms now route to the research band instead of the flat brainstorm band.
+- Codex model-key alias now resolves to the GPT-5.5 METR threshold; GPT-5.4 remains available.
+- Corrected the Codex skill install path in `skills/estimate/README.md` to `.codex/skills/...`.
+- Version bumped to v0.7.0 across package, plugin, action, issue template, and tests.
+- Claude runtime `/estimate` skill refreshed to v0.7.0 parity with the Codex slice (frontend/app_dev types, `3-round` review mode, refreshed METR keys).
+- `claude`/`claude_opus` model-key aliases now resolve to `opus_4_7` (Opus 4.7); `opus_4_6` retained for backward compatibility.
+
 ## [0.6.1] - 2026-03-20
 
 ### Fixed
@@ -77,6 +94,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modifier flags: `--warm-context`, `--spec-clarity`, `--issues`
 - PyPI package: `pip install agent-estimate`
 
+[0.7.0]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.7.0
+[0.6.1]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.6.1
+[0.6.0]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.6.0
 [0.5.0]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.5.0
 [0.4.0]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.4.0
 [0.3.0]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.3.0

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import time
 from typing import Callable, Sequence
 
 from agent_estimate.adapters.github_adapter import (
@@ -11,6 +12,7 @@ from agent_estimate.adapters.github_adapter import (
     GitHubIssue,
     build_task_description,
 )
+from agent_estimate.audit import emit_audit_event
 
 
 class GitHubGhCliAdapter:
@@ -23,17 +25,40 @@ class GitHubGhCliAdapter:
         """Fetch specific issues by number."""
         issues: list[GitHubIssue] = []
         for issue_number in issue_numbers:
-            output = self._runner(
-                [
-                    "gh",
-                    "issue",
-                    "view",
-                    str(issue_number),
-                    "--repo",
-                    repo,
-                    "--json",
-                    "number,title,body",
-                ],
+            args = [
+                "gh",
+                "issue",
+                "view",
+                str(issue_number),
+                "--repo",
+                repo,
+                "--json",
+                "number,title,body",
+            ]
+            started_at = time.perf_counter()
+            try:
+                output = self._runner(args)
+            except Exception as exc:
+                emit_audit_event(
+                    "api_call",
+                    action="github_issue_view",
+                    outcome="error",
+                    duration_ms=(time.perf_counter() - started_at) * 1000.0,
+                    client="gh",
+                    endpoint="gh issue view",
+                    repo=repo,
+                    issue_number=issue_number,
+                    error_type=type(exc).__name__,
+                )
+                raise
+            emit_audit_event(
+                "api_call",
+                action="github_issue_view",
+                duration_ms=(time.perf_counter() - started_at) * 1000.0,
+                client="gh",
+                endpoint="gh issue view",
+                repo=repo,
+                issue_number=issue_number,
             )
             payload = json.loads(output)
             issues.append(_parse_issue(payload))
@@ -47,22 +72,47 @@ class GitHubGhCliAdapter:
         state: str = "open",
     ) -> list[GitHubIssue]:
         """Fetch issues by label with a high limit for CLI pagination fallback."""
-        output = self._runner(
-            [
-                "gh",
-                "issue",
-                "list",
-                "--repo",
-                repo,
-                "--label",
-                label,
-                "--state",
-                state,
-                "--limit",
-                "1000",
-                "--json",
-                "number,title,body",
-            ],
+        args = [
+            "gh",
+            "issue",
+            "list",
+            "--repo",
+            repo,
+            "--label",
+            label,
+            "--state",
+            state,
+            "--limit",
+            "1000",
+            "--json",
+            "number,title,body",
+        ]
+        started_at = time.perf_counter()
+        try:
+            output = self._runner(args)
+        except Exception as exc:
+            emit_audit_event(
+                "api_call",
+                action="github_issue_list",
+                outcome="error",
+                duration_ms=(time.perf_counter() - started_at) * 1000.0,
+                client="gh",
+                endpoint="gh issue list",
+                repo=repo,
+                label=label,
+                state=state,
+                error_type=type(exc).__name__,
+            )
+            raise
+        emit_audit_event(
+            "api_call",
+            action="github_issue_list",
+            duration_ms=(time.perf_counter() - started_at) * 1000.0,
+            client="gh",
+            endpoint="gh issue list",
+            repo=repo,
+            label=label,
+            state=state,
         )
         payload = json.loads(output)
         if not isinstance(payload, list):

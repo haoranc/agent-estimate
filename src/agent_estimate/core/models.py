@@ -94,6 +94,8 @@ class TaskType(enum.Enum):
     REFACTOR = "refactor"
     TEST = "test"
     DOCS = "docs"
+    FRONTEND = "frontend"
+    APP_DEV = "app_dev"
     UNKNOWN = "unknown"
 
 
@@ -105,11 +107,15 @@ class EstimationCategory(enum.Enum):
     RESEARCH     — time-boxed; 15-45m depending on depth
     CONFIG_SRE   — flat + verification; ~15-30m
     DOCUMENTATION — line-count based; similar to coding but lower floor
+    FRONTEND     — bimodal UI/page model; content patch vs page build
+    APP_DEV      — app-shell/build model; generic cold L prior
 
     Aliases accepted via ``_missing_``:
       "sre"        → CONFIG_SRE
       "config_sre" → CONFIG_SRE
       "docs"       → DOCUMENTATION
+      "ui"         → FRONTEND
+      "app-dev"    → APP_DEV
     """
 
     CODING = "coding"
@@ -117,6 +123,8 @@ class EstimationCategory(enum.Enum):
     RESEARCH = "research"
     CONFIG_SRE = "config"
     DOCUMENTATION = "documentation"
+    FRONTEND = "frontend"
+    APP_DEV = "app_dev"
 
     @classmethod
     def _missing_(cls, value: object) -> "EstimationCategory | None":
@@ -125,6 +133,13 @@ class EstimationCategory(enum.Enum):
             "sre": cls.CONFIG_SRE,
             "config_sre": cls.CONFIG_SRE,
             "docs": cls.DOCUMENTATION,
+            "ui": cls.FRONTEND,
+            "front_end": cls.FRONTEND,
+            "front-end": cls.FRONTEND,
+            "web": cls.FRONTEND,
+            "app": cls.APP_DEV,
+            "app-dev": cls.APP_DEV,
+            "appdev": cls.APP_DEV,
         }
         if isinstance(value, str):
             return _aliases.get(value.lower())
@@ -136,7 +151,8 @@ class ReviewMode(enum.Enum):
 
     NONE     — self-merge, no cross-agent review (0 m)
     STANDARD — clean 2x-LGTM, 1-2 rounds        (15 m)
-    COMPLEX  — 3+ rounds, security-sensitive     (25 m)
+    COMPLEX  — involved/security-sensitive review (25 m)
+    THREE_ROUND — explicit 3-round cross-agent review (35 m)
 
     Legacy aliases kept for backwards compatibility:
       "self"    → NONE (maps to 0 m; was previously 7.5 m)
@@ -146,6 +162,7 @@ class ReviewMode(enum.Enum):
     NONE = "none"
     STANDARD = "standard"
     COMPLEX = "complex"
+    THREE_ROUND = "3-round"
 
     @classmethod
     def _missing_(cls, value: object) -> "ReviewMode | None":
@@ -153,6 +170,10 @@ class ReviewMode(enum.Enum):
         _legacy: dict[str, "ReviewMode"] = {
             "self": cls.NONE,
             "2x-lgtm": cls.STANDARD,
+            "three-round": cls.THREE_ROUND,
+            "three_round": cls.THREE_ROUND,
+            "3_round": cls.THREE_ROUND,
+            "3round": cls.THREE_ROUND,
         }
         if isinstance(value, str):
             return _legacy.get(value)

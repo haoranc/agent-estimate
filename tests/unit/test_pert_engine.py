@@ -180,6 +180,9 @@ class TestReviewOverhead:
     def test_complex_is_twenty_five(self) -> None:
         assert compute_review_overhead(ReviewMode.COMPLEX) == pytest.approx(25.0)
 
+    def test_three_round_is_thirty_five(self) -> None:
+        assert compute_review_overhead(ReviewMode.THREE_ROUND) == pytest.approx(35.0)
+
 
 # ---------------------------------------------------------------------------
 # human_comparison
@@ -236,8 +239,9 @@ class TestMetrThresholds:
     @pytest.mark.parametrize(
         ("model_key", "expected_model_key", "expected_threshold"),
         [
-            ("claude", "opus_4_6", 90.0),
-            ("codex", "gpt_5_4", 60.0),
+            ("claude", "opus_4_7", 90.0),
+            ("opus_4_6", "opus_4_6", 90.0),
+            ("codex", "gpt_5_5", 90.0),
             ("gemini", "gemini_3_1_pro", 45.0),
             ("gpt-5.3", "gpt_5_3", 60.0),
         ],
@@ -246,7 +250,9 @@ class TestMetrThresholds:
         self, model_key: str, expected_model_key: str, expected_threshold: float
     ) -> None:
         thresholds = {
+            "opus_4_7": 90.0,
             "opus_4_6": 90.0,
+            "gpt_5_5": 90.0,
             "gpt_5_4": 60.0,
             "gemini_3_1_pro": 45.0,
             "gpt_5_3": 60.0,
@@ -260,7 +266,9 @@ class TestMetrThresholds:
 
     def test_frontier_model_tier_resolves_by_assigned_agent(self) -> None:
         thresholds = {
+            "opus_4_7": 90.0,
             "opus_4_6": 90.0,
+            "gpt_5_5": 90.0,
             "gpt_5_4": 60.0,
             "gemini_3_1_pro": 45.0,
         }
@@ -280,15 +288,15 @@ class TestMetrThresholds:
         )
         codex_result = check_metr_threshold(
             "frontier",
-            70.0,
+            95.0,
             thresholds=thresholds,
             fallback_threshold=45.0,
             agent_name="Codex",
         )
         assert claude_result is None  # 70 < 90 opus threshold
         assert codex_result is not None
-        assert codex_result.model_key == "gpt_5_4"
-        assert codex_result.threshold_minutes == pytest.approx(60.0)
+        assert codex_result.model_key == "gpt_5_5"
+        assert codex_result.threshold_minutes == pytest.approx(90.0)
         assert gemini_result is not None
         assert gemini_result.model_key == "gemini_3_1_pro"
         assert gemini_result.threshold_minutes == pytest.approx(45.0)

@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -40,26 +41,46 @@ class TestPluginManifest:
         )
 
 
-class TestSkillLocation:
-    """Tests for skills/estimate/SKILL.md placement."""
+class TestSkillStructure:
+    """Tests for oacp-skills convention layout."""
 
-    skill_md = ROOT / "skills" / "estimate" / "SKILL.md"
-    old_skill_md = ROOT / "src" / "agent_estimate" / "skill" / "SKILL.md"
+    skill_dir = ROOT / "skills" / "estimate"
+    skill_yaml = skill_dir / "skill.yaml"
+    skill_readme = skill_dir / "README.md"
+    intent_md = skill_dir / "shared" / "INTENT.md"
+    claude_skill_md = skill_dir / "claude" / "SKILL.md"
+    codex_skill_md = skill_dir / "codex" / "SKILL.md"
+    old_flat_skill_md = skill_dir / "SKILL.md"
+    old_src_skill_md = ROOT / "src" / "agent_estimate" / "skill" / "SKILL.md"
+    old_agent_skill_md = ROOT / ".agent" / "skills" / "estimate" / "SKILL.md"
 
-    def test_skill_md_exists(self):
-        assert self.skill_md.exists(), "skills/estimate/SKILL.md must exist"
+    def test_skill_yaml_exists(self):
+        assert self.skill_yaml.exists(), "skills/estimate/skill.yaml must exist"
 
-    def test_skill_md_has_yaml_frontmatter(self):
-        content = self.skill_md.read_text()
-        assert content.startswith("---"), "SKILL.md must start with YAML frontmatter"
-        # Find the closing ---
+    def test_skill_yaml_is_valid(self):
+        data = yaml.safe_load(self.skill_yaml.read_text())
+        assert data["id"] == "estimate"
+        assert "compatible_runtimes" in data
+
+    def test_skill_readme_exists(self):
+        assert self.skill_readme.exists(), "skills/estimate/README.md must exist"
+
+    def test_shared_intent_exists(self):
+        assert self.intent_md.exists(), "skills/estimate/shared/INTENT.md must exist"
+
+    def test_claude_skill_md_exists(self):
+        assert self.claude_skill_md.exists(), "skills/estimate/claude/SKILL.md must exist"
+
+    def test_claude_skill_md_has_yaml_frontmatter(self):
+        content = self.claude_skill_md.read_text()
+        assert content.startswith("---"), "Claude SKILL.md must start with YAML frontmatter"
         second_fence = content.index("---", 3)
         frontmatter = content[3:second_fence].strip()
         assert "name:" in frontmatter, "frontmatter must contain 'name:'"
         assert "description:" in frontmatter, "frontmatter must contain 'description:'"
 
-    def test_skill_frontmatter_name_is_estimate(self):
-        content = self.skill_md.read_text()
+    def test_claude_skill_frontmatter_name_is_estimate(self):
+        content = self.claude_skill_md.read_text()
         second_fence = content.index("---", 3)
         frontmatter = content[3:second_fence].strip()
         for line in frontmatter.splitlines():
@@ -69,23 +90,10 @@ class TestSkillLocation:
                 return
         pytest.fail("'name:' not found in frontmatter")
 
-    def test_old_skill_md_removed(self):
-        assert not self.old_skill_md.exists(), (
-            "src/agent_estimate/skill/SKILL.md must be removed — "
-            "canonical location is skills/estimate/SKILL.md"
-        )
+    def test_codex_skill_md_exists(self):
+        assert self.codex_skill_md.exists(), "skills/estimate/codex/SKILL.md must exist"
 
-
-class TestCodexSkillMirror:
-    """Tests for Codex-compatible .agent skill."""
-
-    canonical_skill_md = ROOT / "skills" / "estimate" / "SKILL.md"
-    codex_skill_md = ROOT / ".agent" / "skills" / "estimate" / "SKILL.md"
-
-    def test_codex_skill_mirror_exists(self):
-        assert self.codex_skill_md.exists(), ".agent/skills/estimate/SKILL.md must exist"
-
-    def test_codex_skill_mirror_has_yaml_frontmatter(self):
+    def test_codex_skill_md_has_yaml_frontmatter(self):
         content = self.codex_skill_md.read_text()
         assert content.startswith("---"), "Codex SKILL.md must start with YAML frontmatter"
         second_fence = content.index("---", 3)
@@ -115,8 +123,26 @@ class TestCodexSkillMirror:
         assert "--format json" in content
         assert "NOT YET IMPLEMENTED" not in content
 
-    def test_codex_and_canonical_skills_share_skill_name(self):
-        canonical = self.canonical_skill_md.read_text()
+    def test_both_skills_share_skill_name(self):
+        claude = self.claude_skill_md.read_text()
         codex = self.codex_skill_md.read_text()
-        assert "name: estimate" in canonical
+        assert "name: estimate" in claude
         assert "name: estimate" in codex
+
+    def test_old_flat_skill_md_removed(self):
+        assert not self.old_flat_skill_md.exists(), (
+            "skills/estimate/SKILL.md must be removed — "
+            "canonical location is skills/estimate/claude/SKILL.md"
+        )
+
+    def test_old_src_skill_md_removed(self):
+        assert not self.old_src_skill_md.exists(), (
+            "src/agent_estimate/skill/SKILL.md must be removed — "
+            "canonical location is skills/estimate/claude/SKILL.md"
+        )
+
+    def test_old_agent_skill_md_removed(self):
+        assert not self.old_agent_skill_md.exists(), (
+            ".agent/skills/estimate/SKILL.md must be removed — "
+            "canonical location is skills/estimate/codex/SKILL.md"
+        )

@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
 from typer.testing import CliRunner
 
+from agent_estimate.audit import reset_audit_logger
 from agent_estimate.cli.app import app
 from agent_estimate.cli.commands import estimate as estimate_command
 
@@ -68,6 +70,54 @@ class TestEstimateSingleTask:
         )
         assert result.exit_code == 0
         assert "My Custom Report" in result.output
+
+    def test_estimate_emits_audit_events(self, monkeypatch, tmp_path: Path) -> None:
+        audit_log = tmp_path / "audit.jsonl"
+        monkeypatch.setenv("AGENT_ESTIMATE_AUDIT_ENABLED", "1")
+        monkeypatch.setenv("AGENT_ESTIMATE_AUDIT_DESTINATION", str(audit_log))
+        monkeypatch.setenv("AGENT_ESTIMATE_AUDIT_LEVEL", "INFO")
+        reset_audit_logger()
+
+        config = str(FIXTURES / "minimal_agents.yaml")
+        result = runner.invoke(app, ["estimate", "--config", config, "Add login button"])
+
+        reset_audit_logger()
+        assert result.exit_code == 0
+        events = [
+            json.loads(line)
+            for line in audit_log.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        event_types = {event["event_type"] for event in events}
+        assert "configuration_change" in event_types
+        assert "estimation_request" in event_types
+
+        config_event = next(event for event in events if event["event_type"] == "configuration_change")
+        assert config_event["details"]["trigger"] == "cli --config"
+        assert config_event["details"]["source"] == "minimal_agents.yaml"
+        assert config_event["details"]["changed_fields"]
+
+        estimation_event = next(event for event in events if event["event_type"] == "estimation_request")
+        assert estimation_event["details"]["request"]["input_source"] == "task"
+        assert estimation_event["details"]["result"]["expected_case_minutes"] > 0
+
+    def test_estimate_with_custom_config_tolerates_missing_packaged_baseline(
+        self,
+        monkeypatch,
+    ) -> None:
+        config = str(FIXTURES / "minimal_agents.yaml")
+        calls = {"count": 0}
+
+        def fake_load_default_config():
+            calls["count"] += 1
+            raise FileNotFoundError("default_agents.yaml missing")
+
+        monkeypatch.setattr(estimate_command, "load_default_config", fake_load_default_config)
+        result = runner.invoke(app, ["estimate", "--config", config, "Add login button"])
+
+        assert calls["count"] == 1
+        assert result.exit_code == 0
+        assert "Agent Estimate Report" in result.output
 
 
 class TestEstimateModifierFlags:
@@ -229,6 +279,10 @@ class TestEstimateReviewModes:
 
     def test_review_mode_complex(self) -> None:
         result = runner.invoke(app, ["estimate", "--review-mode", "complex", "Add button"])
+        assert result.exit_code == 0
+
+    def test_review_mode_three_round(self) -> None:
+        result = runner.invoke(app, ["estimate", "--review-mode", "3-round", "Add button"])
         assert result.exit_code == 0
 
     def test_review_mode_invalid(self) -> None:

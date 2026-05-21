@@ -53,13 +53,27 @@ Parse these optional flags from user input and pass them through verbatim:
 | `--file <path>`        | `-f`  | Path to task file (one task per line)                |
 | `--config <path>`      | `-c`  | Path to config YAML with agent definitions           |
 | `--format <fmt>`       |       | Output format: `markdown` (default) or `json`        |
-| `--review-mode <mode>` |       | Review overhead tier: `none` (0 m), `standard` (15 m, default), `complex` (25 m) |
+| `--type <category>`    |       | Task category: `coding`, `brainstorm`, `research`, `config`, `documentation`, `frontend`, `app_dev`. Omit to auto-detect. |
+| `--review-mode <mode>` |       | Review overhead tier: `none` (0 m), `standard` (15 m, default), `complex` (25 m), `3-round` (35 m) |
+| `--spec-clarity <n>`   |       | Spec-clarity modifier (`0.3`–`1.3`)                  |
+| `--warm-context <n>`   |       | Warm-context modifier (`0.3`–`1.15`)                 |
+| `--agent-fit <n>`      |       | Agent-fit modifier (`0.9`–`1.2`)                     |
 | `--issues <nums>`      | `-i`  | Comma-separated GitHub issue numbers                 |
 | `--repo <owner/name>`  | `-r`  | GitHub repo (required with `--issues`)               |
 | `--title <text>`       | `-t`  | Report title                                         |
 
 If none of `--file`, `--issues`, or a task description is provided, prompt the user:
 > Please provide a task description, `--file <path>`, or `--issues <nums> --repo <owner/name>`.
+
+**Task categories** (`--type`, or auto-detected when omitted):
+
+- `coding` — feature work, bug fixes, tests, refactors (default tiered PERT model).
+- `brainstorm` — pure ideation and design exploration.
+- `research` — audits, investigations, OSS comparisons, citation/source-grounded work. Research-grounded brainstorms (citation, OSS, benchmark, source, or landscape signals) route here instead of the flat brainstorm band.
+- `config` — deploys, infra, CI/CD, runbooks, monitoring, SRE.
+- `documentation` — API docs, guides, README changes, changelogs.
+- `frontend` — UI/page work (content patches use 15/25/40; page builds use 40/60/90).
+- `app_dev` — app shells and desktop/mobile builds (cold generic L-style prior; use modifiers for warm or highly specified work).
 
 #### For `/validate-estimate`
 
@@ -138,5 +152,6 @@ modifiers:
 
 - Requires `agent-estimate` installed: `pip install agent-estimate` or `pip install -e .[dev]` in the repo.
 - Default config uses bundled `default_agents.yaml`. Pass `--config` to override agent definitions.
-- `--review-mode` defaults to `standard` (15 m additive; clean 2x-LGTM). Use `complex` for 3+ review rounds. Use `none` for self-merge workflows.
+- `--review-mode` defaults to `standard` (15 m additive; clean 2x-LGTM). Use `complex` (25 m) for involved or security-sensitive review, `3-round` (35 m) for explicit 3-round cross-agent review, or `none` for self-merge workflows.
 - JSON output is available via `--format json`.
+- METR p80 reliability thresholds back the over-threshold warnings. Current model keys: `opus_4_7` (Opus 4.7, 90 m), `gpt_5_5` (90 m), `gpt_5_4` (60 m), `gemini_3_1_pro` (45 m), `sonnet_4_6` (30 m), `haiku_4_5` (15 m). `opus_4_x` is a forward-compatible Opus alias; legacy keys (`opus_4_6`, `opus`, `gpt_5`/`5.2`/`5.3`, `gemini_3_pro`, `sonnet`) remain accepted.

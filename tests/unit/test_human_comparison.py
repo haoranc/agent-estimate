@@ -18,6 +18,8 @@ _EXPECTED_MULTIPLIERS: dict[TaskType, tuple[float, float]] = {
     TaskType.REFACTOR: (2.0, 3.5),
     TaskType.TEST: (2.5, 4.5),
     TaskType.DOCS: (3.0, 6.0),
+    TaskType.FRONTEND: (2.5, 3.5),
+    TaskType.APP_DEV: (2.5, 3.5),
     TaskType.UNKNOWN: (2.0, 4.0),
 }
 
@@ -90,6 +92,16 @@ class TestComputeHumanEquivalent:
         agent_min = 15.0
         result = compute_human_equivalent(agent_min, TaskType.DOCS)
         assert result == pytest.approx(15.0 * math.sqrt(18.0))
+
+    def test_frontend_type(self) -> None:
+        agent_min = 30.0
+        result = compute_human_equivalent(agent_min, TaskType.FRONTEND)
+        assert result == pytest.approx(30.0 * math.sqrt(8.75))
+
+    def test_app_dev_type(self) -> None:
+        agent_min = 30.0
+        result = compute_human_equivalent(agent_min, TaskType.APP_DEV)
+        assert result == pytest.approx(30.0 * math.sqrt(8.75))
 
     def test_unknown_type(self) -> None:
         agent_min = 25.0

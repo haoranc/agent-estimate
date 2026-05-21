@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 from typing import NoReturn, Optional
 
@@ -11,9 +12,10 @@ import typer
 from agent_estimate.adapters.config_loader import load_config, load_default_config
 from agent_estimate.adapters.github_adapter import GitHubAdapterError
 from agent_estimate.adapters.github_ghcli import GitHubGhCliAdapter
+from agent_estimate.audit import emit_audit_event
 from agent_estimate.cli.commands._pipeline import run_estimate_pipeline
 from agent_estimate.cli.commands.github import parse_issue_selection
-from agent_estimate.core import EstimationCategory, ReviewMode
+from agent_estimate.core import EstimationCategory, EstimationConfig, ReviewMode
 from agent_estimate.core.history import infer_warm_context
 from agent_estimate.render import render_json_report, render_markdown_report
 
@@ -34,7 +36,10 @@ def run(
     review_mode: str = typer.Option(
         "standard",
         "--review-mode",
-        help="Review overhead tier: none (0 m, self-merge), standard (15 m, 2x-LGTM), complex (25 m, 3+ rounds).",
+        help=(
+            "Review overhead tier: none (0 m), standard (15 m), complex (25 m), "
+            "3-round (35 m)."
+        ),
     ),
     issues: Optional[str] = typer.Option(
         None,
@@ -102,12 +107,17 @@ def run(
         None,
         "--type",
         help=(
-            "Task category: coding (default), brainstorm, research, config, documentation. "
-            "Auto-detected from description when not provided."
+            "Task category: coding (default), brainstorm, research, config, "
+            "documentation, frontend, app_dev. Auto-detected from description "
+            "when not provided."
         ),
     ),
 ) -> None:
     """Estimate effort for one or more task descriptions."""
+    started_at = time.perf_counter()
+    config_path = config
+    input_source = "task" if task is not None else "file" if file is not None else "issues"
+
     # --- Resolve input source (exactly one) ---
     sources = sum([task is not None, file is not None, issues is not None])
     if sources == 0:
@@ -149,16 +159,33 @@ def run(
         mode = ReviewMode(review_mode)
     except ValueError:
         _error(
-            f"Invalid review mode: {review_mode!r}. Use none, standard, or complex.", 2
+            f"Invalid review mode: {review_mode!r}. "
+            "Use none, standard, complex, or 3-round.",
+            2,
         )
 
     # --- Load config ---
     try:
-        cfg = load_config(config) if config else load_default_config()
+        cfg = load_config(config_path) if config_path else load_default_config()
     except FileNotFoundError:
-        _error(f"Config file not found: {config}", 2)
+        _error(f"Config file not found: {config_path}", 2)
     except ValueError as exc:
         _error(f"Config validation error: {exc}", 2)
+
+    baseline_cfg = cfg
+    if config_path:
+        try:
+            baseline_cfg = load_default_config()
+        except (FileNotFoundError, ValueError):
+            baseline_cfg = cfg
+    emit_audit_event(
+        "configuration_change",
+        action="config_load",
+        trigger="cli --config" if config_path else "packaged-default",
+        source=config_path.name if config_path else "default_agents.yaml",
+        changed_fields=_summarize_config_changes(cfg, baseline_cfg),
+        agent_names=[agent.name for agent in cfg.agents],
+    )
 
     # --- Infer warm context from dispatch history ---
     history_path = history_file
@@ -211,6 +238,28 @@ def run(
     except RuntimeError as exc:
         _error(f"Runtime error: {exc}", 1)
 
+    emit_audit_event(
+        "estimation_request",
+        action="estimate",
+        duration_ms=(time.perf_counter() - started_at) * 1000.0,
+        request={
+            "input_source": input_source,
+            "description_count": len(descriptions),
+            "format": format,
+            "review_mode": mode.value,
+            "task_type": estimation_category.value if estimation_category is not None else "auto",
+            "config_source": config_path.name if config_path else "default_agents.yaml",
+        },
+        result={
+            "task_count": len(report.tasks),
+            "critical_path_length": len(report.critical_path),
+            "best_case_minutes": report.timeline.best_case_minutes,
+            "expected_case_minutes": report.timeline.expected_case_minutes,
+            "worst_case_minutes": report.timeline.worst_case_minutes,
+            "review_overhead_minutes": report.review_overhead_minutes,
+        },
+    )
+
     # --- Output ---
     if format == "markdown":
         typer.echo(render_markdown_report(report))
@@ -224,3 +273,34 @@ def _error(message: str, exit_code: int) -> NoReturn:
     """Print error to stderr and exit."""
     typer.echo(f"Error: {message}", err=True)
     raise typer.Exit(code=exit_code)
+
+
+def _summarize_config_changes(
+    current: EstimationConfig,
+    baseline: EstimationConfig,
+) -> list[str]:
+    current_dump = current.model_dump()
+    baseline_dump = baseline.model_dump()
+    changed_fields: list[str] = []
+
+    current_settings = current_dump["settings"]
+    baseline_settings = baseline_dump["settings"]
+    for key, value in current_settings.items():
+        if baseline_settings.get(key) != value:
+            changed_fields.append(f"settings.{key}")
+
+    current_agents = {agent["name"]: agent for agent in current_dump["agents"]}
+    baseline_agents = {agent["name"]: agent for agent in baseline_dump["agents"]}
+    if set(current_agents) != set(baseline_agents):
+        changed_fields.append("agents")
+    else:
+        for agent_name in sorted(current_agents):
+            current_agent = current_agents[agent_name]
+            baseline_agent = baseline_agents[agent_name]
+            for field, value in current_agent.items():
+                if field == "name":
+                    continue
+                if baseline_agent.get(field) != value:
+                    changed_fields.append(f"agents.{agent_name}.{field}")
+
+    return sorted(set(changed_fields))

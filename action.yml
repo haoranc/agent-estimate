@@ -30,7 +30,7 @@ inputs:
     required: false
     default: 'Agent Estimate Report'
   review-mode:
-    description: 'Review overhead tier: none, standard, complex'
+    description: 'Review overhead tier: none, standard, complex, 3-round'
     required: false
     default: 'standard'
   spec-clarity:
@@ -46,14 +46,14 @@ inputs:
     required: false
     default: '1.0'
   task-type:
-    description: 'Task category: coding, brainstorm, research, config, documentation'
+    description: 'Task category: coding, brainstorm, research, config, documentation, frontend, app_dev'
     required: false
   python-version:
     description: 'Python version to use'
     required: false
     default: '3.12'
   version:
-    description: 'agent-estimate version to install (e.g. "0.6.1"). Omit for latest.'
+    description: 'agent-estimate version to install (e.g. "0.7.0"). Omit for latest.'
     required: false
   token:
     description: 'GitHub token for issue fetching and PR comments'

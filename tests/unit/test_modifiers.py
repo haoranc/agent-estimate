@@ -210,8 +210,12 @@ class TestComputeReviewOverhead:
         assert compute_review_overhead(ReviewMode.STANDARD) == pytest.approx(15.0)
 
     def test_complex_mode_is_twenty_five_minutes(self) -> None:
-        """3+ rounds, security-sensitive, new algorithms: 25 m overhead."""
+        """Involved/security-sensitive review: 25 m overhead."""
         assert compute_review_overhead(ReviewMode.COMPLEX) == pytest.approx(25.0)
+
+    def test_three_round_mode_is_thirty_five_minutes(self) -> None:
+        """Explicit 3-round review: 35 m overhead."""
+        assert compute_review_overhead(ReviewMode.THREE_ROUND) == pytest.approx(35.0)
 
     def test_all_review_modes_covered(self) -> None:
         for mode in ReviewMode:
@@ -245,6 +249,10 @@ class TestComputeReviewOverhead:
         mode = ReviewMode("2x-lgtm")
         assert mode is ReviewMode.STANDARD
         assert compute_review_overhead(mode) == pytest.approx(15.0)
+
+    def test_three_round_aliases_map_to_three_round(self) -> None:
+        assert ReviewMode("3-round") is ReviewMode.THREE_ROUND
+        assert ReviewMode("three_round") is ReviewMode.THREE_ROUND
 
     def test_unknown_mode_string_raises(self) -> None:
         with pytest.raises(ValueError):

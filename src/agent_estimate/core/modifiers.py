@@ -15,7 +15,8 @@ _MODIFIER_FLOOR = 0.10
 _REVIEW_OVERHEAD: dict[ReviewMode, float] = {
     ReviewMode.NONE: 0.0,      # self-merge, no cross-agent review
     ReviewMode.STANDARD: 15.0,  # clean 2x-LGTM, 1-2 rounds
-    ReviewMode.COMPLEX: 25.0,   # 3+ rounds, security-sensitive, new algorithms
+    ReviewMode.COMPLEX: 25.0,   # involved review, security-sensitive, new algorithms
+    ReviewMode.THREE_ROUND: 35.0,  # explicit 3-round cross-agent review
 }
 
 

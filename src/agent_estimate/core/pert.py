@@ -23,12 +23,16 @@ METR_THRESHOLDS_FILENAME = "metr_thresholds.yaml"
 logger = logging.getLogger("agent_estimate")
 
 _MODEL_KEY_ALIASES: dict[str, str] = {
-    # Current fleet (2026-03)
+    # Current fleet (2026-05)
+    "opus_4_x": "opus_4_x",
+    "opus_4_7": "opus_4_7",
     "opus_4_6": "opus_4_6",
-    "claude": "opus_4_6",
-    "claude_opus": "opus_4_6",
+    "claude": "opus_4_7",
+    "claude_opus": "opus_4_7",
+    "gpt_5_5": "gpt_5_5",
+    "codex": "gpt_5_5",
+    "codex_latest": "gpt_5_5",
     "gpt_5_4": "gpt_5_4",
-    "codex": "gpt_5_4",
     "production": "gpt_5_4",
     "gemini_3_1_pro": "gemini_3_1_pro",
     "gemini": "gemini_3_1_pro",
@@ -59,9 +63,9 @@ def _resolve_threshold_model_key(model_key: str, *, agent_name: str | None = Non
     if normalized_model == "frontier" and agent_name:
         normalized_agent = _normalize_model_token(agent_name)
         if "claude" in normalized_agent:
-            return "opus_4_6"
+            return "opus_4_7"
         if "codex" in normalized_agent:
-            return "gpt_5_4"
+            return "gpt_5_5"
         if "gemini" in normalized_agent:
             return "gemini_3_1_pro"
 

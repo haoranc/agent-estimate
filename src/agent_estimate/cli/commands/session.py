@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import time
 from typing import NoReturn, Optional
 
 import typer
 
+from agent_estimate.audit import emit_audit_event
 from agent_estimate.core.session import (
     DEFAULT_COORDINATION_OVERHEAD_MINUTES,
     SESSION_TYPE_DURATIONS,
@@ -59,6 +61,7 @@ def run(
     ),
 ) -> None:
     """Estimate wall-clock and agent-minutes for a multi-agent session."""
+    started_at = time.perf_counter()
     overhead = (
         coordination_overhead
         if coordination_overhead is not None
@@ -75,6 +78,23 @@ def run(
         )
     except ValueError as exc:
         _error(str(exc), 2)
+
+    emit_audit_event(
+        "estimation_request",
+        action="session_estimate",
+        duration_ms=(time.perf_counter() - started_at) * 1000.0,
+        request={
+            "agents": agents,
+            "rounds": rounds,
+            "task_type": type,
+            "format": format,
+        },
+        result={
+            "wall_clock_minutes": result.wall_clock_minutes,
+            "agent_minutes": result.agent_minutes,
+            "coordination_overhead_minutes": result.coordination_overhead_minutes,
+        },
+    )
 
     if format == "json":
         import json

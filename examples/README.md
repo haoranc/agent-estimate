@@ -30,6 +30,6 @@ These examples are drawn from a production multi-agent fleet (Claude, Codex, Gem
 | Total dispatches tracked | 190+ |
 | M-tier accuracy | Expected case within ±20% |
 | Task types covered | Coding, research, documentation, brainstorm, config |
-| Agents calibrated against | Claude Code (Opus 4.6, High thinking), Codex (GPT-5.4, Extra High thinking) |
+| Agents calibrated against | Claude Code (Opus 4.7, High thinking), Codex (GPT-5.4, Extra High thinking) |
 
 Estimates improve with calibration data. Use `agent-estimate validate` to feed your own dispatch outcomes back into the model.

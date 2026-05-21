@@ -1,0 +1,12 @@
+id: estimate
+name: Estimate
+category: estimation
+summary: PERT three-point estimation with METR reliability thresholds and wave planning for AI agent tasks.
+license: Apache-2.0
+compatible_runtimes:
+  - claude-code
+  - codex
+requires_oacp: ">=0.1.0"
+public_status: staging
+owners:
+  - kiloloop

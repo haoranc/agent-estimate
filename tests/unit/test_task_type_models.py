@@ -5,15 +5,20 @@ from __future__ import annotations
 from agent_estimate.core.models import EstimationCategory, ReviewMode
 from agent_estimate.core.modifiers import build_modifier_set
 from agent_estimate.core.task_type_models import (
+    _APP_DEV_BASELINES,
     _BRAINSTORM_BASELINES,
     _CONFIG_SRE_BASELINES,
     _DOCUMENTATION_BASELINES,
+    _FRONTEND_BUILD_BASELINES,
+    _FRONTEND_CONTENT_BASELINES,
     _RESEARCH_BASELINES_DEEP,
     _RESEARCH_BASELINES_SHALLOW,
     detect_estimation_category,
+    estimate_app_dev,
     estimate_brainstorm,
     estimate_config_sre,
     estimate_documentation,
+    estimate_frontend,
     estimate_research,
 )
 
@@ -36,6 +41,12 @@ class TestDetectEstimationCategory:
     # Brainstorm
     def test_brainstorm_keyword(self) -> None:
         assert detect_estimation_category("Brainstorm ideas for the new dashboard") == EstimationCategory.BRAINSTORM
+
+    def test_research_grounded_brainstorm_routes_to_research(self) -> None:
+        assert (
+            detect_estimation_category("Brainstorm OSS options with citations")
+            == EstimationCategory.RESEARCH
+        )
 
     def test_spike_keyword(self) -> None:
         assert detect_estimation_category("Spike: explore auth options") == EstimationCategory.BRAINSTORM
@@ -86,6 +97,16 @@ class TestDetectEstimationCategory:
 
     def test_cicd_keyword(self) -> None:
         assert detect_estimation_category("CI/CD pipeline for frontend") == EstimationCategory.CONFIG_SRE
+
+    # Frontend / app-dev
+    def test_frontend_keyword(self) -> None:
+        assert detect_estimation_category("Build a new frontend dashboard page") == EstimationCategory.FRONTEND
+
+    def test_frontend_content_keyword(self) -> None:
+        assert detect_estimation_category("Update MDX SEO snippet") == EstimationCategory.FRONTEND
+
+    def test_app_dev_keyword(self) -> None:
+        assert detect_estimation_category("Build an Electron desktop app shell") == EstimationCategory.APP_DEV
 
     # Documentation
     def test_documentation_keyword(self) -> None:
@@ -288,6 +309,66 @@ class TestEstimateDocumentation:
 
 
 # ---------------------------------------------------------------------------
+# estimate_frontend
+# ---------------------------------------------------------------------------
+
+
+class TestEstimateFrontend:
+    def setup_method(self) -> None:
+        self.modifiers = build_modifier_set()
+
+    def test_returns_frontend_category(self) -> None:
+        est = estimate_frontend("Build a landing page", self.modifiers)
+        assert est.estimation_category == EstimationCategory.FRONTEND
+
+    def test_content_work_uses_content_baselines(self) -> None:
+        est = estimate_frontend("Update MDX content and SEO snippet", self.modifiers)
+        o, m, p = _FRONTEND_CONTENT_BASELINES
+        assert est.sizing.baseline_optimistic == o
+        assert est.sizing.baseline_most_likely == m
+        assert est.sizing.baseline_pessimistic == p
+        assert "frontend-content-model" in est.sizing.signals
+
+    def test_build_work_uses_build_baselines(self) -> None:
+        est = estimate_frontend("Build a new landing page", self.modifiers)
+        o, m, p = _FRONTEND_BUILD_BASELINES
+        assert est.sizing.baseline_optimistic == o
+        assert est.sizing.baseline_most_likely == m
+        assert est.sizing.baseline_pessimistic == p
+        assert "frontend-build-model" in est.sizing.signals
+
+    def test_review_mode_applied(self) -> None:
+        est = estimate_frontend(
+            "Build a landing page",
+            self.modifiers,
+            review_mode=ReviewMode.THREE_ROUND,
+        )
+        assert est.review_minutes == 35.0
+
+
+# ---------------------------------------------------------------------------
+# estimate_app_dev
+# ---------------------------------------------------------------------------
+
+
+class TestEstimateAppDev:
+    def setup_method(self) -> None:
+        self.modifiers = build_modifier_set()
+
+    def test_returns_app_dev_category(self) -> None:
+        est = estimate_app_dev("Build a mac app shell", self.modifiers)
+        assert est.estimation_category == EstimationCategory.APP_DEV
+
+    def test_uses_generic_l_baselines(self) -> None:
+        est = estimate_app_dev("Build an Electron app", self.modifiers)
+        o, m, p = _APP_DEV_BASELINES
+        assert est.sizing.baseline_optimistic == o
+        assert est.sizing.baseline_most_likely == m
+        assert est.sizing.baseline_pessimistic == p
+        assert "app-dev-generic-l-model" in est.sizing.signals
+
+
+# ---------------------------------------------------------------------------
 # Pipeline integration: --type flag routes correctly
 # ---------------------------------------------------------------------------
 
@@ -298,8 +379,10 @@ class TestPipelineRouting:
     def setup_method(self) -> None:
         from agent_estimate.core.task_type_models import (
             _BRAINSTORM_BASELINES,
+            _APP_DEV_BASELINES,
             _CONFIG_SRE_BASELINES,
             _DOCUMENTATION_BASELINES,
+            _FRONTEND_BUILD_BASELINES,
             _RESEARCH_BASELINES_SHALLOW,
         )
         from agent_estimate.core.sizing import TIER_BASELINES, SizeTier
@@ -308,6 +391,8 @@ class TestPipelineRouting:
         self.research_m = _RESEARCH_BASELINES_SHALLOW[1]
         self.config_m = _CONFIG_SRE_BASELINES[1]
         self.doc_m = _DOCUMENTATION_BASELINES[1]
+        self.frontend_build_m = _FRONTEND_BUILD_BASELINES[1]
+        self.app_dev_m = _APP_DEV_BASELINES[1]
         # Coding M baseline
         self.coding_m = TIER_BASELINES[SizeTier.M][1]
 
@@ -364,6 +449,16 @@ class TestPipelineRouting:
         assert report.tasks[0].estimation_category == EstimationCategory.DOCUMENTATION
         assert report.tasks[0].base_pert_most_likely_minutes == self.doc_m
 
+    def test_frontend_category_produces_frontend_model(self) -> None:
+        report = self._run_pipeline("Build a landing page", EstimationCategory.FRONTEND)
+        assert report.tasks[0].estimation_category == EstimationCategory.FRONTEND
+        assert report.tasks[0].base_pert_most_likely_minutes == self.frontend_build_m
+
+    def test_app_dev_category_produces_app_dev_model(self) -> None:
+        report = self._run_pipeline("Build a desktop app", EstimationCategory.APP_DEV)
+        assert report.tasks[0].estimation_category == EstimationCategory.APP_DEV
+        assert report.tasks[0].base_pert_most_likely_minutes == self.app_dev_m
+
     def test_coding_category_uses_pert_tier_model(self) -> None:
         report = self._run_pipeline("Do some work", EstimationCategory.CODING)
         assert report.tasks[0].estimation_category == EstimationCategory.CODING
@@ -377,6 +472,18 @@ class TestPipelineRouting:
     def test_auto_detection_research(self) -> None:
         report = self._run_pipeline("Research caching solutions", None)
         assert report.tasks[0].estimation_category == EstimationCategory.RESEARCH
+
+    def test_auto_detection_research_grounded_brainstorm(self) -> None:
+        report = self._run_pipeline("Brainstorm OSS options with citations", None)
+        assert report.tasks[0].estimation_category == EstimationCategory.RESEARCH
+
+    def test_auto_detection_frontend(self) -> None:
+        report = self._run_pipeline("Build a frontend page", None)
+        assert report.tasks[0].estimation_category == EstimationCategory.FRONTEND
+
+    def test_auto_detection_app_dev(self) -> None:
+        report = self._run_pipeline("Build an Electron app shell", None)
+        assert report.tasks[0].estimation_category == EstimationCategory.APP_DEV
 
     def test_auto_detection_coding_default(self) -> None:
         report = self._run_pipeline("Fix the authentication bug", None)

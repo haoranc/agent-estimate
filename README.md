@@ -5,81 +5,127 @@
 [![License](https://img.shields.io/pypi/l/agent-estimate)](https://github.com/kiloloop/agent-estimate/blob/main/LICENSE)
 [![CI](https://github.com/kiloloop/agent-estimate/actions/workflows/ci.yml/badge.svg)](https://github.com/kiloloop/agent-estimate/actions/workflows/ci.yml)
 
-**Know what an AI task will cost before you run it.**
+**Know before you build.**
 
-`agent-estimate` tells you how long an AI agent will take — and how that compares to doing it yourself.
+PERT estimates for AI-agent tasks — how long, which model's reliable enough, and the human-equivalent cost. In one command.
 
-```
-$ agent-estimate estimate "Implement OAuth 2.0 flow (Google + GitHub)"
-```
+**[Website](https://kiloloop.com/agent-estimate/)** · [Compare](https://kiloloop.com/agent-estimate/compare/) · [PyPI](https://pypi.org/project/agent-estimate/)
 
-| Metric | Value |
-| --- | --- |
-| Expected case | 75.4m |
-| Human-speed equivalent | 190.9m |
-| **Compression ratio** | **2.53x** |
+## Why
 
-One command. Three numbers. Now you know whether to dispatch an agent or do it yourself.
+AI agents can write the code — but *how long will the task actually take?* Manual estimation is slow and biased toward optimism; no estimate means scope creep and missed deadlines. The gap between "agents can do it" and "we know when it'll be done" is where projects break down.
 
-## See it in action
+`agent-estimate` closes that gap in one command: a three-point PERT timeline calibrated on real agent runs, plus a human-speed comparison so you see the compression before you spend the compute. It sizes the task, picks a tier, routes it to a model, and flags when the work runs past that model's reliability horizon — calibrated forecasts in seconds, not meetings.
 
-### Single task — coding
+Multi-model matters because the models aren't interchangeable. Opus 4.7, GPT-5.5, and Gemini 3.1 have different reliability horizons ([METR p80](https://metr.org/)) and different costs per turn. A safe 40-minute job for one model is a coin flip for another. agent-estimate models the whole fleet, not a single agent — so the number reflects who actually runs the work.
+
+## Quick Start
+
+> First estimate: 30 seconds to install. Every one after: instant.
+
+### With your agent (recommended)
+
+Paste this into your Claude Code or Codex session:
+
+~~~
+Install the agent-estimate plugin (https://github.com/kiloloop/agent-estimate) and
+estimate this task for me: "Implement OAuth 2.0 flow (Google + GitHub)". Tell me the
+expected time, the human-speed equivalent, and the compression ratio.
+~~~
+
+Your agent installs the tool, runs the estimate, and reads back the numbers. Nothing to memorize — describe the task in plain English and let the agent translate to flags.
+
+For a whole backlog:
+
+~~~
+Estimate every open issue in this repo with agent-estimate, group them into parallel
+waves, and tell me the total wall-clock time for a 3-agent fleet versus doing them
+sequentially myself.
+~~~
+
+### Manual
 
 ```bash
-$ agent-estimate estimate "Implement OAuth 2.0 flow (Google + GitHub)"
+pip install agent-estimate
+agent-estimate estimate "your task description here"
 ```
 
-| Metric | Value |
-| --- | --- |
-| Task | Implement OAuth 2.0 flow (Google + GitHub) |
-| Tier / Agent | M / Claude |
-| Base PERT (O/M/P) | 25m / 50m / 90m (E=52.5m) |
-| Best case | 44.7m |
-| Expected case | 75.4m |
-| Worst case | 117.2m |
-| Human-speed equivalent | 190.9m |
-| **Compression ratio** | **2.53x** |
-| Review overhead | +15m (standard) |
-| Estimated cost | $1.45 |
-
-A medium coding task. Your agent finishes in ~75 minutes. Doing it yourself? ~3 hours. ([Full output](./examples/coding-m.md))
-
-### Single task — research
+No config required — sensible defaults for a 3-agent fleet (Claude, Codex, Gemini). Point it at a file or GitHub issues when you're ready:
 
 ```bash
-$ agent-estimate estimate "Audit dependencies for known CVEs" --type research
+agent-estimate estimate --file tasks.txt
+agent-estimate estimate --repo myorg/myrepo --issues 11,12,14
 ```
 
-| Metric | Value |
-| --- | --- |
-| Task | Audit dependencies for known CVEs |
-| Tier / Agent | S / Claude |
-| Base PERT (O/M/P) | 10m / 20m / 30m (E=20m) |
-| Expected case | 38m |
-| Human-speed equivalent | 99m |
-| **Compression ratio** | **2.61x** |
-| Estimated cost | $0.55 |
+## How It Works
 
-Research tasks have high human-multipliers — pattern matching across hundreds of dependencies is exactly where agents shine. ([Full output](./examples/research.md))
+agent-estimate produces three-point [PERT](https://en.wikipedia.org/wiki/Program_evaluation_and_review_technique) estimates calibrated for agents, not humans:
 
-### Multi-agent session — 3 tasks in parallel
+- **Tier classification** — auto-sizes tasks XS→XL from complexity signals
+- **PERT math** — optimistic / most-likely / pessimistic, weighted to an expected value
+- **Human comparison** — a per-task-type multiplier, so you see the compression
+- **METR thresholds** — warns when an estimate exceeds a model's p80 reliability horizon
+- **Wave planning** — schedules independent tasks in parallel across the fleet
+- **Review overhead** — models review cycles as additive cost (`standard`, `complex`, `3-round`)
+- **Modifiers** — `--spec-clarity`, `--warm-context`, `--agent-fit` tune the estimate
+
+### Task types
+
+| Type | Flag | Models |
+|------|------|--------|
+| Coding | (default) | Feature work, fixes, refactors |
+| Research | `--type research` | Audits, investigations, analysis |
+| Documentation | `--type documentation` | API docs, guides, changelogs |
+| Brainstorm | `--type brainstorm` | Ideation, spikes, design exploration |
+| Config/SRE | `--type config` | Deploys, infra, CI/CD |
+| Frontend/UI | `--type frontend` | Content patches vs. component builds |
+| App dev | `--type app_dev` | App shells, desktop/mobile builds |
+
+### METR thresholds (defaults)
+
+| Model | p80 threshold |
+|-------|---------------|
+| Opus 4.7 | 90 min |
+| GPT-5.5 | 90 min |
+| GPT-5.4 | 60 min |
+| Gemini 3.1 Pro | 45 min |
+| Sonnet 4.6 | 30 min |
+| Haiku 4.5 | 15 min |
+
+`opus_4_x` is a forward-compatible alias that resolves to the current Opus threshold. Legacy keys (`opus_4_6`, GPT-5/5.2/5.3, Gemini 3 Pro, Sonnet) stay supported. Estimates are calibrated against Claude Code (Opus 4.7, high thinking) and Codex (GPT-5.4/5.5, extra-high) — shift with `--spec-clarity` and `--warm-context` for other setups.
+
+## Examples
+
+Real estimates from production use — including the misses.
+
+**The tool, estimating its own docs.** We sized this v0.7.0 skill-and-README refresh at ~30 minutes. It took 28.
+
+**An honest over-estimate.** We pre-registered a UI mockup build at ~95 minutes with no prior app-dev data. Two agents did it in parallel in 12 and 25 minutes — a 4–8x over-estimate. agent-estimate now ships an `app_dev` prior shaped by that result. The miss stays in the README because calibration means showing where you were wrong.
+
+**Two tasks, one model** — what the tool prints, including the METR reliability flag:
+
+```text
+$ agent-estimate estimate "Implement auth" "Add tests" --model opus
+
+Task             Tier   PERT (O/M/P)    Expected   Human-eq
+───────────────────────────────────────────────────────────
+Implement auth   M      25/50/90m       57.8m      160m
+Add tests        S      12/23/40m       24.0m       75m
+
+Timeline ──────────────────────────────
+  best 37m   ·   expected 81.8m   ·   worst 130m
+  human-equivalent: 235m  →  2.87× compression
+
+  ⚠ METR warning: "Implement auth" exceeds Opus p80
+```
+
+~82 minutes expected versus ~4 hours by hand — plus a flag that the auth task runs past Opus's p80 reliability horizon, so you split it or add a checkpoint before dispatching.
+
+**Three tasks, three agents, in parallel:**
 
 ```bash
 $ agent-estimate estimate --file tasks.txt
 ```
-
-Where `tasks.txt` contains:
-```
-Implement OAuth 2.0 flow (Google + GitHub)
-Write unit tests for OAuth flow
-Write API reference for auth module
-```
-
-| Task | Tier | Agent | Expected | Human Equiv |
-| --- | --- | --- | --- | --- |
-| Implement OAuth 2.0 flow | M | Codex | 52.5m | 190.9m |
-| Write unit tests for OAuth flow | M | Gemini | 52.5m | 190.9m |
-| Write API reference for auth module | L | Claude | 100.8m | 327.6m |
 
 | Metric | Value |
 | --- | --- |
@@ -89,54 +135,16 @@ Write API reference for auth module
 | **Compression ratio** | **5.42x** |
 | Estimated cost | $4.84 |
 
-Three agents working in parallel. ~2 hours wall clock vs ~12 hours sequential human work. That's the power of fleet estimation — you see the compression before you commit the compute. ([Full output](./examples/multi-agent.md))
-
-> More examples in [`examples/`](./examples/) — coding S/M, research, documentation, and multi-agent sessions.
-
-## Try it now
-
-```bash
-pip install agent-estimate
-```
-
-```bash
-agent-estimate estimate "your task description here"
-```
-
-That's it. No config needed — sensible defaults for a 3-agent fleet (Claude, Codex, Gemini).
-
-## What it does
-
-`agent-estimate` produces three-point [PERT](https://en.wikipedia.org/wiki/Program_evaluation_and_review_technique) estimates calibrated for AI agents, not humans:
-
-- **Tier classification** — auto-sizes tasks as XS/S/M/L/XL based on complexity signals
-- **PERT math** — optimistic, most-likely, pessimistic with weighted expected value
-- **Human comparison** — multiplier per task type (coding, research, docs) so you see the compression
-- **METR thresholds** — warns when estimates exceed model reliability limits ([METR p80 benchmarks](https://metr.org/))
-- **Wave planning** — dependency-aware scheduling across multiple agents with parallelism
-- **Review overhead** — models review cycles as flat additive cost, amortized per agent per wave
-- **Modifiers** — tune estimates with `--spec-clarity`, `--warm-context`, `--agent-fit`
-
-### Supported task types
-
-| Type | Flag | What it models |
-|------|------|---------------|
-| Coding | (default) | Feature work, bug fixes, refactors — tier-based PERT |
-| Research | `--type research` | Audits, investigations, analysis — flat PERT with depth scaling |
-| Documentation | `--type documentation` | API docs, guides, changelogs |
-| Brainstorm | `--type brainstorm` | Ideation, spikes, design exploration |
-| Config/SRE | `--type config` | Deploys, infra changes, CI/CD work |
+~2 hours wall-clock versus ~12 hours sequential. You see the compression before you commit the compute. More in [`examples/`](./examples/) — coding S/M, research, documentation, multi-agent.
 
 ## Integrations
 
-### Claude Code Plugin
+### Claude Code plugin
 
 ```
 /plugin marketplace add kiloloop/agent-estimate
 /plugin install agent-estimate@agent-estimate-marketplace
 ```
-
-Then use directly in Claude Code sessions:
 
 ```
 /estimate Add a login page with OAuth
@@ -191,11 +199,11 @@ jobs:
 | `output-mode` | no | `summary` | `summary`, `pr-comment`, `step-output`, `summary+pr-comment` |
 | `config` | no | — | Path to agent config YAML |
 | `title` | no | `Agent Estimate Report` | Report title |
-| `review-mode` | no | `standard` | Review tier: `none`, `standard`, `complex` |
-| `spec-clarity` | no | `1.0` | Spec clarity modifier (0.3-1.3) |
-| `warm-context` | no | `1.0` | Warm context modifier (0.3-1.15) |
-| `agent-fit` | no | `1.0` | Agent fit modifier (0.9-1.2) |
-| `task-type` | no | — | Task category: `coding`, `brainstorm`, `research`, `config`, `documentation` |
+| `review-mode` | no | `standard` | Review tier: `none`, `standard`, `complex`, `3-round` |
+| `spec-clarity` | no | `1.0` | Spec clarity modifier (0.3–1.3) |
+| `warm-context` | no | `1.0` | Warm context modifier (0.3–1.15) |
+| `agent-fit` | no | `1.0` | Agent fit modifier (0.9–1.2) |
+| `task-type` | no | — | Category: `coding`, `brainstorm`, `research`, `config`, `documentation`, `frontend`, `app_dev` |
 | `python-version` | no | `3.12` | Python version to use |
 | `version` | no | latest | `agent-estimate` version to install |
 | `token` | no | `${{ github.token }}` | GitHub token |
@@ -207,15 +215,26 @@ jobs:
 
 </details>
 
-### Codex Skill
+### Skill layout
 
-Codex-specific skill at `.agent/skills/estimate/SKILL.md`. Claude plugin skill at `skills/estimate/SKILL.md`.
+Skills follow the [oacp-skills](https://github.com/kiloloop/oacp-skills) convention:
+
+```
+skills/estimate/
+  skill.yaml            # machine-readable metadata
+  README.md             # human-readable docs
+  shared/INTENT.md      # shared intent across runtimes
+  claude/SKILL.md       # Claude Code skill definition
+  codex/SKILL.md        # Codex skill definition
+```
+
+Both runtime slices cover the same CLI (`estimate`, `validate`, `calibrate`), phrased for their respective ecosystems.
 
 ## Configuration
 
 ### Agent fleet
 
-Pass a custom config to model your own agent fleet:
+Pass a config to model your own fleet:
 
 ```yaml
 agents:
@@ -240,26 +259,12 @@ settings:
 agent-estimate estimate "Ship packaging flow" --config ./my_agents.yaml
 ```
 
-### Default METR thresholds
-
-| Model          | p80 threshold |
-| -------------- | ------------- |
-| Opus 4.6       | 90 minutes    |
-| GPT-5.4        | 60 minutes    |
-| Gemini 3.1 Pro | 45 minutes    |
-| Sonnet 4.6     | 30 minutes    |
-| Haiku 4.5      | 15 minutes    |
-
-Legacy model keys (Opus, GPT-5/5.2/5.3, Gemini 3 Pro, Sonnet) are still supported for backward compatibility.
-
-> **Note:** Estimates are calibrated against Claude Code (Opus 4.6, High thinking) and Codex (GPT-5.4, Extra High thinking). Different thinking levels or model versions may shift estimates — adjust with `--spec-clarity` and `--warm-context` modifiers as needed.
-
 ### Output formats
 
 ```bash
-agent-estimate estimate "Refactor auth pipeline" --format json    # machine-readable
-agent-estimate estimate --repo myorg/myrepo --issues 11,12,14     # from GitHub issues
-agent-estimate estimate --file tasks.txt                           # from file
+agent-estimate estimate "Refactor auth pipeline" --format json   # machine-readable
+agent-estimate estimate --repo myorg/myrepo --issues 11,12,14    # from GitHub issues
+agent-estimate estimate --file tasks.txt                          # from file
 ```
 
 ### Calibration
@@ -270,13 +275,16 @@ Validate estimates against observed outcomes and build a calibration database:
 agent-estimate validate observation.yaml --db ~/.agent-estimate/calibration.db
 ```
 
-## Related
+## Project
 
-**[OACP](https://github.com/kiloloop/oacp)** — Coordinate the agents you just estimated. Open Agent Coordination Protocol for multi-agent async workflows.
+- **[Website](https://kiloloop.com/agent-estimate/)** — landing page, live demo, and the [estimate comparison view](https://kiloloop.com/agent-estimate/compare/).
+- **[OACP](https://github.com/kiloloop/oacp)** — coordinate the agents you just estimated. Open Agent Coordination Protocol for multi-agent async workflows.
+- **[oacp-skills](https://github.com/kiloloop/oacp-skills)** — the skill bundle agent-estimate's `/estimate` ships in.
+- **[kiloloop](https://github.com/kiloloop)** — the rest of the ecosystem.
 
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for full workflow and expectations.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full workflow.
 
 ```bash
 pip install -e '.[dev]'

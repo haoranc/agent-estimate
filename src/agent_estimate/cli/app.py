@@ -5,6 +5,7 @@ from typing import Optional
 
 import typer
 
+from agent_estimate.audit import configure_audit_logger
 from agent_estimate.cli.commands.calibrate import run as run_calibrate
 from agent_estimate.cli.commands.estimate import run as run_estimate
 from agent_estimate.cli.commands.session import run as run_session
@@ -38,6 +39,7 @@ def _global_options(
     ),
 ) -> None:
     """Global options for agent-estimate."""
+    configure_audit_logger()
     if verbose:
         logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s", force=True)
 

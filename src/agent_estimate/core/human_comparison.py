@@ -15,6 +15,8 @@ _HUMAN_MULTIPLIERS: dict[TaskType, tuple[float, float]] = {
     TaskType.REFACTOR: (2.0, 3.5),
     TaskType.TEST: (2.5, 4.5),
     TaskType.DOCS: (3.0, 6.0),
+    TaskType.FRONTEND: (2.5, 3.5),
+    TaskType.APP_DEV: (2.5, 3.5),
     TaskType.UNKNOWN: (2.0, 4.0),
 }
 

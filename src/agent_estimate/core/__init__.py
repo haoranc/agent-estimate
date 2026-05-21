@@ -35,9 +35,11 @@ from agent_estimate.core.pert import (
 from agent_estimate.core.sizing import TierCorrection, auto_correct_tier, classify_task
 from agent_estimate.core.task_type_models import (
     detect_estimation_category,
+    estimate_app_dev,
     estimate_brainstorm,
     estimate_config_sre,
     estimate_documentation,
+    estimate_frontend,
     estimate_research,
 )
 from agent_estimate.core.wave_planner import plan_waves
@@ -71,9 +73,11 @@ __all__ = [
     "compute_pert",
     "compute_review_overhead",
     "detect_estimation_category",
+    "estimate_app_dev",
     "estimate_brainstorm",
     "estimate_config_sre",
     "estimate_documentation",
+    "estimate_frontend",
     "estimate_research",
     "estimate_task",
     "get_human_multiplier",
