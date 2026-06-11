@@ -406,15 +406,24 @@ def _validate_observation(observation: ObservationInput) -> None:
 
 def _normalize_timestamp(value: str | None) -> str:
     if value is None:
-        return datetime.now(timezone.utc).isoformat(timespec="seconds")
-    return value
+        dt = datetime.now(timezone.utc)
+    else:
+        dt = _parse_iso_timestamp(value)
+    return dt.isoformat(timespec="seconds")
 
 
 def _week_start(timestamp: str) -> str:
-    normalized = timestamp.replace("Z", "+00:00")
-    dt = datetime.fromisoformat(normalized)
+    dt = _parse_iso_timestamp(timestamp)
     monday = (dt - timedelta(days=dt.weekday())).date()
     return monday.isoformat()
+
+
+def _parse_iso_timestamp(value: str) -> datetime:
+    normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
+    dt = datetime.fromisoformat(normalized)
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 def _percentile(values: list[float], percent: float) -> float:

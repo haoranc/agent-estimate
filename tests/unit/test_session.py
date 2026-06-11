@@ -7,6 +7,7 @@ import json
 import pytest
 from typer.testing import CliRunner
 
+from agent_estimate.audit import reset_audit_logger
 from agent_estimate.cli.app import app
 from agent_estimate.core.session import (
     DEFAULT_COORDINATION_OVERHEAD_MINUTES,
@@ -267,6 +268,23 @@ class TestSessionCLIErrors:
     def test_unknown_format(self) -> None:
         result = runner.invoke(app, ["session", "--format", "xml"])
         assert result.exit_code != 0
+
+    def test_unknown_format_does_not_emit_estimation_audit(
+        self,
+        monkeypatch,
+        tmp_path,
+    ) -> None:
+        audit_log = tmp_path / "audit.jsonl"
+        monkeypatch.setenv("AGENT_ESTIMATE_AUDIT_ENABLED", "1")
+        monkeypatch.setenv("AGENT_ESTIMATE_AUDIT_DESTINATION", str(audit_log))
+        monkeypatch.setenv("AGENT_ESTIMATE_AUDIT_LEVEL", "INFO")
+        reset_audit_logger()
+
+        result = runner.invoke(app, ["session", "--format", "xml"])
+
+        reset_audit_logger()
+        assert result.exit_code != 0
+        assert not audit_log.exists()
 
     def test_unknown_task_type(self) -> None:
         result = runner.invoke(app, ["session", "--type", "unknown_xyz"])

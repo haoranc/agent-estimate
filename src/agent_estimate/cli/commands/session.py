@@ -8,6 +8,7 @@ from typing import NoReturn, Optional
 import typer
 
 from agent_estimate.audit import emit_audit_event
+from agent_estimate.cli.commands._utils import validate_output_format
 from agent_estimate.core.session import (
     DEFAULT_COORDINATION_OVERHEAD_MINUTES,
     SESSION_TYPE_DURATIONS,
@@ -62,6 +63,7 @@ def run(
 ) -> None:
     """Estimate wall-clock and agent-minutes for a multi-agent session."""
     started_at = time.perf_counter()
+    validate_output_format(format)
     overhead = (
         coordination_overhead
         if coordination_overhead is not None
@@ -110,10 +112,8 @@ def run(
             "rounds_breakdown": list(result.rounds_breakdown),
         }
         typer.echo(json.dumps(data, indent=2), nl=False)
-    elif format == "markdown":
-        _render_markdown(result)
     else:
-        _error(f"Unknown format: {format!r}. Use markdown or json.", 2)
+        _render_markdown(result)
 
 
 # ---------------------------------------------------------------------------
@@ -156,3 +156,4 @@ def _render_markdown(result: SessionEstimate) -> None:
 def _error(message: str, exit_code: int) -> NoReturn:
     typer.echo(f"Error: {message}", err=True)
     raise typer.Exit(code=exit_code)
+

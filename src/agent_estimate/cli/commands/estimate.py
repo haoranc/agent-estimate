@@ -14,6 +14,7 @@ from agent_estimate.adapters.github_adapter import GitHubAdapterError
 from agent_estimate.adapters.github_ghcli import GitHubGhCliAdapter
 from agent_estimate.audit import emit_audit_event
 from agent_estimate.cli.commands._pipeline import run_estimate_pipeline
+from agent_estimate.cli.commands._utils import validate_output_format
 from agent_estimate.cli.commands.github import parse_issue_selection
 from agent_estimate.core import EstimationCategory, EstimationConfig, ReviewMode
 from agent_estimate.core.history import infer_warm_context
@@ -58,10 +59,13 @@ def run(
         "--spec-clarity",
         help="Spec clarity modifier (range: 0.3 to 1.3; lower means clearer spec).",
     ),
-    warm_context: float = typer.Option(
-        1.0,
+    warm_context: Optional[float] = typer.Option(
+        None,
         "--warm-context",
-        help="Warm context modifier (range: 0.3 to 1.15; lower means warmer context).",
+        help=(
+            "Warm context modifier (range: 0.3 to 1.15; lower means warmer context). "
+            "When omitted, auto-infers from --history-file or ./data.json when present."
+        ),
     ),
     agent_fit: float = typer.Option(
         1.0,
@@ -124,6 +128,7 @@ def run(
         _error("Provide a task description, --file, or --issues.", 2)
     if sources > 1:
         _error("Provide only one input source: task argument, --file, or --issues.", 2)
+    validate_output_format(format)
 
     descriptions: list[str] = []
 
@@ -197,10 +202,10 @@ def run(
     warm_ctx = infer_warm_context(
         history_path, agent=history_agent, project=history_project
     )
-    # Auto-inferred warm_context applies when --warm-context wasn't explicitly set
-    effective_warm_context = warm_context
+    # Auto-inferred warm_context applies only when --warm-context was omitted.
+    effective_warm_context = 1.0 if warm_context is None else warm_context
     effective_detail: str | None = None
-    if warm_ctx.value != 1.0 and warm_context == 1.0:
+    if warm_ctx.value != 1.0 and warm_context is None:
         effective_warm_context = warm_ctx.value
         effective_detail = warm_ctx.detail
         logger.info(
@@ -263,10 +268,8 @@ def run(
     # --- Output ---
     if format == "markdown":
         typer.echo(render_markdown_report(report))
-    elif format == "json":
-        typer.echo(render_json_report(report), nl=False)
     else:
-        _error(f"Unknown format: {format!r}. Use markdown or json.", 2)
+        typer.echo(render_json_report(report), nl=False)
 
 
 def _error(message: str, exit_code: int) -> NoReturn:

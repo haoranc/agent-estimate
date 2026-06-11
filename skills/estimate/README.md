@@ -35,8 +35,8 @@ cp skills/estimate/codex/SKILL.md .codex/skills/estimate/SKILL.md
 /estimate Add a login page with OAuth
 /estimate --file tasks.md
 /estimate --issues 1,2,3 --repo myorg/myrepo
-/validate-estimate observation.yaml
-/calibrate
+/estimate validate observation.yaml
+/estimate calibrate
 
 # Codex
 # Invoke via AGENTS.md task dispatch or direct skill reference

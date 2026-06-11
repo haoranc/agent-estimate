@@ -328,6 +328,47 @@ class TestEstimateFormat:
         assert result.exit_code != 0
         assert "Unknown format" in result.output
 
+    def test_format_unknown_does_not_emit_estimation_audit(
+        self,
+        monkeypatch,
+        tmp_path: Path,
+    ) -> None:
+        audit_log = tmp_path / "audit.jsonl"
+        monkeypatch.setenv("AGENT_ESTIMATE_AUDIT_ENABLED", "1")
+        monkeypatch.setenv("AGENT_ESTIMATE_AUDIT_DESTINATION", str(audit_log))
+        monkeypatch.setenv("AGENT_ESTIMATE_AUDIT_LEVEL", "INFO")
+        reset_audit_logger()
+
+        result = runner.invoke(app, ["estimate", "--format", "xml", "Add button"])
+
+        reset_audit_logger()
+        assert result.exit_code != 0
+        assert not audit_log.exists()
+
+    def test_format_unknown_with_issues_does_not_fetch_github(self, monkeypatch) -> None:
+        class _FailingGitHubAdapter:
+            def fetch_task_descriptions_by_numbers(
+                self, repo: str, issue_numbers: list[int]
+            ) -> list[str]:
+                raise AssertionError("GitHub fetch should not run for invalid format")
+
+        monkeypatch.setattr(estimate_command, "GitHubGhCliAdapter", _FailingGitHubAdapter)
+        result = runner.invoke(
+            app,
+            [
+                "estimate",
+                "--issues",
+                "11",
+                "--repo",
+                "kiloloop/agent-estimate",
+                "--format",
+                "xml",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "Unknown format" in result.output
+
 
 # ---------------------------------------------------------------------------
 # Estimate — error cases
@@ -500,6 +541,37 @@ class TestEstimateHistoryFile:
                 "Add a button",
             ],
         )
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        task = data["tasks"][0]
+        assert task["modifiers"]["warm_context"] == 1.0
+
+    def test_explicit_warm_context_10_overrides_default_data_json(
+        self,
+        tmp_path: Path,
+        monkeypatch,
+    ) -> None:
+        import json
+        from datetime import datetime, timedelta, timezone
+
+        monkeypatch.chdir(tmp_path)
+        recent = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+        Path("data.json").write_text(
+            json.dumps(
+                {
+                    "dispatches": [
+                        {"agent": "codex", "project": "proj", "completed_at": recent}
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        result = runner.invoke(
+            app,
+            ["estimate", "--warm-context", "1.0", "--format", "json", "Add a button"],
+        )
+
         assert result.exit_code == 0
         data = json.loads(result.output)
         task = data["tasks"][0]

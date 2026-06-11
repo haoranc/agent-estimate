@@ -110,6 +110,43 @@ class TestValidateObservationNegativeValues:
         assert obs_id > 0
 
 
+class TestTimestampNormalization:
+    def test_equivalent_instants_share_utc_week_start(
+        self,
+        store: SQLiteCalibrationStore,
+    ) -> None:
+        store.insert_observation(
+            _observation(observed_at="2026-03-01T22:30:00+00:00")
+        )
+        store.insert_observation(
+            _observation(observed_at="2026-03-02T00:30:00+02:00")
+        )
+
+        rows = store._query_observations()
+
+        assert {row["observed_at"] for row in rows} == {"2026-03-01T22:30:00+00:00"}
+        assert {row["week_start"] for row in rows} == {"2026-02-23"}
+
+    def test_observations_order_chronologically_after_utc_normalization(
+        self,
+        store: SQLiteCalibrationStore,
+    ) -> None:
+        later_id = store.insert_observation(
+            _observation(observed_at="2026-03-02T20:00:00+00:00")
+        )
+        earlier_id = store.insert_observation(
+            _observation(observed_at="2026-03-02T23:00:00+05:00")
+        )
+
+        rows = store._query_observations()
+
+        assert [row["id"] for row in rows] == [earlier_id, later_id]
+        assert [row["observed_at"] for row in rows] == [
+            "2026-03-02T18:00:00+00:00",
+            "2026-03-02T20:00:00+00:00",
+        ]
+
+
 # ---------------------------------------------------------------------------
 # _percentile edge cases
 # ---------------------------------------------------------------------------

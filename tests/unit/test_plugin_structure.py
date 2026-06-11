@@ -40,6 +40,27 @@ class TestPluginManifest:
             f"version.py ({__version__})"
         )
 
+    def test_plugin_json_skills_paths_resolve(self):
+        """Every plugin.json 'skills' entry must contain a SKILL.md (#29).
+
+        The v0.7.0 restructure moved SKILL.md out of the default
+        skills/<name>/SKILL.md scan path with no test failing; the 'skills'
+        field is now the only thing making the plugin's skill discoverable.
+        """
+        data = json.loads(self.plugin_json.read_text())
+        skills = data.get("skills")
+        assert skills, (
+            "plugin.json must declare 'skills' — the multi-runtime layout has "
+            "no skills/<name>/SKILL.md for the default plugin scan to find"
+        )
+        entries = [skills] if isinstance(skills, str) else skills
+        for entry in entries:
+            skill_md = ROOT / entry / "SKILL.md"
+            assert skill_md.is_file(), (
+                f"plugin.json skills entry {entry!r} must resolve to a "
+                f"directory containing SKILL.md (checked {skill_md})"
+            )
+
 
 class TestSkillStructure:
     """Tests for oacp-skills convention layout."""

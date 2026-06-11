@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-06-11
+
+### Fixed
+- Fixed six engine correctness gaps: early `--format` validation before side effects, explicit `--warm-context 1.0` handling, friction-aware assigned-agent METR re-checks, Python 3.10-compatible Z timestamp parsing, UTC-normalized calibration cohorts/order, and `plan_waves` duplicate/negative input validation (#31, #33, #36, #37, #38, #39).
+- README hero example now uses the real CLI surface with real captured output — the previous block invoked a nonexistent `--model` flag, passed an unsupported second positional task, and showed fabricated numbers (#28).
+- README Action workflow example now grants `issues: read`, required for issue fetching on private repos where an explicit `permissions:` block zeroes unlisted scopes (#40).
+- Claude Code plugin exposes the `/estimate` skill again: `plugin.json` now points skill discovery at `skills/estimate/claude/`, which the v0.7.0 multi-runtime restructure had moved out of the default `skills/<name>/SKILL.md` scan path (#29).
+- Dropped the phantom `/validate-estimate` and `/calibrate` slash commands (documented but never installable); validation and calibration now route through the installed skill as `/estimate validate` and `/estimate calibrate` (#29).
+- Refreshed stale METR model keys in `examples/multi-agent.md` output (`gpt_5_3` → `gpt_5_4`, `gemini_3_pro` → `gemini_3_1_pro`) to match current output (#28).
+
 ## [0.7.0] - 2026-05-20
 
 ### Added
@@ -94,6 +104,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modifier flags: `--warm-context`, `--spec-clarity`, `--issues`
 - PyPI package: `pip install agent-estimate`
 
+[0.7.1]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.7.1
 [0.7.0]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.7.0
 [0.6.1]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.6.1
 [0.6.0]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.6.0

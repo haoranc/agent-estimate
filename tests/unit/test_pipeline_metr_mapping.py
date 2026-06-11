@@ -35,6 +35,19 @@ def _claude_frontier_config() -> EstimationConfig:
     )
 
 
+def _claude_frontier_config_with_friction(friction: float) -> EstimationConfig:
+    config = _claude_frontier_config()
+    return EstimationConfig(
+        agents=config.agents,
+        settings=ProjectSettings(
+            friction_multiplier=friction,
+            inter_wave_overhead=0.0,
+            review_overhead=0.0,
+            metr_fallback_threshold=45.0,
+        ),
+    )
+
+
 class TestPipelineMetrMapping:
     def test_claude_assigned_task_uses_opus_threshold(self, monkeypatch) -> None:
         monkeypatch.setattr(
@@ -81,3 +94,27 @@ class TestPipelineMetrMapping:
         task = report.tasks[0]
         assert task.agent == "Claude"
         assert task.metr_warning is None
+
+    def test_assigned_task_metr_recheck_includes_friction(self, monkeypatch) -> None:
+        monkeypatch.setattr(
+            _pipeline,
+            "classify_task",
+            lambda _description: SizingResult(
+                tier=SizeTier.M,
+                baseline_optimistic=30.0,
+                baseline_most_likely=50.0,
+                baseline_pessimistic=85.0,
+                task_type=TaskType.FEATURE,
+                signals=("test",),
+            ),
+        )
+
+        report = run_estimate_pipeline(
+            ["deterministic"],
+            _claude_frontier_config_with_friction(2.0),
+            review_mode=ReviewMode.STANDARD,
+        )
+
+        task = report.tasks[0]
+        assert task.metr_warning is not None
+        assert "Estimate (120m) exceeds opus_4_7 p80 threshold (90m)" in task.metr_warning

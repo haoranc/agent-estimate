@@ -102,40 +102,29 @@ Real estimates from production use — including the misses.
 
 **An honest over-estimate.** We pre-registered a UI mockup build at ~95 minutes with no prior app-dev data. Two agents did it in parallel in 12 and 25 minutes — a 4–8x over-estimate. agent-estimate now ships an `app_dev` prior shaped by that result. The miss stays in the README because calibration means showing where you were wrong.
 
-**Two tasks, one model** — what the tool prints, including the METR reliability flag:
+**Three tasks, three agents, in parallel** — what the tool prints, including the METR reliability flags. Input is the three-task `tasks.txt` from [`examples/multi-agent.md`](./examples/multi-agent.md); the output below is captured from a real run, trimmed to the timeline and warnings (the full report — per-task PERT table, wave plan, agent loads — is in that example):
 
 ```text
-$ agent-estimate estimate "Implement auth" "Add tests" --model opus
-
-Task             Tier   PERT (O/M/P)    Expected   Human-eq
-───────────────────────────────────────────────────────────
-Implement auth   M      25/50/90m       57.8m      160m
-Add tests        S      12/23/40m       24.0m       75m
-
-Timeline ──────────────────────────────
-  best 37m   ·   expected 81.8m   ·   worst 130m
-  human-equivalent: 235m  →  2.87× compression
-
-  ⚠ METR warning: "Implement auth" exceeds Opus p80
-```
-
-~82 minutes expected versus ~4 hours by hand — plus a flag that the auth task runs past Opus's p80 reliability horizon, so you split it or add a checkpoint before dispatching.
-
-**Three tasks, three agents, in parallel:**
-
-```bash
 $ agent-estimate estimate --file tasks.txt
-```
+
+## Timeline Summary
 
 | Metric | Value |
 | --- | --- |
-| Wave 0 | All 3 tasks in parallel (Claude + Codex + Gemini) |
-| Expected case | 131m |
-| Human-speed equivalent | 709.5m |
-| **Compression ratio** | **5.42x** |
-| Estimated cost | $4.84 |
+| Best case | 44.7m |
+| Expected case | 75.4m |
+| Worst case | 117.2m |
+| Human-speed equivalent | 572.8m |
+| Compression ratio | 7.60x |
+| Review overhead (per-task, pre-amortization) | 45m |
 
-~2 hours wall-clock versus ~12 hours sequential. You see the compression before you commit the compute. More in [`examples/`](./examples/) — coding S/M, research, documentation, multi-agent.
+## METR Warnings
+
+- **Add known_debt.md as standard protocol memory file**: Estimate (68m) exceeds gpt_5_4 p80 threshold (60m). Consider splitting the task.
+- **Write quickstart guide with protocol comparison table**: Estimate (68m) exceeds gemini_3_1_pro p80 threshold (45m). Consider splitting the task.
+```
+
+~75 minutes wall-clock versus ~9.5 hours of sequential human work, at an estimated $3.51 fleet cost — plus two flags that the Codex- and Gemini-assigned tasks run past their models' p80 reliability horizons, so you split them or add a checkpoint before dispatching. The same three tasks were later run by real agents; the retro is in the example file. More in [`examples/`](./examples/) — coding S/M, research, documentation, multi-agent.
 
 ## Integrations
 
@@ -150,8 +139,8 @@ $ agent-estimate estimate --file tasks.txt
 /estimate Add a login page with OAuth
 /estimate --file spec.md
 /estimate --issues 1,2,3 --repo myorg/myrepo
-/validate-estimate observation.yaml
-/calibrate
+/estimate validate observation.yaml
+/estimate calibrate
 ```
 
 ### GitHub Action
@@ -173,6 +162,7 @@ on:
 
 permissions:
   contents: read
+  issues: read
   pull-requests: write
 
 jobs:
@@ -265,7 +255,12 @@ agent-estimate estimate "Ship packaging flow" --config ./my_agents.yaml
 agent-estimate estimate "Refactor auth pipeline" --format json   # machine-readable
 agent-estimate estimate --repo myorg/myrepo --issues 11,12,14    # from GitHub issues
 agent-estimate estimate --file tasks.txt                          # from file
+agent-estimate estimate "Follow-up fix" --history-file data.json  # auto warm-context
 ```
+
+When `--warm-context` is omitted, the CLI can auto-infer it from `--history-file`;
+if no history file is passed and `./data.json` exists, that file is used as the
+default dispatch history source.
 
 ### Calibration
 

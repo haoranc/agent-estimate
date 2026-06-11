@@ -47,6 +47,10 @@ def infer_warm_context(
 
     if reference_time is None:
         reference_time = datetime.now(timezone.utc)
+    elif reference_time.tzinfo is None:
+        reference_time = reference_time.replace(tzinfo=timezone.utc)
+    else:
+        reference_time = reference_time.astimezone(timezone.utc)
 
     # Filter by agent and project if specified
     filtered = dispatches
@@ -66,9 +70,7 @@ def infer_warm_context(
         if completed_at is None:
             continue
         try:
-            dt = datetime.fromisoformat(completed_at)
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
+            dt = _parse_completed_at(completed_at)
         except (ValueError, TypeError):
             continue
         if most_recent_time is None or dt > most_recent_time:
@@ -78,7 +80,7 @@ def infer_warm_context(
     if most_recent is None or most_recent_time is None:
         return WarmContextResult(value=1.0, source="default")
 
-    hours_ago = (reference_time - most_recent_time).total_seconds() / 3600.0
+    hours_ago = max(0.0, (reference_time - most_recent_time).total_seconds() / 3600.0)
 
     value = _decay_to_warm_context(hours_ago)
 
@@ -110,6 +112,16 @@ def _decay_to_warm_context(hours_ago: float) -> float:
     if hours_ago < 24:
         return 0.7
     return 1.0
+
+
+def _parse_completed_at(value: object) -> datetime:
+    if not isinstance(value, str):
+        raise TypeError("completed_at must be a string")
+    normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
+    dt = datetime.fromisoformat(normalized)
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 def _load_dispatches(path: Path) -> list[dict]:

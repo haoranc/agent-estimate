@@ -59,8 +59,8 @@ agent-estimate estimate --file tasks.txt
 
 ### METR Warnings
 
-- **Add known_debt.md as standard protocol memory file**: Estimate (68m) exceeds gpt_5_3 p80 threshold (60m). Consider splitting the task.
-- **Write quickstart guide with protocol comparison table**: Estimate (68m) exceeds gemini_3_pro p80 threshold (45m). Consider splitting the task.
+- **Add known_debt.md as standard protocol memory file**: Estimate (68m) exceeds gpt_5_4 p80 threshold (60m). Consider splitting the task.
+- **Write quickstart guide with protocol comparison table**: Estimate (68m) exceeds gemini_3_1_pro p80 threshold (45m). Consider splitting the task.
 
 ## What actually happened
 

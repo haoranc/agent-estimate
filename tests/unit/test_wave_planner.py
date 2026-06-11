@@ -262,6 +262,20 @@ class TestNegativeOverhead:
             plan_waves([_node("A", 10)], [_agent()], inter_wave_overhead_hours=-0.5)
 
 
+class TestTaskInputValidation:
+    def test_duplicate_task_ids_raise(self) -> None:
+        with pytest.raises(ValueError, match="Duplicate task_id 'A'"):
+            plan_waves([_node("A", 30), _node("A", 40)], [_agent()])
+
+    def test_negative_duration_raises(self) -> None:
+        with pytest.raises(ValueError, match="duration_minutes"):
+            plan_waves([_node("A", -1)], [_agent()])
+
+    def test_negative_review_minutes_raises(self) -> None:
+        with pytest.raises(ValueError, match="review_minutes"):
+            plan_waves([_rnode("A", 10, -1)], [_agent()])
+
+
 class TestEmptyInput:
     """Empty task list returns a zero-valued plan."""
 

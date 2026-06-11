@@ -330,10 +330,12 @@ def _build_report(
         assigned_agent = assignment_map.get(str(i), default_agent)
         model_tier = agent_model_tier.get(assigned_agent, default_tier)
 
-        # Re-check METR threshold with the assigned agent's model tier
+        # Re-check METR threshold with the assigned agent's model tier and the
+        # same frictioned work duration the wave planner schedules.
+        metr_minutes = (est.pert.expected * config.settings.friction_multiplier) + est.review_minutes
         corrected_warning = check_metr_threshold(
             model_tier,
-            est.total_expected_minutes,
+            metr_minutes,
             thresholds=thresholds,
             fallback_threshold=fallback,
             agent_name=assigned_agent,

@@ -34,7 +34,9 @@ def plan_waves(
     Raises:
         ValueError: If the dependency graph contains a cycle, a task requires
             capabilities that no agent provides, a dependency references an
-            unknown task, or no agents are provided.
+            unknown task, no agents are provided, a duplicate task ID is
+            supplied, or any task has negative ``duration_minutes`` or
+            ``review_minutes``.
     """
     if inter_wave_overhead_hours < 0:
         raise ValueError(
@@ -58,6 +60,16 @@ def plan_waves(
     G = nx.DiGraph()
     task_map: dict[str, TaskNode] = {}
     for t in tasks:
+        if t.task_id in task_map:
+            raise ValueError(f"Duplicate task_id {t.task_id!r} is not allowed")
+        if t.duration_minutes < 0:
+            raise ValueError(
+                f"Task {t.task_id!r} duration_minutes must be >= 0, got {t.duration_minutes}"
+            )
+        if t.review_minutes < 0:
+            raise ValueError(
+                f"Task {t.task_id!r} review_minutes must be >= 0, got {t.review_minutes}"
+            )
         task_map[t.task_id] = t
         G.add_node(t.task_id, duration_minutes=t.duration_minutes)
     for t in tasks:

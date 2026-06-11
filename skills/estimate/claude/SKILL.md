@@ -18,8 +18,8 @@ Run PERT three-point estimation with METR reliability thresholds and wave planni
 /estimate --format json <task>
 /estimate --review-mode none <task>
 /estimate --title "My Report" <task>
-/validate-estimate <observation.yaml>
-/calibrate
+/estimate validate <observation.yaml>
+/estimate calibrate
 ```
 
 ## Instructions
@@ -28,13 +28,15 @@ When the user invokes this skill, follow these steps:
 
 ### 1. Parse the invocation
 
-Determine which subcommand to run based on context:
+Determine which subcommand to run from the shape of the arguments after `/estimate`:
 
-| Invocation pattern            | Subcommand                 |
-| ----------------------------- | -------------------------- |
-| `/estimate ...` with any args | `agent-estimate estimate`  |
-| `/validate-estimate <file>`   | `agent-estimate validate`  |
-| `/calibrate`                  | `agent-estimate calibrate` |
+| Invocation pattern              | Subcommand                 |
+| ------------------------------- | -------------------------- |
+| `validate <path>` — first token is `validate`, rest is one `.yaml`/`.yml` path plus optional `--db <path>` | `agent-estimate validate`  |
+| `calibrate` — first token is `calibrate`, rest is empty or only `--db <path>` | `agent-estimate calibrate` |
+| anything else                   | `agent-estimate estimate`  |
+
+Shape-match strictly: if the arguments start with `validate` or `calibrate` but the rest does not fit the shapes above, treat the whole argument string as a task description for `agent-estimate estimate` — e.g. `/estimate validate the login flow` is an estimation request, not a malformed validate call.
 
 ### 2. Build the CLI command
 
@@ -75,11 +77,11 @@ If none of `--file`, `--issues`, or a task description is provided, prompt the u
 - `frontend` — UI/page work (content patches use 15/25/40; page builds use 40/60/90).
 - `app_dev` — app shells and desktop/mobile builds (cold generic L-style prior; use modifiers for warm or highly specified work).
 
-#### For `/validate-estimate`
+#### For `/estimate validate`
 
-The argument after `/validate-estimate` is the observation YAML file path. Optionally pass `--db <path>` if provided.
+The argument after `validate` is the observation YAML file path. Optionally pass `--db <path>` if provided.
 
-#### For `/calibrate`
+#### For `/estimate calibrate`
 
 Optionally pass `--db <path>` if provided. Default: `~/.agent-estimate/calibration.db`.
 
@@ -120,17 +122,17 @@ Display the CLI output directly to the user. No post-processing — the CLI hand
 /estimate --config agents.yaml --format json "Refactor auth module"
 → agent-estimate estimate --config agents.yaml --format json "Refactor auth module"
 
-/validate-estimate results/sprint1.yaml
+/estimate validate results/sprint1.yaml
 → agent-estimate validate results/sprint1.yaml
 
-/validate-estimate results/sprint1.yaml --db ~/.agent-estimate/calibration.db
+/estimate validate results/sprint1.yaml --db ~/.agent-estimate/calibration.db
 → agent-estimate validate results/sprint1.yaml --db ~/.agent-estimate/calibration.db
 
-/calibrate
+/estimate calibrate
 → agent-estimate calibrate
 ```
 
-## Observation YAML format (for `/validate-estimate`)
+## Observation YAML format (for `/estimate validate`)
 
 ```yaml
 task_type: feature

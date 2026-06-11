@@ -197,6 +197,47 @@ def test_multiple_dispatches_uses_most_recent(
     assert result.source == "auto"
 
 
+def test_z_suffix_completed_at_is_parsed_python310_compatible(
+    tmp_path: Path, ref_time: datetime
+) -> None:
+    path = _write_history(
+        tmp_path,
+        [
+            {
+                "agent": "codex",
+                "project": "agent-estimate",
+                "completed_at": "2026-02-19T08:52:00Z",
+            }
+        ],
+    )
+
+    result = infer_warm_context(path, reference_time=ref_time)
+
+    assert result.value == 0.3
+    assert result.source == "auto"
+    assert "8m ago" in result.detail
+
+
+def test_future_dispatch_clamps_elapsed_to_now(
+    tmp_path: Path, ref_time: datetime
+) -> None:
+    path = _write_history(
+        tmp_path,
+        [
+            {
+                "agent": "codex",
+                "project": "agent-estimate",
+                "completed_at": (ref_time + timedelta(minutes=30)).isoformat(),
+            }
+        ],
+    )
+
+    result = infer_warm_context(path, reference_time=ref_time)
+
+    assert result.value == 0.3
+    assert "0m ago" in result.detail
+
+
 # --- None path test ---
 
 
