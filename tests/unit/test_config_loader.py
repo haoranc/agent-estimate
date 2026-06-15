@@ -213,3 +213,23 @@ def test_load_config_discovers_callable_entry_point_profiles(
 
     assert [agent.name for agent in config.agents] == ["Claude", "Gemini"]
     assert config.agents[1].model_tier == "gemini-3-pro"
+
+
+def test_load_config_skips_broken_entry_point_profile(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _broken_profile_factory() -> dict[str, object]:
+        raise RuntimeError("plugin exploded")
+
+    config_path = _write(tmp_path, "config.yaml", VALID_CONFIG)
+    monkeypatch.setattr(
+        config_loader,
+        "_iter_agent_entry_points",
+        lambda: [_FakeEntryPoint("broken_plugin", _broken_profile_factory)],
+    )
+
+    with pytest.warns(RuntimeWarning, match="broken_plugin"):
+        config = load_config(config_path)
+
+    assert [agent.name for agent in config.agents] == ["Claude"]

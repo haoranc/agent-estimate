@@ -230,6 +230,22 @@ class TestSessionCLIMarkdown:
         )
         assert result.exit_code == 0
 
+    def test_large_duration_does_not_crash_markdown_padding(self) -> None:
+        result = runner.invoke(
+            app,
+            [
+                "session",
+                "--agents",
+                "2",
+                "--rounds",
+                "1",
+                "--per-round-minutes",
+                "99999999999999999999999",
+            ],
+        )
+        assert result.exit_code == 0
+        assert "Wall-clock" in result.output
+
 
 class TestSessionCLIJson:
     """CLI session subcommand — JSON output."""

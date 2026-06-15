@@ -122,8 +122,6 @@ def run(
 
 
 def _render_markdown(result: SessionEstimate) -> None:
-    assert isinstance(result, SessionEstimate)
-
     wall_h, wall_m = divmod(round(result.wall_clock_minutes), 60)
     agent_h, agent_m = divmod(round(result.agent_minutes), 60)
 
@@ -142,8 +140,8 @@ def _render_markdown(result: SessionEstimate) -> None:
     typer.echo(
         f"| Coordination overhead    | {result.coordination_overhead_minutes:.0f}m / round{'':<15} |"
     )
-    typer.echo(f"| **Wall-clock**           | **{wall_str}**{'':<{22 - len(wall_str)}} |")
-    typer.echo(f"| **Agent-minutes**        | **{agent_str}**{'':<{22 - len(agent_str)}} |")
+    typer.echo(f"| **Wall-clock**           | **{wall_str}**{'':<{max(0, 22 - len(wall_str))}} |")
+    typer.echo(f"| **Agent-minutes**        | **{agent_str}**{'':<{max(0, 22 - len(agent_str))}} |")
 
     if len(result.rounds_breakdown) > 1:
         typer.echo("\n### Round breakdown\n")
@@ -156,4 +154,3 @@ def _render_markdown(result: SessionEstimate) -> None:
 def _error(message: str, exit_code: int) -> NoReturn:
     typer.echo(f"Error: {message}", err=True)
     raise typer.Exit(code=exit_code)
-

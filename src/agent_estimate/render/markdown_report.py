@@ -8,7 +8,7 @@ from agent_estimate.render.report_models import EstimationReport
 def render_markdown_report(report: EstimationReport) -> str:
     """Render an estimation report as GitHub-compatible Markdown."""
     lines: list[str] = [
-        f"# {report.title}",
+        f"# {_normalize_inline(report.title)}",
         "",
     ]
     lines.extend(_render_task_table(report))
@@ -22,6 +22,8 @@ def render_markdown_report(report: EstimationReport) -> str:
     lines.extend(_render_agent_load_table(report))
     lines.extend([""])
     lines.extend(_render_critical_path(report))
+    lines.extend([""])
+    lines.extend(_render_tier_correction_warnings(report))
     lines.extend([""])
     lines.extend(_render_metr_warnings(report))
     lines.append("")
@@ -49,7 +51,7 @@ def _render_task_table(report: EstimationReport) -> list[str]:
         )
         warm_str = f"warm {task.modifier_warm_context:.2f}"
         if task.warm_context_detail:
-            warm_str += f" (auto: {task.warm_context_detail})"
+            warm_str += f" (auto: {_escape_cell(task.warm_context_detail)})"
         modifiers = (
             f"spec {task.modifier_spec_clarity:.2f} x "
             f"{warm_str} x "
@@ -147,6 +149,22 @@ def _render_critical_path(report: EstimationReport) -> list[str]:
     return lines
 
 
+def _render_tier_correction_warnings(report: EstimationReport) -> list[str]:
+    lines = ["## Tier Corrections", ""]
+    warnings = [
+        (task.name, task.tier_correction_warnings)
+        for task in report.tasks
+        if task.tier_correction_warnings
+    ]
+    if not warnings:
+        lines.append("No tier corrections.")
+        return lines
+    for task_name, task_warnings in warnings:
+        for warning in task_warnings:
+            lines.append(f"- **{_escape_cell(task_name)}**: {_escape_cell(warning)}")
+    return lines
+
+
 def _render_metr_warnings(report: EstimationReport) -> list[str]:
     lines = ["## METR Warnings", ""]
     warnings = [(task.name, task.metr_warning) for task in report.tasks if task.metr_warning]
@@ -168,3 +186,7 @@ def _format_minutes(value: float) -> str:
 def _escape_cell(value: str) -> str:
     normalized = value.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "<br>")
     return normalized.replace("|", "\\|")
+
+
+def _normalize_inline(value: str) -> str:
+    return " ".join(value.replace("\r\n", "\n").replace("\r", "\n").splitlines()).strip()

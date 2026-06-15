@@ -10,6 +10,7 @@ from typing import Mapping
 import yaml
 
 from agent_estimate.core.models import (
+    EstimationCategory,
     MetrWarning,
     ModifierSet,
     PertResult,
@@ -77,6 +78,8 @@ def compute_pert(optimistic: float, most_likely: float, pessimistic: float) -> P
 
     Formula: E = (O + 4M + P) / 6, sigma = (P - O) / 6
     """
+    if optimistic < 0:
+        raise ValueError(f"PERT requires O >= 0, got O={optimistic}")
     if not (optimistic <= most_likely <= pessimistic):
         raise ValueError(
             f"PERT requires O <= M <= P, got O={optimistic}, M={most_likely}, P={pessimistic}"
@@ -213,4 +216,5 @@ def estimate_task(
         total_expected_minutes=total,
         human_equivalent_minutes=human_equivalent_minutes,
         metr_warning=metr_warning,
+        estimation_category=EstimationCategory.CODING,
     )

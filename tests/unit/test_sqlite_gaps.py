@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from pathlib import Path
+import threading
 
 import pytest
 
+from agent_estimate.adapters import sqlite_store
 from agent_estimate.adapters.sqlite_store import (
     ObservationInput,
     SQLiteCalibrationStore,
@@ -206,6 +208,47 @@ class TestMultipleTaskTypesCalibrate:
 
         assert summaries["alpha"]["sample_count"] == 3
         assert summaries["beta"]["sample_count"] == 7
+
+    def test_calibrate_holds_store_lock_for_full_recompute(
+        self,
+        store: SQLiteCalibrationStore,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        percentile_started = threading.Event()
+        release_percentile = threading.Event()
+        insert_finished = threading.Event()
+        original_percentile = sqlite_store._percentile
+
+        def blocking_percentile(values: list[float], percent: float) -> float:
+            if percent == 50.0 and not percentile_started.is_set():
+                percentile_started.set()
+                release_percentile.wait(timeout=2)
+            return original_percentile(values, percent)
+
+        for i in range(3):
+            store.insert_observation(_observation(task_type="alpha", error_ratio=0.1 * (i + 1)))
+
+        monkeypatch.setattr(sqlite_store, "_percentile", blocking_percentile)
+
+        calibrate_thread = threading.Thread(target=store.calibrate)
+        calibrate_thread.start()
+        assert percentile_started.wait(timeout=2)
+
+        insert_thread = threading.Thread(
+            target=lambda: (
+                store.insert_observation(_observation(task_type="alpha", error_ratio=0.4)),
+                insert_finished.set(),
+            ),
+        )
+        insert_thread.start()
+
+        assert insert_finished.wait(timeout=0.1) is False
+        release_percentile.set()
+        calibrate_thread.join(timeout=2)
+        insert_thread.join(timeout=2)
+
+        assert not calibrate_thread.is_alive()
+        assert insert_finished.is_set()
 
 
 # ---------------------------------------------------------------------------

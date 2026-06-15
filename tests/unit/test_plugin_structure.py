@@ -83,6 +83,10 @@ class TestSkillStructure:
         assert data["id"] == "estimate"
         assert "compatible_runtimes" in data
 
+    def test_skill_yaml_is_not_marked_staging(self):
+        data = yaml.safe_load(self.skill_yaml.read_text())
+        assert data["public_status"] == "public"
+
     def test_skill_readme_exists(self):
         assert self.skill_readme.exists(), "skills/estimate/README.md must exist"
 
@@ -143,6 +147,13 @@ class TestSkillStructure:
         content = self.codex_skill_md.read_text()
         assert "--format json" in content
         assert "NOT YET IMPLEMENTED" not in content
+
+    def test_shared_intent_documents_current_cli_surface(self):
+        content = self.intent_md.read_text()
+        assert "agent-estimate session" in content
+        assert "--review-mode none|standard|complex|3-round" in content
+        for flag in ("--type", "--spec-clarity", "--warm-context", "--agent-fit"):
+            assert flag in content
 
     def test_both_skills_share_skill_name(self):
         claude = self.claude_skill_md.read_text()

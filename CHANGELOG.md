@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-06-14
+
+### Fixed
+- Fixed engine and documentation correctness gaps: documentation estimates now use the docs human multiplier, CLI file/config and GitHub adapter failures stay user-facing, REST issue ingestion is reachable in token-only environments, renderer warning/detail fields are escaped and serialized, sizing heuristics prefer explicit test/docs matches, store/audit/validation edge cases are hardened, and stale skill/session/release docs are refreshed (#30, #32, #34, #35, #41, #42, #43, #44, #45).
+- `AGENT_ESTIMATE_AUDIT_DESTINATION=stdout` now emits a deprecation warning and routes audit events to stderr so report stdout remains parseable for JSON consumers (#43).
+
 ## [0.7.1] - 2026-06-11
 
 ### Fixed
@@ -104,6 +110,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modifier flags: `--warm-context`, `--spec-clarity`, `--issues`
 - PyPI package: `pip install agent-estimate`
 
+[0.7.2]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.7.2
 [0.7.1]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.7.1
 [0.7.0]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.7.0
 [0.6.1]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.6.1

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Generator
 from pathlib import Path
+import sqlite3
 
 import pytest
 
@@ -134,6 +135,24 @@ def test_schema_version_table_exists(store: SQLiteCalibrationStore) -> None:
     row = store._connection.execute("SELECT version FROM schema_version").fetchone()
     assert row is not None
     assert row["version"] == 1
+
+
+def test_future_schema_version_is_rejected(tmp_path: Path) -> None:
+    db_path = tmp_path / "future.db"
+    connection = sqlite3.connect(db_path)
+    try:
+        connection.execute(
+            "CREATE TABLE schema_version (version INTEGER PRIMARY KEY, applied_at TEXT)"
+        )
+        connection.execute(
+            "INSERT INTO schema_version (version, applied_at) VALUES (999, CURRENT_TIMESTAMP)"
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    with pytest.raises(RuntimeError, match="Unsupported calibration DB schema version 999"):
+        SQLiteCalibrationStore(db_path)
 
 
 def test_insert_rejects_invalid_negative_values(store: SQLiteCalibrationStore) -> None:

@@ -26,7 +26,7 @@ MULTI_AGENT_TASKS = [
 # need re-capturing.
 HEADLINE_LINES = [
     "| Expected case | 75.4m |",
-    "| Compression ratio | 7.60x |",
+    "| Compression ratio | 8.07x |",
     "exceeds gpt_5_4 p80 threshold (60m)",
     "exceeds gemini_3_1_pro p80 threshold (45m)",
 ]
@@ -64,3 +64,12 @@ class TestDocsFreshness:
         for line in HEADLINE_LINES:
             assert line in output
             assert line in example, f"examples/multi-agent.md output block lost {line!r}"
+
+    def test_session_command_is_documented_outside_changelog(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        assert "agent-estimate session" in readme
+
+    def test_release_checklist_mentions_floating_v0_action_tag(self):
+        contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+        assert "floating public Action tag" in contributing
+        assert "git tag -f v0" in contributing

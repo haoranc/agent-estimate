@@ -278,3 +278,45 @@ def test_render_markdown_report_normalizes_multiline_cells() -> None:
     assert "Task \\| Alpha<br>line two" in rendered
     assert "Code\\|x" in rendered
     assert "Warning with pipe \\| and<br>newline" in rendered
+
+
+def test_render_markdown_report_sanitizes_title_and_warm_detail() -> None:
+    task = ReportTask(
+        name="Task",
+        tier="S",
+        agent="Codex",
+        base_pert_optimistic_minutes=12.0,
+        base_pert_most_likely_minutes=23.0,
+        base_pert_pessimistic_minutes=40.0,
+        modifier_spec_clarity=1.0,
+        modifier_warm_context=0.5,
+        modifier_agent_fit=1.0,
+        modifier_combined=0.5,
+        modifier_raw_combined=0.5,
+        modifier_clamped=False,
+        effective_duration_minutes=12.0,
+        human_equivalent_minutes=60.0,
+        review_overhead_minutes=0.0,
+        warm_context_detail="agent|name\nproject",
+        tier_correction_warnings=("Upgraded S→L: 4 concerns",),
+    )
+    report = EstimationReport(
+        title="Title\nInjected Heading",
+        tasks=(task,),
+        waves=(),
+        timeline=ReportTimeline(
+            best_case_minutes=10.0,
+            expected_case_minutes=20.0,
+            worst_case_minutes=30.0,
+            human_equivalent_minutes=40.0,
+        ),
+        agent_load=(),
+        critical_path=(),
+    )
+
+    rendered = render_markdown_report(report)
+
+    assert "# Title Injected Heading" in rendered
+    assert "agent\\|name<br>project" in rendered
+    assert "## Tier Corrections" in rendered
+    assert "Upgraded S→L: 4 concerns" in rendered

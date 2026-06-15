@@ -38,10 +38,10 @@ _COMPLEXITY_SIGNALS: list[tuple[re.Pattern[str], str]] = [
 _TYPE_PATTERNS: list[tuple[re.Pattern[str], TaskType]] = [
     (re.compile(r"\b(boilerplate|scaffold|template|stub|generate)\b", re.I), TaskType.BOILERPLATE),
     (re.compile(r"\b(bug|fix|patch|hotfix|regression|broken)\b", re.I), TaskType.BUG_FIX),
+    (re.compile(r"\b(tests?|specs?|coverage|assertions?)\b", re.I), TaskType.TEST),
+    (re.compile(r"\b(docs?|readme|comments?|changelog)\b", re.I), TaskType.DOCS),
     (re.compile(r"\b(feature|implement|add|create|build|new)\b", re.I), TaskType.FEATURE),
     (re.compile(r"\b(refactor|restructure|clean|rewrite|simplify)\b", re.I), TaskType.REFACTOR),
-    (re.compile(r"\b(test|spec|coverage|assertion)\b", re.I), TaskType.TEST),
-    (re.compile(r"\b(doc|readme|comment|changelog)\b", re.I), TaskType.DOCS),
 ]
 
 _TIER_ORDER = [SizeTier.XS, SizeTier.S, SizeTier.M, SizeTier.L, SizeTier.XL]
@@ -183,7 +183,8 @@ def classify_task(description: str) -> SizingResult:
             tier_votes.append(tier)
             signals.append(signal_name)
 
-    # Base tier: median of votes, or M as default
+    # Base tier: conservative upper-middle vote, or M as default. For an even
+    # vote count this intentionally picks the higher tier (e.g. [S, L] -> L).
     if tier_votes:
         sorted_votes = sorted(tier_votes, key=lambda t: _TIER_ORDER.index(t))
         base_tier = sorted_votes[len(sorted_votes) // 2]

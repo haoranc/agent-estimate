@@ -55,6 +55,7 @@ No config required — sensible defaults for a 3-agent fleet (Claude, Codex, Gem
 ```bash
 agent-estimate estimate --file tasks.txt
 agent-estimate estimate --repo myorg/myrepo --issues 11,12,14
+agent-estimate session --agents 3 --rounds 2 --type review
 ```
 
 ## How It Works
@@ -114,17 +115,17 @@ $ agent-estimate estimate --file tasks.txt
 | Best case | 44.7m |
 | Expected case | 75.4m |
 | Worst case | 117.2m |
-| Human-speed equivalent | 572.8m |
-| Compression ratio | 7.60x |
+| Human-speed equivalent | 608.2m |
+| Compression ratio | 8.07x |
 | Review overhead (per-task, pre-amortization) | 45m |
 
 ## METR Warnings
 
-- **Add known_debt.md as standard protocol memory file**: Estimate (68m) exceeds gpt_5_4 p80 threshold (60m). Consider splitting the task.
-- **Write quickstart guide with protocol comparison table**: Estimate (68m) exceeds gemini_3_1_pro p80 threshold (45m). Consider splitting the task.
+- **Add known_debt.md as standard protocol memory file**: Estimate (75m) exceeds gpt_5_4 p80 threshold (60m). Consider splitting the task.
+- **Write quickstart guide with protocol comparison table**: Estimate (75m) exceeds gemini_3_1_pro p80 threshold (45m). Consider splitting the task.
 ```
 
-~75 minutes wall-clock versus ~9.5 hours of sequential human work, at an estimated $3.51 fleet cost — plus two flags that the Codex- and Gemini-assigned tasks run past their models' p80 reliability horizons, so you split them or add a checkpoint before dispatching. The same three tasks were later run by real agents; the retro is in the example file. More in [`examples/`](./examples/) — coding S/M, research, documentation, multi-agent.
+~75 minutes wall-clock versus ~10.1 hours of sequential human work, at an estimated $3.51 fleet cost — plus two flags that the Codex- and Gemini-assigned tasks run past their models' p80 reliability horizons, so you split them or add a checkpoint before dispatching. The same three tasks were later run by real agents; the retro is in the example file. More in [`examples/`](./examples/) — coding S/M, research, documentation, multi-agent.
 
 ## Integrations
 
@@ -261,6 +262,19 @@ agent-estimate estimate "Follow-up fix" --history-file data.json  # auto warm-co
 When `--warm-context` is omitted, the CLI can auto-infer it from `--history-file`;
 if no history file is passed and `./data.json` exists, that file is used as the
 default dispatch history source.
+
+### Session estimates
+
+Use `agent-estimate session` for coordinated workflows where multiple agents run
+rounds of brainstorm, review, research, documentation, config, or coding work:
+
+```bash
+agent-estimate session --agents 3 --rounds 2 --type review
+agent-estimate session --agents 4 --rounds 1 --per-round-minutes 25 --format json
+```
+
+The command reports wall-clock time, total agent-minutes, coordination overhead,
+and per-round breakdowns.
 
 ### Calibration
 

@@ -7,6 +7,7 @@ from importlib.metadata import EntryPoint, entry_points
 from importlib.resources import as_file, files
 from pathlib import Path
 from typing import Any
+import warnings
 
 import yaml
 from pydantic import ValidationError
@@ -72,7 +73,15 @@ def discover_plugin_profiles() -> list[AgentProfile]:
     """Discover and validate agent profiles from entry points."""
     discovered: dict[str, AgentProfile] = {}
     for ep in _iter_agent_entry_points():
-        profile = _load_entry_point_profile(ep)
+        try:
+            profile = _load_entry_point_profile(ep)
+        except ValueError as exc:
+            warnings.warn(
+                f"Skipping agent profile entry point {ep.name!r}: {exc}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            continue
         discovered[profile.name] = profile
     return list(discovered.values())
 

@@ -48,7 +48,7 @@ def build_modifier_set(
     if clamped:
         combined = _MODIFIER_FLOOR
         logger.warning(
-            "Modifier product %.4f clamped to %.2f (prevents sub-10m pathology)",
+            "Modifier product %.4f clamped to %.2f (modifier floor)",
             raw_combined,
             _MODIFIER_FLOOR,
         )

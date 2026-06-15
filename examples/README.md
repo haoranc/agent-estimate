@@ -8,7 +8,7 @@ Real input/output examples from production agent dispatches. Every command below
 | Implement CLI command with code generation | Coding | M | 2.53x | [coding-m.md](./coding-m.md) |
 | Audit cloud infrastructure providers | Research | S | 2.61x | [research.md](./research.md) |
 | Write quickstart guide + README | Documentation | S | 2.58x | [documentation.md](./documentation.md) |
-| 3-agent parallel session (3 features) | Multi-agent | M×3 | 7.60x | [multi-agent.md](./multi-agent.md) |
+| 3-agent parallel session (3 features) | Multi-agent | M×3 | 8.07x | [multi-agent.md](./multi-agent.md) |
 
 ## How to read the output
 

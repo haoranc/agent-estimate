@@ -25,6 +25,46 @@ def test_audit_logger_creates_owner_only_log_file(tmp_path: Path) -> None:
     assert audit_log.stat().st_mode & 0o777 == 0o600
 
 
+def test_audit_logger_stdout_destination_writes_to_stderr(capsys) -> None:
+    logger = AuditLogger(
+        AuditConfig(
+            enabled=True,
+            level="INFO",
+            destination="stdout",
+            actor="test-agent",
+            environment="test",
+        ),
+    )
+
+    logger.emit("estimation_request", action="estimate")
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "AGENT_ESTIMATE_AUDIT_DESTINATION=stdout is deprecated" in captured.err
+    assert '"event_type": "estimation_request"' in captured.err
+
+
+def test_audit_logger_degrades_when_file_sink_fails(
+    monkeypatch,
+    tmp_path: Path,
+    capsys,
+) -> None:
+    logger = AuditLogger(
+        AuditConfig(
+            enabled=True,
+            level="INFO",
+            destination=str(tmp_path / "audit.jsonl"),
+            actor="test-agent",
+            environment="test",
+        ),
+    )
+    monkeypatch.setattr("agent_estimate.audit.os.open", lambda *_, **__: (_ for _ in ()).throw(PermissionError("denied")))
+
+    logger.emit("estimation_request", action="estimate")
+
+    assert "failed to write audit log" in capsys.readouterr().err
+
+
 def test_scrub_uses_segment_aware_sensitive_key_detection() -> None:
     scrubbed = _scrub(
         {

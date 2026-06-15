@@ -7,6 +7,6 @@ compatible_runtimes:
   - claude-code
   - codex
 requires_oacp: ">=0.1.0"
-public_status: staging
+public_status: public
 owners:
   - kiloloop

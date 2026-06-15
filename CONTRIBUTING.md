@@ -48,6 +48,14 @@ If your change touches CLI behavior, include at least one integration-style test
 4. Include a short test plan and validation output.
 5. Update docs/changelog when behavior changes.
 
+## Release Checklist
+
+1. Bump all versioned artifacts together: `pyproject.toml`, `src/agent_estimate/version.py`, `.claude-plugin/plugin.json`, `action.yml`, issue templates, and version tests.
+2. Run `ruff check .`, `pytest -q`, `python -m build`, and any release-specific smoke tests.
+3. Publish the GitHub release and PyPI artifacts.
+4. From the `kiloloop/agent-estimate` public clone, move the floating public Action tag, for example `git tag -f v0 vX.Y.Z && git push origin v0 --force`, so `uses: kiloloop/agent-estimate@v0` tracks the latest compatible release. Do not perform this step from the private staging clone.
+5. Confirm README, examples, and skill docs match the released CLI output and model keys.
+
 ## Reporting Bugs
 
 Use the bug report issue template and include:

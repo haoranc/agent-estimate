@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import filecmp
 from pathlib import Path
 from unittest.mock import patch
 
@@ -138,3 +139,11 @@ class TestCheckMetrThresholdAutoLoad:
         result = check_metr_threshold("opus", 99999.0, thresholds=None)
         assert result is not None
         assert result.model_key == "opus"
+
+    def test_root_and_packaged_metr_thresholds_stay_in_sync(self) -> None:
+        repo_root = Path(__file__).resolve().parents[2]
+        assert filecmp.cmp(
+            repo_root / "metr_thresholds.yaml",
+            repo_root / "src" / "agent_estimate" / "metr_thresholds.yaml",
+            shallow=False,
+        )

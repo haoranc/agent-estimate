@@ -41,6 +41,7 @@ def _build_payload(report: EstimationReport) -> dict[str, Any]:
                 "modifiers": {
                     "spec_clarity": task.modifier_spec_clarity,
                     "warm_context": task.modifier_warm_context,
+                    "warm_context_detail": task.warm_context_detail,
                     "agent_fit": task.modifier_agent_fit,
                     "combined": task.modifier_combined,
                     "raw_combined": task.modifier_raw_combined,
@@ -51,6 +52,7 @@ def _build_payload(report: EstimationReport) -> dict[str, Any]:
                 "human_equivalent_minutes": task.human_equivalent_minutes,
                 "review_overhead_minutes": task.review_overhead_minutes,
                 "metr_warning": task.metr_warning,
+                "tier_correction_warnings": list(task.tier_correction_warnings),
                 "is_critical_path": task.name in critical_tasks,
             }
             for task in report.tasks
@@ -75,6 +77,14 @@ def _build_payload(report: EstimationReport) -> dict[str, Any]:
         ],
         "critical_path": list(report.critical_path),
         "metr_warnings": warnings,
+        "tier_correction_warnings": [
+            {
+                "task": task.name,
+                "warning": warning,
+            }
+            for task in report.tasks
+            for warning in task.tier_correction_warnings
+        ],
     }
 
 

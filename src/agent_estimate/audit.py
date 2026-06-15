@@ -84,6 +84,7 @@ class AuditLogger:
         self._config = config
         # Serializes writes for this logger instance.
         self._lock = RLock()
+        self._warned_stdout_redirect = False
 
     def emit(
         self,
@@ -118,23 +119,36 @@ class AuditLogger:
     def _write_line(self, line: str) -> None:
         with self._lock:
             if self._config.destination == "stdout":
-                print(line, file=sys.stdout)
+                if not self._warned_stdout_redirect:
+                    print(
+                        "Warning: AGENT_ESTIMATE_AUDIT_DESTINATION=stdout is deprecated; "
+                        "writing audit events to stderr to preserve report stdout.",
+                        file=sys.stderr,
+                    )
+                    self._warned_stdout_redirect = True
+                print(line, file=sys.stderr)
                 return
             if self._config.destination == "stderr":
                 print(line, file=sys.stderr)
                 return
 
             destination = Path(self._config.destination)
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            # Reopen per write to keep the CLI logger stateless; revisit if a
-            # long-lived service needs a persistent buffered handle.
-            destination_fd = os.open(
-                destination,
-                os.O_APPEND | os.O_CREAT | os.O_WRONLY,
-                0o600,
-            )
-            with os.fdopen(destination_fd, "a", encoding="utf-8") as handle:
-                handle.write(f"{line}\n")
+            try:
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                # Reopen per write to keep the CLI logger stateless; revisit if a
+                # long-lived service needs a persistent buffered handle.
+                destination_fd = os.open(
+                    destination,
+                    os.O_APPEND | os.O_CREAT | os.O_WRONLY,
+                    0o600,
+                )
+                with os.fdopen(destination_fd, "a", encoding="utf-8") as handle:
+                    handle.write(f"{line}\n")
+            except OSError as exc:
+                print(
+                    f"Warning: failed to write audit log to {destination.name}: {exc}",
+                    file=sys.stderr,
+                )
 
 
 def configure_audit_logger(config: AuditConfig | None = None) -> AuditLogger:

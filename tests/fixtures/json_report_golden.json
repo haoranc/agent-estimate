@@ -43,11 +43,15 @@
         "combined": 1.1,
         "raw_combined": 1.1,
         "spec_clarity": 1.1,
-        "warm_context": 1.0
+        "warm_context": 1.0,
+        "warm_context_detail": "auto warm match"
       },
       "name": "Implement auth",
       "review_overhead_minutes": 17.5,
-      "tier": "M"
+      "tier": "M",
+      "tier_correction_warnings": [
+        "Upgraded M\u2192L: 4 concerns"
+      ]
     },
     {
       "agent": "Claude",
@@ -68,11 +72,19 @@
         "combined": 1.0,
         "raw_combined": 1.0,
         "spec_clarity": 1.0,
-        "warm_context": 1.0
+        "warm_context": 1.0,
+        "warm_context_detail": null
       },
       "name": "Add tests",
       "review_overhead_minutes": 7.5,
-      "tier": "S"
+      "tier": "S",
+      "tier_correction_warnings": []
+    }
+  ],
+  "tier_correction_warnings": [
+    {
+      "task": "Implement auth",
+      "warning": "Upgraded M\u2192L: 4 concerns"
     }
   ],
   "timeline": {

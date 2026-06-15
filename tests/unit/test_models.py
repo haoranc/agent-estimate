@@ -204,3 +204,30 @@ class TestFrozenDataclasses:
         )
         with pytest.raises(AttributeError):
             sizing.tier = SizeTier.XL  # type: ignore[misc]
+
+    def test_wave_mapping_defaults_are_immutable(self) -> None:
+        from agent_estimate.core.models import Wave
+
+        wave = Wave(
+            wave_number=0,
+            start_minutes=0.0,
+            end_minutes=1.0,
+            assignments=(),
+        )
+        with pytest.raises(TypeError):
+            wave.agent_review_minutes["codex"] = 1.0  # type: ignore[index]
+
+    def test_wave_plan_agent_utilization_is_immutable(self) -> None:
+        from agent_estimate.core.models import WavePlan
+
+        plan = WavePlan(
+            waves=(),
+            critical_path=(),
+            critical_path_minutes=0.0,
+            agent_utilization={"codex": 0.5},
+            parallel_efficiency=1.0,
+            total_wall_clock_minutes=1.0,
+            total_sequential_minutes=1.0,
+        )
+        with pytest.raises(TypeError):
+            plan.agent_utilization["codex"] = 1.0  # type: ignore[index]

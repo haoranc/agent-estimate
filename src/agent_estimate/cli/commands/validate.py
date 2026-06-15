@@ -68,42 +68,56 @@ def run(
 
     # Optionally store in calibration DB
     if db is not None:
-        modifiers_raw = raw.get("modifiers") or {}
-        if not isinstance(modifiers_raw, dict):
-            typer.echo("Error: 'modifiers' must be a YAML mapping.", err=True)
+        try:
+            obs = _build_observation(raw, estimated, actual_work, actual_total, error_ratio, verdict)
+        except ValueError as exc:
+            typer.echo(f"Error: Invalid observation field: {exc}", err=True)
             raise typer.Exit(code=2)
 
         try:
-            obs = ObservationInput(
-                task_type=str(raw.get("task_type", "unknown")),
-                estimated_secs=estimated * 60,
-                actual_work_secs=actual_work * 60,
-                actual_total_secs=actual_total * 60,
-                error_ratio=error_ratio,
-                file_count=int(raw.get("file_count", 0)),
-                line_count=int(raw.get("line_count", 0)),
-                test_count=int(raw.get("test_count", 0)),
-                project_hash=str(raw.get("project_hash") or "unknown"),
-                spec_clarity_modifier=float(
-                    modifiers_raw.get("spec_clarity", 1.0)
-                ),
-                warm_context_modifier=float(
-                    modifiers_raw.get("warm_context", 1.0)
-                ),
-                execution_mode=str(raw.get("execution_mode", "single")),
-                review_mode=str(raw.get("review_mode", "none")),
-                review_overhead_secs=float(
-                    raw.get("review_overhead_minutes", 0)
-                )
-                * 60,
-                verdict=verdict,
-                modifiers_should_have_been=raw.get(
-                    "modifiers_should_have_been", {}
-                ),
-            )
             with SQLiteCalibrationStore(db) as store:
                 row_id = store.insert_observation(obs)
             typer.echo(f"\nObservation stored (id={row_id}) in {db}")
+        except ValueError as exc:
+            typer.echo(f"Error: Invalid observation field: {exc}", err=True)
+            raise typer.Exit(code=2)
         except Exception as exc:
             typer.echo(f"Error storing observation: {exc}", err=True)
             raise typer.Exit(code=1)
+
+
+def _build_observation(
+    raw: dict[object, object],
+    estimated: float,
+    actual_work: float,
+    actual_total: float,
+    error_ratio: float,
+    verdict: str,
+) -> ObservationInput:
+    modifiers_raw = raw.get("modifiers") or {}
+    if not isinstance(modifiers_raw, dict):
+        raise ValueError("'modifiers' must be a YAML mapping")
+    modifiers_should_have_been = raw.get("modifiers_should_have_been", {})
+    if not isinstance(modifiers_should_have_been, dict):
+        raise ValueError("'modifiers_should_have_been' must be a YAML mapping")
+
+    return ObservationInput(
+        task_type=str(raw.get("task_type", "unknown")),
+        estimated_secs=estimated * 60,
+        actual_work_secs=actual_work * 60,
+        actual_total_secs=actual_total * 60,
+        error_ratio=error_ratio,
+        file_count=int(raw.get("file_count", 0)),
+        line_count=int(raw.get("line_count", 0)),
+        test_count=int(raw.get("test_count", 0)),
+        project_hash=str(raw.get("project_hash") or "unknown"),
+        spec_clarity_modifier=float(modifiers_raw.get("spec_clarity", 1.0)),
+        warm_context_modifier=float(modifiers_raw.get("warm_context", 1.0)),
+        execution_mode=str(raw.get("execution_mode", "single")),
+        review_mode=str(raw.get("review_mode", "none")),
+        review_overhead_secs=float(raw.get("review_overhead_minutes", 0)) * 60,
+        verdict=verdict,
+        modifiers_should_have_been={
+            str(key): float(value) for key, value in modifiers_should_have_been.items()
+        },
+    )

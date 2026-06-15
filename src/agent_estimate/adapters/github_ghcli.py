@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import time
+import warnings
 from typing import Callable, Sequence
 
 from agent_estimate.adapters.github_adapter import (
@@ -13,6 +14,8 @@ from agent_estimate.adapters.github_adapter import (
     build_task_description,
 )
 from agent_estimate.audit import emit_audit_event
+
+_ISSUE_LIST_LIMIT = 1000
 
 
 class GitHubGhCliAdapter:
@@ -60,7 +63,9 @@ class GitHubGhCliAdapter:
                 repo=repo,
                 issue_number=issue_number,
             )
-            payload = json.loads(output)
+            payload = _load_json(output, "gh issue view")
+            if not isinstance(payload, dict):
+                raise GitHubAdapterError(f"Unexpected gh issue view output: {payload!r}")
             issues.append(_parse_issue(payload))
         return issues
 
@@ -83,7 +88,7 @@ class GitHubGhCliAdapter:
             "--state",
             state,
             "--limit",
-            "1000",
+            str(_ISSUE_LIST_LIMIT),
             "--json",
             "number,title,body",
         ]
@@ -114,9 +119,28 @@ class GitHubGhCliAdapter:
             label=label,
             state=state,
         )
-        payload = json.loads(output)
+        payload = _load_json(output, "gh issue list")
         if not isinstance(payload, list):
             raise GitHubAdapterError(f"Unexpected gh issue list output: {payload!r}")
+        if len(payload) >= _ISSUE_LIST_LIMIT:
+            warnings.warn(
+                "gh issue list returned the 1000-item limit; results may be truncated",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            emit_audit_event(
+                "api_call",
+                action="github_issue_list",
+                outcome="warning",
+                level="WARNING",
+                client="gh",
+                endpoint="gh issue list",
+                repo=repo,
+                label=label,
+                state=state,
+                result_count=len(payload),
+                limit=_ISSUE_LIST_LIMIT,
+            )
         return [_parse_issue(raw_issue) for raw_issue in payload]
 
     def fetch_task_descriptions_by_numbers(
@@ -139,12 +163,24 @@ class GitHubGhCliAdapter:
 
 
 def _run_gh(args: list[str]) -> str:
-    result = subprocess.run(args, check=False, capture_output=True, text=True)
+    try:
+        result = subprocess.run(args, check=False, capture_output=True, text=True)
+    except OSError as exc:
+        raise GitHubAdapterError(
+            "gh CLI not found; install gh or set GITHUB_TOKEN",
+        ) from exc
     if result.returncode != 0:
         raise GitHubAdapterError(
             f"gh command failed ({' '.join(args)}): {result.stderr.strip() or result.stdout.strip()}",
         )
     return result.stdout
+
+
+def _load_json(output: str, command: str) -> object:
+    try:
+        return json.loads(output)
+    except json.JSONDecodeError as exc:
+        raise GitHubAdapterError(f"{command} returned invalid JSON: {exc}") from exc
 
 
 def _parse_issue(payload: dict[str, object]) -> GitHubIssue:

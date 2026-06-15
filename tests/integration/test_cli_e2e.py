@@ -156,6 +156,8 @@ class TestEstimateModifierFlags:
         assert "spec 0.60 x warm 0.50 x fit 1.10 = 0.33" in result.output
 
     def test_modifier_flags_work_with_issues_input(self, monkeypatch) -> None:
+        monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+
         class _FakeGitHubAdapter:
             def fetch_task_descriptions_by_numbers(
                 self, repo: str, issue_numbers: list[int]
@@ -182,9 +184,50 @@ class TestEstimateModifierFlags:
         assert result.exit_code == 0
         assert result.output.count("spec 0.70 x warm 0.60 x fit 1.00 = 0.42") == 2
 
+    def test_issues_input_uses_rest_adapter_when_token_is_set(
+        self,
+        monkeypatch,
+    ) -> None:
+        calls: dict[str, bool] = {}
+
+        class _FakeRestAdapter:
+            def fetch_task_descriptions_by_numbers(
+                self, repo: str, issue_numbers: list[int]
+            ) -> list[str]:
+                assert repo == "kiloloop/agent-estimate"
+                assert issue_numbers == [11]
+                calls["rest"] = True
+                return ["Add tests"]
+
+        class _UnexpectedGhAdapter:
+            def fetch_task_descriptions_by_numbers(
+                self, repo: str, issue_numbers: list[int]
+            ) -> list[str]:
+                raise AssertionError("gh CLI adapter should not be used")
+
+        monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+        monkeypatch.setattr(estimate_command, "GitHubRestAdapter", _FakeRestAdapter)
+        monkeypatch.setattr(estimate_command, "GitHubGhCliAdapter", _UnexpectedGhAdapter)
+
+        result = runner.invoke(
+            app,
+            [
+                "estimate",
+                "--issues",
+                "11",
+                "--repo",
+                "kiloloop/agent-estimate",
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert calls == {"rest": True}
+
     def test_modifier_out_of_range_with_issues_is_user_facing_error(
         self, monkeypatch
     ) -> None:
+        monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+
         class _FakeGitHubAdapter:
             def fetch_task_descriptions_by_numbers(
                 self, repo: str, issue_numbers: list[int]
@@ -261,6 +304,18 @@ class TestEstimateFileInput:
         result = runner.invoke(app, ["estimate", "--file", missing])
         assert result.exit_code != 0
         assert "File not found" in result.output
+
+    def test_estimate_file_directory_is_user_facing_error(self, tmp_path: Path) -> None:
+        result = runner.invoke(app, ["estimate", "--file", str(tmp_path)])
+        assert result.exit_code == 2
+        assert "Failed to read task file" in result.output
+
+    def test_estimate_file_non_utf8_is_user_facing_error(self, tmp_path: Path) -> None:
+        task_file = tmp_path / "tasks.txt"
+        task_file.write_bytes(b"\xff\xfe\x00")
+        result = runner.invoke(app, ["estimate", "--file", str(task_file)])
+        assert result.exit_code == 2
+        assert "Failed to decode task file" in result.output
 
 
 # ---------------------------------------------------------------------------
@@ -395,6 +450,11 @@ class TestEstimateErrors:
         assert result.exit_code != 0
         assert "not found" in result.output.lower()
 
+    def test_config_directory_is_user_facing_error(self, tmp_path: Path) -> None:
+        result = runner.invoke(app, ["estimate", "--config", str(tmp_path), "task"])
+        assert result.exit_code == 2
+        assert "Failed to read config file" in result.output
+
     def test_config_invalid_validation(self) -> None:
         config = str(FIXTURES / "cycle_invalid.yaml")
         result = runner.invoke(app, ["estimate", "--config", config, "task"])
@@ -453,6 +513,23 @@ class TestValidate:
         incomplete.write_text("task_type: feature\n")
         result = runner.invoke(app, ["validate", str(incomplete)])
         assert result.exit_code != 0
+
+    def test_validate_bad_optional_field_is_input_error(self, tmp_path: Path) -> None:
+        observation = tmp_path / "obs.yaml"
+        observation.write_text(
+            "\n".join(
+                [
+                    "estimated_minutes: 10",
+                    "actual_work_minutes: 12",
+                    "review_overhead_minutes: abc",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        result = runner.invoke(app, ["validate", str(observation), "--db", str(tmp_path / "c.db")])
+        assert result.exit_code == 2
+        assert "Invalid observation field" in result.output
+        assert "Error storing observation" not in result.output
 
 
 # ---------------------------------------------------------------------------

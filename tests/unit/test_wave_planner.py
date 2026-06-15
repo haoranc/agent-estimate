@@ -113,11 +113,10 @@ class TestSingleAgent:
 class TestUnbalancedLoad:
     """LPT should produce better balance than naive assignment.
 
-    With co-dispatch: all 4 tasks land on the same agent across 2 slots.
+    With co-dispatch: only tasks in the same agent slot get warm-context reduction.
     LPT assigns A(40)→slot0, B(30)→slot1, C(20)→slot1, D(10)→slot0.
-    agent_wave_tasks['claude'] = ['A', 'B', 'C', 'D'] — A is first (no reduction),
-    B, C, D get 0.5x: B=15, C=10, D=5.
-    Revised slot loads: slot0=A(40)+D(5)=45, slot1=B(15)+C(10)=25 → makespan=45.
+    Slot groups are [A, D] and [B, C], so only D and C get 0.5x.
+    Revised slot loads: slot0=A(40)+D(5)=45, slot1=B(30)+C(10)=40 → makespan=45.
     """
 
     def test_unbalanced_load(self) -> None:
@@ -131,8 +130,10 @@ class TestUnbalancedLoad:
         plan = plan_waves(tasks, [_agent(parallelism=2)])
 
         assert len(plan.waves) == 1
-        # Co-dispatch reduces B, C, D by 0.5x; makespan = slot0 = 40+5 = 45
+        # Co-dispatch reduces C and D by 0.5x; makespan = slot0 = 40+5 = 45
         assert plan.waves[0].end_minutes == pytest.approx(45.0)
+        durations = {a.task_id: a.duration_minutes for a in plan.waves[0].assignments}
+        assert durations == {"A": 40, "B": 30, "C": 10, "D": 5}
 
 
 class TestCapabilityFiltering:

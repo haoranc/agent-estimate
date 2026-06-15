@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 from pathlib import Path
 from typing import NoReturn, Optional
@@ -12,6 +13,7 @@ import typer
 from agent_estimate.adapters.config_loader import load_config, load_default_config
 from agent_estimate.adapters.github_adapter import GitHubAdapterError
 from agent_estimate.adapters.github_ghcli import GitHubGhCliAdapter
+from agent_estimate.adapters.github_rest import GitHubRestAdapter
 from agent_estimate.audit import emit_audit_event
 from agent_estimate.cli.commands._pipeline import run_estimate_pipeline
 from agent_estimate.cli.commands._utils import validate_output_format
@@ -140,6 +142,10 @@ def run(
             descriptions = [ln.strip() for ln in lines if ln.strip()]
         except FileNotFoundError:
             _error(f"File not found: {file}", 2)
+        except UnicodeDecodeError as exc:
+            _error(f"Failed to decode task file {file}: {exc}", 2)
+        except OSError as exc:
+            _error(f"Failed to read task file {file}: {exc}", 2)
         if not descriptions:
             _error(f"No task descriptions found in {file}.", 2)
     elif issues is not None:
@@ -152,10 +158,7 @@ def run(
         if not issue_numbers:
             _error("No issue numbers provided.", 2)
         try:
-            adapter = GitHubGhCliAdapter()
-            descriptions = adapter.fetch_task_descriptions_by_numbers(
-                repo, issue_numbers
-            )
+            descriptions = _fetch_github_task_descriptions(repo, issue_numbers)
         except GitHubAdapterError as exc:
             _error(f"GitHub error: {exc}", 1)
 
@@ -174,6 +177,8 @@ def run(
         cfg = load_config(config_path) if config_path else load_default_config()
     except FileNotFoundError:
         _error(f"Config file not found: {config_path}", 2)
+    except OSError as exc:
+        _error(f"Failed to read config file {config_path}: {exc}", 2)
     except ValueError as exc:
         _error(f"Config validation error: {exc}", 2)
 
@@ -276,6 +281,30 @@ def _error(message: str, exit_code: int) -> NoReturn:
     """Print error to stderr and exit."""
     typer.echo(f"Error: {message}", err=True)
     raise typer.Exit(code=exit_code)
+
+
+def _fetch_github_task_descriptions(repo: str, issue_numbers: list[int]) -> list[str]:
+    """Fetch GitHub issues using REST in token-only environments, otherwise gh CLI."""
+    errors: list[str] = []
+    if os.getenv("GITHUB_TOKEN"):
+        try:
+            return GitHubRestAdapter().fetch_task_descriptions_by_numbers(
+                repo,
+                issue_numbers,
+            )
+        except GitHubAdapterError as exc:
+            errors.append(f"REST API: {exc}")
+
+    try:
+        return GitHubGhCliAdapter().fetch_task_descriptions_by_numbers(
+            repo,
+            issue_numbers,
+        )
+    except GitHubAdapterError as exc:
+        if errors:
+            errors.append(f"gh CLI: {exc}")
+            raise GitHubAdapterError("; ".join(errors)) from exc
+        raise
 
 
 def _summarize_config_changes(

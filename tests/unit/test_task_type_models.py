@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agent_estimate.core.models import EstimationCategory, ReviewMode
+from agent_estimate.core.models import EstimationCategory, ReviewMode, TaskType
 from agent_estimate.core.modifiers import build_modifier_set
 from agent_estimate.core.task_type_models import (
     _APP_DEV_BASELINES,
@@ -302,6 +302,10 @@ class TestEstimateDocumentation:
     def test_signal_label_in_sizing(self) -> None:
         est = estimate_documentation("Write API docs", self.modifiers)
         assert "documentation-model" in est.sizing.signals
+
+    def test_uses_docs_task_type_for_human_multiplier(self) -> None:
+        est = estimate_documentation("Write API docs", self.modifiers)
+        assert est.sizing.task_type == TaskType.DOCS
 
     def test_default_review_is_none(self) -> None:
         est = estimate_documentation("Write API docs", self.modifiers)

@@ -41,6 +41,8 @@ def _build_report() -> EstimationReport:
                 human_equivalent_minutes=160.0,
                 review_overhead_minutes=17.5,
                 metr_warning="Estimate exceeds threshold",
+                warm_context_detail="auto warm match",
+                tier_correction_warnings=("Upgraded M→L: 4 concerns",),
             ),
             ReportTask(
                 name="Add tests",
@@ -117,6 +119,11 @@ def test_render_json_report_is_canonical_and_round_trips() -> None:
     assert {"tasks", "waves", "timeline", "agent_load", "critical_path", "metr_warnings"} <= set(
         payload
     )
+    assert "warm_context_detail" in payload["tasks"][0]["modifiers"]
+    assert payload["tasks"][0]["tier_correction_warnings"] == ["Upgraded M→L: 4 concerns"]
+    assert payload["tier_correction_warnings"] == [
+        {"task": "Implement auth", "warning": "Upgraded M→L: 4 concerns"}
+    ]
 
 
 def test_estimate_command_json_format_outputs_json() -> None:

@@ -6,6 +6,7 @@ import enum
 from collections.abc import Mapping, Sequence
 import dataclasses
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Annotated, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
@@ -299,6 +300,13 @@ class Wave:
     assignments: tuple[WaveAssignment, ...]
     agent_review_minutes: Mapping[str, float] = dataclasses.field(default_factory=dict)  # type: ignore[assignment]
 
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "agent_review_minutes",
+            MappingProxyType(dict(self.agent_review_minutes)),
+        )
+
 
 @dataclass(frozen=True)
 class WavePlan:
@@ -311,3 +319,10 @@ class WavePlan:
     parallel_efficiency: float
     total_wall_clock_minutes: float
     total_sequential_minutes: float
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "agent_utilization",
+            MappingProxyType(dict(self.agent_utilization)),
+        )

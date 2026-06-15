@@ -101,6 +101,17 @@ def test_rest_adapter_retries_when_rate_limited() -> None:
     assert sleep_calls == [2.0]
 
 
+def test_rest_adapter_caps_rate_limit_reset_delay() -> None:
+    delay = github_rest._compute_retry_delay(
+        headers={"x-ratelimit-reset": "10000"},
+        attempt=0,
+        initial_backoff_seconds=1.0,
+        now_seconds=100.0,
+    )
+
+    assert delay == github_rest.MAX_RETRY_DELAY_SECONDS
+
+
 def test_gh_cli_adapter_fetches_issues_by_number_and_label() -> None:
     def runner(args: list[str]) -> str:
         if args[:3] == ["gh", "issue", "view"]:
@@ -120,6 +131,34 @@ def test_gh_cli_adapter_fetches_issues_by_number_and_label() -> None:
 
     assert by_number == ["CLI title\n\nCLI body"]
     assert by_label == ["Label title\n\nBody", "Second title"]
+
+
+def test_gh_cli_adapter_wraps_invalid_json() -> None:
+    adapter = GitHubGhCliAdapter(runner=lambda _: "not-json")
+
+    with pytest.raises(GitHubAdapterError, match="invalid JSON"):
+        adapter.fetch_issues_by_numbers("acme/repo", [9])
+
+
+def test_gh_cli_adapter_wraps_missing_binary(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_run(*args, **kwargs):
+        raise FileNotFoundError("gh")
+
+    monkeypatch.setattr("agent_estimate.adapters.github_ghcli.subprocess.run", fake_run)
+
+    adapter = GitHubGhCliAdapter()
+    with pytest.raises(GitHubAdapterError, match="gh CLI not found"):
+        adapter.fetch_issues_by_numbers("acme/repo", [9])
+
+
+def test_rest_adapter_wraps_invalid_json_response() -> None:
+    adapter = GitHubRestAdapter(
+        token_provider=lambda: "test-token",
+        request_fn=lambda _url, _headers: (200, {}, "not-json"),
+    )
+
+    with pytest.raises(GitHubAdapterError, match="invalid JSON"):
+        adapter.fetch_issues_by_numbers("acme/repo", [9])
 
 
 def test_rest_adapter_emits_auth_and_api_audit_events(
@@ -219,3 +258,17 @@ def test_rest_adapter_auth_failure_audit_event_redacts_raw_gh_output(
     assert auth_event["outcome"] == "error"
     assert auth_event["details"]["error_type"] == "gh_auth_failure"
     assert "error" not in auth_event["details"]
+
+
+def test_rest_adapter_wraps_missing_gh_token_binary(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+
+    def fake_run(*args, **kwargs):
+        raise FileNotFoundError("gh")
+
+    monkeypatch.setattr(github_rest.subprocess, "run", fake_run)
+
+    with pytest.raises(GitHubAdapterError, match="gh CLI not found"):
+        github_rest._resolve_github_token()

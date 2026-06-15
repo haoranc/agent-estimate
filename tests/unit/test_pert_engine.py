@@ -8,6 +8,7 @@ import pytest
 
 from agent_estimate.core.human_comparison import compute_human_equivalent, get_human_multiplier
 from agent_estimate.core.models import (
+    EstimationCategory,
     MetrWarning,
     ReviewMode,
     SizeTier,
@@ -58,6 +59,10 @@ class TestComputePert:
     def test_optimistic_exceeds_most_likely_raises(self) -> None:
         with pytest.raises(ValueError, match="O <= M <= P"):
             compute_pert(25, 20, 30)
+
+    def test_negative_optimistic_raises(self) -> None:
+        with pytest.raises(ValueError, match="O >= 0"):
+            compute_pert(-10, 5, 10)
 
     def test_result_is_frozen(self) -> None:
         result = compute_pert(10, 20, 30)
@@ -356,6 +361,7 @@ class TestEstimateTask:
         )
 
         assert isinstance(result, TaskEstimate)
+        assert result.estimation_category == EstimationCategory.CODING
         # PERT E = (O + 4M + P) / 6 = (12 + 4*23 + 40) / 6 = 144 / 6 = 24.0
         o, m, p = TIER_BASELINES[SizeTier.S]
         expected_pert = (o + 4 * m + p) / 6

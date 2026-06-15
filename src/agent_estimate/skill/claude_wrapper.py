@@ -21,7 +21,7 @@ def run_estimate(
     file: Path | None = None,
     config: Path | None = None,
     format: str = "markdown",
-    review_mode: str = "2x-lgtm",
+    review_mode: str = "standard",
     issues: str | None = None,
     repo: str | None = None,
     title: str = "Agent Estimate Report",
@@ -47,7 +47,7 @@ def run_estimate(
         cmd += ["--config", str(config)]
     if format != "markdown":
         cmd += ["--format", format]
-    if review_mode != "2x-lgtm":
+    if review_mode != "standard":
         cmd += ["--review-mode", review_mode]
     if issues is not None:
         cmd += ["--issues", issues]

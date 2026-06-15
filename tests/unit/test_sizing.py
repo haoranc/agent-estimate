@@ -32,8 +32,16 @@ class TestTaskTypeDetection:
         result = classify_task("Write test coverage for the auth module")
         assert result.task_type == TaskType.TEST
 
+    def test_add_tests_prefers_test_over_feature(self) -> None:
+        result = classify_task("Add tests for the parser")
+        assert result.task_type == TaskType.TEST
+
     def test_docs_detection(self) -> None:
         result = classify_task("Update the README with setup instructions")
+        assert result.task_type == TaskType.DOCS
+
+    def test_add_docs_prefers_docs_over_feature(self) -> None:
+        result = classify_task("Add docs for the parser")
         assert result.task_type == TaskType.DOCS
 
     def test_unknown_type_when_no_keyword(self) -> None:
@@ -92,13 +100,16 @@ class TestComplexitySignalBumps:
 
 
 class TestTierVoteMedian:
-    def test_conflicting_signals_picks_median(self) -> None:
-        # "simple" → S vote, "large" → L vote → median of [S, L] = L (index 1 of 2)
+    def test_conflicting_signals_pick_conservative_upper_middle(self) -> None:
+        # "simple" → S vote, "large" → L vote → upper-middle of [S, L] = L.
         result = classify_task("Simple but large refactoring task")
-        # Sorted: [S, L], median index = 2//2 = 1 → L
         # But "refactoring" triggers structural-change complexity signal → may bump further
         # The structural-change is 1 complexity signal → no bump yet
         assert result.tier in (SizeTier.L, SizeTier.XL)
+
+    def test_even_vote_count_biases_to_upper_middle(self) -> None:
+        result = classify_task("a small but complex change")
+        assert result.tier == SizeTier.L
 
     def test_all_same_tier_votes_return_that_tier(self) -> None:
         result = classify_task("trivial rename one-liner typo")

@@ -125,6 +125,7 @@ def plan_waves(
 
         # Track which tasks land on each agent in this wave (for co-dispatch detection)
         agent_wave_tasks: dict[str, list[str]] = defaultdict(list)
+        slot_wave_tasks: dict[tuple[str, int], list[str]] = defaultdict(list)
 
         for tid in sorted_tasks:
             node = task_map[tid]
@@ -148,6 +149,7 @@ def plan_waves(
             wave_bin_load[best] += node.duration_minutes
             slot_load[best] += node.duration_minutes
             agent_wave_tasks[best[0]].append(tid)
+            slot_wave_tasks[best].append(tid)
 
             assignments.append(
                 WaveAssignment(
@@ -159,15 +161,15 @@ def plan_waves(
             )
 
         # ------------------------------------------------------------------
-        # Co-dispatch: for each agent with 2+ tasks in this wave, apply 0.5x
-        # warm-context reduction to all tasks beyond the first.
+        # Co-dispatch: for each slot with 2+ tasks in this wave, apply 0.5x
+        # warm-context reduction to all tasks in that slot beyond the first.
         # ------------------------------------------------------------------
-        # Build a mapping from task_id → co_dispatch_group for agents with
-        # multiple tasks.  Then rebuild assignments with adjusted durations
+        # Build a mapping from task_id → co_dispatch_group for slots with
+        # multiple tasks. Then rebuild assignments with adjusted durations
         # and co_dispatch_group populated.
         co_dispatch_group_map: dict[str, tuple[str, ...]] = {}
         adjusted_duration_map: dict[str, float] = {}
-        for agent_name, tids in agent_wave_tasks.items():
+        for tids in slot_wave_tasks.values():
             if len(tids) < 2:
                 continue
             group = tuple(tids)

@@ -350,7 +350,13 @@ def estimate_documentation(
         review_mode = ReviewMode.NONE
 
     o, m, p = _DOCUMENTATION_BASELINES
-    sizing = _make_non_coding_sizing(o, m, p, "documentation-model")
+    sizing = _make_non_coding_sizing(
+        o,
+        m,
+        p,
+        "documentation-model",
+        task_type=TaskType.DOCS,
+    )
 
     adjusted_o = o * modifiers.combined
     adjusted_m = m * modifiers.combined

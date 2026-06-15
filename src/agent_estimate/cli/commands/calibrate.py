@@ -20,7 +20,7 @@ def run(
     if not db.exists():
         typer.echo("Error: No calibration database found.", err=True)
         typer.echo(f"Expected: {db}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=2)
 
     try:
         with SQLiteCalibrationStore(db) as store:

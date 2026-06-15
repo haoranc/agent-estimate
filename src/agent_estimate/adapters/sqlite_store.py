@@ -10,6 +10,8 @@ from pathlib import Path
 from threading import RLock
 from typing import Any
 
+SCHEMA_VERSION = 1
+
 
 @dataclass(frozen=True)
 class ObservationInput:
@@ -51,6 +53,11 @@ class SQLiteCalibrationStore:
         self._connection.row_factory = sqlite3.Row
         self._enable_pragmas()
         self._create_schema()
+        try:
+            self._validate_schema_version()
+        except Exception:
+            self._connection.close()
+            raise
 
     def __enter__(self) -> SQLiteCalibrationStore:
         """Allow `with SQLiteCalibrationStore(...) as store:` usage."""
@@ -180,8 +187,8 @@ class SQLiteCalibrationStore:
 
     def calibrate(self) -> None:
         """Recompute calibration_summary from the raw observations table."""
-        grouped: dict[tuple[str, int], list[float]] = {}
         with self._lock:
+            grouped: dict[tuple[str, int], list[float]] = {}
             rows = self._connection.execute(
                 """
                 SELECT week_start, task_type_id, error_ratio
@@ -190,11 +197,10 @@ class SQLiteCalibrationStore:
                 """,
             ).fetchall()
 
-        for row in rows:
-            key = (str(row["week_start"]), int(row["task_type_id"]))
-            grouped.setdefault(key, []).append(float(row["error_ratio"]) * 100.0)
+            for row in rows:
+                key = (str(row["week_start"]), int(row["task_type_id"]))
+                grouped.setdefault(key, []).append(float(row["error_ratio"]) * 100.0)
 
-        with self._lock:
             with self._connection:
                 self._connection.execute("DELETE FROM calibration_summary")
                 for (week_start, task_type_id), values in grouped.items():
@@ -334,9 +340,20 @@ class SQLiteCalibrationStore:
                 )
                 self._connection.execute(
                     """
-                    INSERT OR IGNORE INTO schema_version (version) VALUES (1)
+                    INSERT OR IGNORE INTO schema_version (version) VALUES (?)
                     """,
+                    (SCHEMA_VERSION,),
                 )
+
+    def _validate_schema_version(self) -> None:
+        with self._lock:
+            row = self._connection.execute("SELECT MAX(version) FROM schema_version").fetchone()
+        version = int(row[0]) if row is not None and row[0] is not None else 0
+        if version > SCHEMA_VERSION:
+            raise RuntimeError(
+                "Unsupported calibration DB schema version "
+                f"{version}; this agent-estimate supports version {SCHEMA_VERSION}",
+            )
 
     def _upsert_task_type(self, task_type: str) -> int:
         if not task_type:

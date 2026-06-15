@@ -9,6 +9,7 @@ Wraps the `agent-estimate` CLI to provide PERT three-point effort estimation wit
 | Intent | Command |
 |--------|---------|
 | Estimate one or more tasks | `agent-estimate estimate ...` |
+| Estimate a multi-agent session | `agent-estimate session ...` |
 | Validate estimate vs actuals | `agent-estimate validate <observation.yaml> ...` |
 | Recompute calibration summary | `agent-estimate calibrate ...` |
 
@@ -24,11 +25,24 @@ Accepts exactly one input source:
 Optional flags:
 - `--config <path>` — path to config YAML with agent definitions
 - `--format markdown|json` — output format (default: `markdown`)
-- `--review-mode none|standard|complex` — review overhead tier
+- `--review-mode none|standard|complex|3-round` — review overhead tier
+- `--type coding|brainstorm|research|config|documentation|frontend|app_dev` — task category; omit to auto-detect
+- `--spec-clarity <0.3..1.3>` — spec clarity modifier
+- `--warm-context <0.3..1.15>` — warm context modifier
+- `--agent-fit <0.9..1.2>` — agent fit modifier
 - `--title <text>` — report title
 - `--verbose` — enable debug logging
 
 If no input source is provided, prompt the user.
+
+### `session`
+
+- `--agents <n>` — number of parallel agents
+- `--rounds <n>` — number of sequential rounds
+- `--type brainstorm|review|research|documentation|config|coding` — session task type
+- `--coordination-overhead <minutes>` — per-round coordination overhead
+- `--per-round-minutes <minutes>` — explicit per-agent round duration
+- `--format markdown|json` — output format
 
 ### `validate`
 

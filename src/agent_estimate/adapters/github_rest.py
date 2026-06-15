@@ -7,7 +7,7 @@ import os
 import subprocess
 import time
 from typing import Callable, Mapping, Sequence
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -19,6 +19,7 @@ from agent_estimate.adapters.github_adapter import (
 from agent_estimate.audit import emit_audit_event
 
 BASE_URL = "https://api.github.com"
+MAX_RETRY_DELAY_SECONDS = 60.0
 
 
 class GitHubRestAdapter:
@@ -126,7 +127,23 @@ class GitHubRestAdapter:
                     endpoint=url,
                     status_code=status,
                 )
-                return json.loads(body), normalized_headers
+                try:
+                    return json.loads(body), normalized_headers
+                except json.JSONDecodeError as exc:
+                    emit_audit_event(
+                        "api_call",
+                        action="github_rest_request",
+                        outcome="error",
+                        level="ERROR",
+                        duration_ms=duration_ms,
+                        client="github_rest",
+                        endpoint=url,
+                        status_code=status,
+                        error_type="json_decode_error",
+                    )
+                    raise GitHubAdapterError(
+                        f"GitHub API returned invalid JSON for {url}: {exc}",
+                    ) from exc
 
             if _is_rate_limited(status, normalized_headers) and attempt < self._max_retries:
                 emit_audit_event(
@@ -174,6 +191,8 @@ class GitHubRestAdapter:
         except HTTPError as exc:
             body = exc.read().decode("utf-8", errors="replace")
             return exc.code, dict(exc.headers.items()) if exc.headers else {}, body
+        except (OSError, URLError) as exc:
+            raise GitHubAdapterError(f"GitHub API request failed for {url}: {exc}") from exc
 
 
 def _resolve_github_token() -> str:
@@ -187,12 +206,26 @@ def _resolve_github_token() -> str:
         )
         return token
 
-    result = subprocess.run(
-        ["gh", "auth", "token"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            ["gh", "auth", "token"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError as exc:
+        emit_audit_event(
+            "authentication_event",
+            action="resolve_github_token",
+            outcome="error",
+            level="ERROR",
+            provider="gh",
+            auth_target="github",
+            error_type="gh_cli_missing",
+        )
+        raise GitHubAdapterError(
+            "gh CLI not found; install gh or set GITHUB_TOKEN",
+        ) from exc
     if result.returncode != 0 or not result.stdout.strip():
         message = result.stderr.strip() or "gh auth token returned no token"
         emit_audit_event(
@@ -245,15 +278,21 @@ def _compute_retry_delay(
     retry_after = headers.get("retry-after")
     if retry_after:
         try:
-            return max(float(retry_after), 1.0)
+            return min(max(float(retry_after), 1.0), MAX_RETRY_DELAY_SECONDS)
         except ValueError:
             pass
 
     reset_epoch = headers.get("x-ratelimit-reset")
     if reset_epoch:
         try:
-            return max(float(reset_epoch) - now_seconds, 1.0)
+            return min(
+                max(float(reset_epoch) - now_seconds, 1.0),
+                MAX_RETRY_DELAY_SECONDS,
+            )
         except ValueError:
             pass
 
-    return max(initial_backoff_seconds * (2**attempt), 1.0)
+    return min(
+        max(initial_backoff_seconds * (2**attempt), 1.0),
+        MAX_RETRY_DELAY_SECONDS,
+    )
