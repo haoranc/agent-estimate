@@ -32,7 +32,7 @@ agent-estimate estimate --file tasks.txt
 
 | Wave | Tasks | Duration | Agent Assignments (amortized review) |
 | --- | --- | --- | --- |
-| 0 | All 3 tasks | 75.4m | Claude: add-agent CLI +15m review; Codex: known_debt.md +15m review; Gemini: quickstart guide +15m review |
+| 0 | Implement add-agent CLI command with SPEC.md generation, Add known_debt.md as standard protocol memory file, Write quickstart guide with protocol comparison table | 75.4m | Claude: Implement add-agent CLI command with SPEC.md generation +15m review; Codex: Add known_debt.md as standard protocol memory file +15m review; Gemini: Write quickstart guide with protocol comparison table +15m review |
 
 ### Timeline Summary
 
@@ -44,6 +44,18 @@ agent-estimate estimate --file tasks.txt
 | Human-speed equivalent | 608.2m |
 | Compression ratio | 8.07x |
 | Review overhead (per-task, pre-amortization) | 45m |
+
+### Review Overhead
+
+Review is amortized per agent per wave: one review cycle covers all PRs from that
+agent in the wave.  Per-task values below are the naive (pre-amortization) figures.
+
+| Task | Review Overhead |
+| --- | --- |
+| Implement add-agent CLI command with SPEC.md generation | 15m |
+| Add known_debt.md as standard protocol memory file | 15m |
+| Write quickstart guide with protocol comparison table | 15m |
+| **Total (naive)** | **45m** |
 
 ### Agent Load Summary
 
@@ -57,10 +69,15 @@ agent-estimate estimate --file tasks.txt
 
 **Implement add-agent CLI command with SPEC.md generation**
 
+### Tier Corrections
+
+No tier corrections.
+
 ### METR Warnings
 
 - **Add known_debt.md as standard protocol memory file**: Estimate (75m) exceeds gpt_5_4 p80 threshold (60m). Consider splitting the task.
 - **Write quickstart guide with protocol comparison table**: Estimate (75m) exceeds gemini_3_1_pro p80 threshold (45m). Consider splitting the task.
+
 
 ## What actually happened
 

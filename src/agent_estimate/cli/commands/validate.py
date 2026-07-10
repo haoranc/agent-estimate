@@ -70,7 +70,7 @@ def run(
     if db is not None:
         try:
             obs = _build_observation(raw, estimated, actual_work, actual_total, error_ratio, verdict)
-        except ValueError as exc:
+        except (TypeError, ValueError) as exc:
             typer.echo(f"Error: Invalid observation field: {exc}", err=True)
             raise typer.Exit(code=2)
 

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.3] - 2026-07-10
+
+### Fixed
+- `agent-estimate validate` now reports a clean user-facing error instead of a traceback when calibration DB observation fields have invalid types, with end-to-end tests covering the calibration write path.
+- Refreshed shipped example outputs for current engine numbers and expanded docs freshness tests to cover every example capture.
+
 ## [0.7.2] - 2026-06-14
 
 ### Fixed
@@ -110,6 +116,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modifier flags: `--warm-context`, `--spec-clarity`, `--issues`
 - PyPI package: `pip install agent-estimate`
 
+[0.7.3]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.7.3
 [0.7.2]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.7.2
 [0.7.1]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.7.1
 [0.7.0]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.7.0

@@ -14,7 +14,13 @@ agent-estimate estimate "Implement add-agent CLI command with SPEC.md generation
 
 | Task | Model | Tier | Agent | Base PERT (O/M/P) | Modifiers | Effective Duration | Human Equivalent |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Implement add-agent CLI command with SPEC.md generation** | coding | M | Claude | 25m / 50m / 90m (E=52.5m) | spec 1.00 x warm 1.00 x fit 1.00 = 1.00 | 52.5m | 190.9m |
+| **Implement add-agent CLI command with SPEC.md generation** | coding | M | Claude | 25m / 50m / 90m (E=52.5m) | spec 1.00 x warm 1.00 x fit 1.00 = 1.00 | 52.5m | 226.4m |
+
+### Wave Plan
+
+| Wave | Tasks | Duration | Agent Assignments (amortized review) |
+| --- | --- | --- | --- |
+| 0 | Implement add-agent CLI command with SPEC.md generation | 75.4m | Claude: Implement add-agent CLI command with SPEC.md generation +15m review |
 
 ### Timeline Summary
 
@@ -23,15 +29,37 @@ agent-estimate estimate "Implement add-agent CLI command with SPEC.md generation
 | Best case | 44.7m |
 | Expected case | 75.4m |
 | Worst case | 117.2m |
-| Human-speed equivalent | 190.9m |
-| Compression ratio | 2.53x |
+| Human-speed equivalent | 226.4m |
+| Compression ratio | 3.00x |
 | Review overhead (per-task, pre-amortization) | 15m |
+
+### Review Overhead
+
+Review is amortized per agent per wave: one review cycle covers all PRs from that
+agent in the wave.  Per-task values below are the naive (pre-amortization) figures.
+
+| Task | Review Overhead |
+| --- | --- |
+| Implement add-agent CLI command with SPEC.md generation | 15m |
+| **Total (naive)** | **15m** |
 
 ### Agent Load Summary
 
 | Agent | Task Count | Total Work | Estimated Cost |
 | --- | --- | --- | --- |
 | Claude | 1 | 60.4m | $1.45 |
+| Codex | 0 | 0m | $0.00 |
+| Gemini | 0 | 0m | $0.00 |
+
+### Critical Path
+
+**Implement add-agent CLI command with SPEC.md generation**
+
+### Tier Corrections
+
+No tier corrections.
+
+### METR Warnings
 
 No METR threshold warnings.
 
@@ -66,4 +94,4 @@ The task ran slightly over the expected case due to a second review round. This 
 
 ## Key takeaway
 
-M-tier tasks are the most common dispatch target — complex enough to justify agent overhead, predictable enough for reliable estimation. The 2.53x compression means a feature that takes a human developer ~3 hours lands in ~75 minutes of wall clock time.
+M-tier tasks are the most common dispatch target — complex enough to justify agent overhead, predictable enough for reliable estimation. The 3.00x compression means a feature that takes a human developer ~3.8 hours lands in ~75 minutes of wall clock time.

@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
+from agent_estimate.adapters.sqlite_store import SQLiteCalibrationStore
 from agent_estimate.audit import reset_audit_logger
 from agent_estimate.cli.app import app
 from agent_estimate.cli.commands import estimate as estimate_command
@@ -530,6 +533,146 @@ class TestValidate:
         assert result.exit_code == 2
         assert "Invalid observation field" in result.output
         assert "Error storing observation" not in result.output
+
+    def test_validate_with_db_stores_observation_round_trip(self, tmp_path: Path) -> None:
+        observation = tmp_path / "obs.yaml"
+        observation.write_text(
+            "\n".join(
+                [
+                    "task_type: feature",
+                    "estimated_minutes: 10",
+                    "actual_work_minutes: 12",
+                    "actual_total_minutes: 15",
+                    "file_count: 2",
+                    "line_count: 80",
+                    "test_count: 3",
+                    "project_hash: proj-abc",
+                    "execution_mode: batch",
+                    "review_mode: standard",
+                    "review_overhead_minutes: 3",
+                    "modifiers:",
+                    "  spec_clarity: 0.8",
+                    "  warm_context: 0.7",
+                    "modifiers_should_have_been:",
+                    "  spec_clarity: 0.9",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        db_path = tmp_path / "calibration.db"
+
+        before = datetime.now(timezone.utc)
+        result = runner.invoke(app, ["validate", str(observation), "--db", str(db_path)])
+        after = datetime.now(timezone.utc)
+
+        assert result.exit_code == 0
+        assert "Observation stored" in result.output
+
+        with SQLiteCalibrationStore(db_path) as store:
+            rows = store._query_observations(task_type="feature")
+
+        assert len(rows) == 1
+        row = rows[0]
+        assert row["estimated_secs"] == 600.0
+        assert row["actual_work_secs"] == 720.0
+        assert row["actual_total_secs"] == 900.0
+        assert row["file_count"] == 2
+        assert row["line_count"] == 80
+        assert row["test_count"] == 3
+        assert row["project_hash"] == "proj-abc"
+        assert row["execution_mode"] == "batch"
+        assert row["review_mode"] == "standard"
+        assert row["spec_clarity_modifier"] == 0.8
+        assert row["warm_context_modifier"] == 0.7
+        assert row["review_overhead_secs"] == 180.0
+        assert json.loads(row["modifiers_should_have_been"]) == {"spec_clarity": 0.9}
+
+        observed_at = datetime.fromisoformat(row["observed_at"])
+        assert before.replace(microsecond=0) <= observed_at <= after.replace(microsecond=0)
+
+    def test_validate_with_db_stores_default_observation_fields(
+        self, tmp_path: Path
+    ) -> None:
+        observation = tmp_path / "obs.yaml"
+        observation.write_text(
+            "\n".join(
+                [
+                    "task_type: bugfix",
+                    "estimated_minutes: 10",
+                    "actual_work_minutes: 12",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        db_path = tmp_path / "calibration.db"
+
+        result = runner.invoke(app, ["validate", str(observation), "--db", str(db_path)])
+
+        assert result.exit_code == 0
+        with SQLiteCalibrationStore(db_path) as store:
+            rows = store._query_observations(task_type="bugfix")
+
+        assert len(rows) == 1
+        row = rows[0]
+        assert row["file_count"] == 0
+        assert row["line_count"] == 0
+        assert row["test_count"] == 0
+        assert row["project_hash"] == "unknown"
+        assert row["execution_mode"] == "single"
+        assert row["review_mode"] == "none"
+        assert row["spec_clarity_modifier"] == 1.0
+        assert row["warm_context_modifier"] == 1.0
+        assert row["review_overhead_secs"] == 0.0
+        assert json.loads(row["modifiers_should_have_been"]) == {}
+
+    def test_validate_db_null_field_is_input_error(self, tmp_path: Path) -> None:
+        observation = tmp_path / "obs.yaml"
+        observation.write_text(
+            "\n".join(
+                [
+                    "estimated_minutes: 10",
+                    "actual_work_minutes: 12",
+                    "file_count:",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        result = runner.invoke(app, ["validate", str(observation), "--db", str(tmp_path / "c.db")])
+
+        assert result.exit_code == 2
+        assert "Invalid observation field" in result.output
+        assert "Error storing observation" not in result.output
+        assert "Traceback" not in result.output
+
+    @pytest.mark.parametrize(
+        "field_body",
+        [
+            "file_count:\n  - 1",
+            "file_count:\n  value: 1",
+        ],
+    )
+    def test_validate_db_container_field_is_input_error(
+        self, tmp_path: Path, field_body: str
+    ) -> None:
+        observation = tmp_path / "obs.yaml"
+        observation.write_text(
+            "\n".join(
+                [
+                    "estimated_minutes: 10",
+                    "actual_work_minutes: 12",
+                    field_body,
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        result = runner.invoke(app, ["validate", str(observation), "--db", str(tmp_path / "c.db")])
+
+        assert result.exit_code == 2
+        assert "Invalid observation field" in result.output
+        assert "Error storing observation" not in result.output
+        assert "Traceback" not in result.output
 
 
 # ---------------------------------------------------------------------------

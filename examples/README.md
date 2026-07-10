@@ -5,9 +5,9 @@ Real input/output examples from production agent dispatches. Every command below
 | Example | Task type | Tier | Compression | File |
 |---------|-----------|------|-------------|------|
 | Fix pyproject URLs after org rename | Coding | XS | 2.00x | [coding-s.md](./coding-s.md) |
-| Implement CLI command with code generation | Coding | M | 2.53x | [coding-m.md](./coding-m.md) |
+| Implement CLI command with code generation | Coding | M | 3.00x | [coding-m.md](./coding-m.md) |
 | Audit cloud infrastructure providers | Research | S | 2.61x | [research.md](./research.md) |
-| Write quickstart guide + README | Documentation | S | 2.58x | [documentation.md](./documentation.md) |
+| Write quickstart guide + README | Documentation | S | 3.87x | [documentation.md](./documentation.md) |
 | 3-agent parallel session (3 features) | Multi-agent | M×3 | 8.07x | [multi-agent.md](./multi-agent.md) |
 
 ## How to read the output
