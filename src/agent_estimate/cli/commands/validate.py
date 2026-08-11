@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import typer
 import yaml
@@ -15,7 +14,7 @@ def run(
     observation_file: Path = typer.Argument(
         ..., help="Path to observation YAML file."
     ),
-    db: Optional[Path] = typer.Option(
+    db: Path | None = typer.Option(
         None, "--db", help="Path to calibration database to store observation."
     ),
 ) -> None:
@@ -96,10 +95,12 @@ def _build_observation(
 ) -> ObservationInput:
     modifiers_raw = raw.get("modifiers") or {}
     if not isinstance(modifiers_raw, dict):
-        raise ValueError("'modifiers' must be a YAML mapping")
+        raise ValueError("'modifiers' must be a YAML mapping")  # noqa: TRY004 — content shape
     modifiers_should_have_been = raw.get("modifiers_should_have_been", {})
     if not isinstance(modifiers_should_have_been, dict):
-        raise ValueError("'modifiers_should_have_been' must be a YAML mapping")
+        raise ValueError(  # noqa: TRY004 — content shape
+            "'modifiers_should_have_been' must be a YAML mapping"
+        )
 
     return ObservationInput(
         task_type=str(raw.get("task_type", "unknown")),

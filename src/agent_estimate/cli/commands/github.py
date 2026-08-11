@@ -21,8 +21,7 @@ def parse_issue_selection(value: str) -> list[int]:
         token = raw_token.strip()
         if not token:
             continue
-        if token.startswith("#"):
-            token = token[1:]
+        token = token.removeprefix("#")
         if not _ISSUE_TOKEN_RE.fullmatch(token):
             raise ValueError(f"Invalid issue token: {raw_token}")
         numbers.append(int(token))

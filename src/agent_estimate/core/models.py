@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import dataclasses
 import enum
 from collections.abc import Mapping, Sequence
-import dataclasses
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Annotated, Protocol, runtime_checkable
@@ -128,9 +128,9 @@ class EstimationCategory(enum.Enum):
     APP_DEV = "app_dev"
 
     @classmethod
-    def _missing_(cls, value: object) -> "EstimationCategory | None":
+    def _missing_(cls, value: object) -> EstimationCategory | None:
         """Accept common aliases for category names."""
-        _aliases: dict[str, "EstimationCategory"] = {
+        _aliases: dict[str, EstimationCategory] = {
             "sre": cls.CONFIG_SRE,
             "config_sre": cls.CONFIG_SRE,
             "docs": cls.DOCUMENTATION,
@@ -166,9 +166,9 @@ class ReviewMode(enum.Enum):
     THREE_ROUND = "3-round"
 
     @classmethod
-    def _missing_(cls, value: object) -> "ReviewMode | None":
+    def _missing_(cls, value: object) -> ReviewMode | None:
         """Accept legacy CLI values."""
-        _legacy: dict[str, "ReviewMode"] = {
+        _legacy: dict[str, ReviewMode] = {
             "self": cls.NONE,
             "2x-lgtm": cls.STANDARD,
             "three-round": cls.THREE_ROUND,
@@ -242,7 +242,7 @@ class TaskEstimate:
     total_expected_minutes: float
     human_equivalent_minutes: float | None
     metr_warning: MetrWarning | None
-    estimation_category: "EstimationCategory | None" = None
+    estimation_category: EstimationCategory | None = None
 
 
 # ---------------------------------------------------------------------------

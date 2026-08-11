@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from dataclasses import replace
-from typing import NoReturn, Sequence
+from typing import NoReturn
 
 from agent_estimate.core import (
     EstimationCategory,
@@ -14,9 +15,9 @@ from agent_estimate.core import (
     TaskNode,
     WavePlan,
     auto_correct_tier,
-    classify_task,
     build_modifier_set,
     check_metr_threshold,
+    classify_task,
     compute_human_equivalent,
     detect_estimation_category,
     estimate_app_dev,

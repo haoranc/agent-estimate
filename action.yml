@@ -11,7 +11,7 @@ inputs:
     description: 'GitHub issue numbers (comma-separated, e.g. "1,2,3")'
     required: true
   repo:
-    description: 'GitHub repo (owner/name)'
+    description: 'GitHub repo to fetch issues from (owner/name). Comment output modes always post to the triggering PR/issue in the current repo, regardless of this input.'
     required: false
     default: ${{ github.repository }}
   format:
@@ -19,7 +19,7 @@ inputs:
     required: false
     default: 'markdown'
   output-mode:
-    description: 'Where to send the report: summary, pr-comment, step-output, summary+pr-comment'
+    description: 'Where to send the report: summary, pr-comment, issue-comment, step-output — or a +-joined combo (e.g. summary+pr-comment)'
     required: false
     default: 'summary'
   config:
@@ -53,7 +53,7 @@ inputs:
     required: false
     default: '3.12'
   version:
-    description: 'agent-estimate version to install (e.g. "0.7.3"). Omit for latest.'
+    description: 'agent-estimate version to install (e.g. "0.7.4"). Omit for latest.'
     required: false
   token:
     description: 'GitHub token for issue fetching and PR comments'
@@ -71,6 +71,19 @@ outputs:
 runs:
   using: 'composite'
   steps:
+    - name: Validate output-mode
+      shell: bash
+      env:
+        AE_OUTPUT_MODE: ${{ inputs.output-mode }}
+      run: |
+        # Whole-grammar check: one or more valid tokens joined by single '+' —
+        # rejects empty values, leading/trailing/doubled '+', and unknown tokens
+        valid='^(summary|pr-comment|issue-comment|step-output)(\+(summary|pr-comment|issue-comment|step-output))*$'
+        if ! [[ "$AE_OUTPUT_MODE" =~ $valid ]]; then
+          echo "::error::Invalid output-mode '${AE_OUTPUT_MODE}' (valid: summary, pr-comment, issue-comment, step-output, or +-joined combos)"
+          exit 1
+        fi
+
     - name: Set up Python
       uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
       with:
@@ -137,6 +150,22 @@ runs:
         minutes=$(echo "$AE_REPORT" | python -c "import sys,json; print(json.load(sys.stdin)['timeline']['expected_case_minutes'])" 2>/dev/null || echo "")
         echo "expected-minutes=${minutes}" >> "$GITHUB_OUTPUT"
 
+    - name: Truncate report for comments
+      id: truncate
+      if: contains(inputs.output-mode, 'pr-comment') || contains(inputs.output-mode, 'issue-comment')
+      shell: bash
+      env:
+        AE_REPORT: ${{ steps.estimate.outputs.report }}
+      run: |
+        # GitHub comment bodies cap at 65536 chars — truncate once at 60KB for all
+        # comment steps, without splitting a multi-byte UTF-8 character at the boundary
+        {
+          echo "body<<AE_BODY_EOF"
+          echo "$AE_REPORT" | python -c "import sys; d=sys.stdin.buffer.read()[:61440]; sys.stdout.buffer.write(d.decode('utf-8', 'ignore').encode())"
+          echo ""
+          echo "AE_BODY_EOF"
+        } >> "$GITHUB_OUTPUT"
+
     - name: Write job summary
       if: contains(inputs.output-mode, 'summary')
       shell: bash
@@ -149,7 +178,7 @@ runs:
       if: contains(inputs.output-mode, 'pr-comment')
       shell: bash
       env:
-        AE_REPORT: ${{ steps.estimate.outputs.report }}
+        AE_BODY: ${{ steps.truncate.outputs.body }}
         GH_TOKEN: ${{ inputs.token }}
         GH_EVENT: ${{ github.event_name }}
         GH_PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -160,7 +189,29 @@ runs:
           exit 0
         fi
 
-        # Truncate at 60KB to respect GitHub API limits
-        body=$(echo "$AE_REPORT" | head -c 61440)
+        gh pr comment "$GH_PR_NUMBER" --repo "$GH_REPO" --body "$AE_BODY"
 
-        gh pr comment "$GH_PR_NUMBER" --repo "$GH_REPO" --body "$body"
+    - name: Post issue comment
+      if: contains(inputs.output-mode, 'issue-comment')
+      shell: bash
+      env:
+        AE_BODY: ${{ steps.truncate.outputs.body }}
+        GH_TOKEN: ${{ inputs.token }}
+        GH_EVENT: ${{ github.event_name }}
+        GH_ISSUE_NUMBER: ${{ github.event.issue.number }}
+        GH_ISSUE_IS_PR: ${{ github.event.issue.pull_request.url }}
+        GH_REPO: ${{ github.repository }}
+      run: |
+        if [ "$GH_EVENT" != "issues" ] && [ "$GH_EVENT" != "issue_comment" ]; then
+          echo "::warning::output-mode includes issue-comment but event is '${GH_EVENT}', not an issue event. Skipping."
+          exit 0
+        fi
+
+        # issue_comment also fires for comments on PRs (PRs are issues in the API) —
+        # those belong to pr-comment mode, and posting there needs pull-requests: write
+        if [ -n "$GH_ISSUE_IS_PR" ]; then
+          echo "::warning::issue-comment mode: the triggering comment is on a pull request, not an issue. Skipping (use pr-comment mode for PRs)."
+          exit 0
+        fi
+
+        gh issue comment "$GH_ISSUE_NUMBER" --repo "$GH_REPO" --body "$AE_BODY"

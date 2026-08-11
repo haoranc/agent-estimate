@@ -18,11 +18,11 @@ import shutil
 import subprocess
 import sys
 import time
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, List, Optional, Sequence, Tuple
 
-Runner = Callable[[Sequence[str], Path], Tuple[int, str]]
+Runner = Callable[[Sequence[str], Path], tuple[int, str]]
 YamlLoader = Callable[[str], object]
 
 MARKER_PREFIXES = ("<<<<<<<", "=======", ">>>>>>>")
@@ -42,7 +42,7 @@ class CheckResult:
         return "PASS" if self.passed else "FAIL"
 
 
-def run_command(command: Sequence[str], cwd: Path) -> Tuple[int, str]:
+def run_command(command: Sequence[str], cwd: Path) -> tuple[int, str]:
     """Run a command and return (exit_code, combined_output)."""
     try:
         completed = subprocess.run(
@@ -59,10 +59,10 @@ def run_command(command: Sequence[str], cwd: Path) -> Tuple[int, str]:
     return completed.returncode, combined.strip()
 
 
-def _discover_repo_files(repo_root: Path, runner: Runner) -> List[Path]:
+def _discover_repo_files(repo_root: Path, runner: Runner) -> list[Path]:
     rc, output = runner(["git", "ls-files"], repo_root)
     if rc == 0:
-        files: List[Path] = []
+        files: list[Path] = []
         for rel in output.splitlines():
             rel = rel.strip()
             if not rel:
@@ -85,7 +85,7 @@ def _discover_repo_files(repo_root: Path, runner: Runner) -> List[Path]:
 
 def check_conflict_markers(repo_root: Path, runner: Runner = run_command) -> CheckResult:
     start = time.monotonic()
-    hits: List[str] = []
+    hits: list[str] = []
 
     for file_path in _discover_repo_files(repo_root, runner):
         rel = file_path.relative_to(repo_root)
@@ -103,9 +103,7 @@ def check_conflict_markers(repo_root: Path, runner: Runner = run_command) -> Che
         for lineno, line in enumerate(raw.decode("utf-8", errors="replace").splitlines(), start=1):
             stripped = line.strip()
             if (
-                stripped.startswith(MARKER_PREFIXES[0])
-                or stripped == MARKER_PREFIXES[1]
-                or stripped.startswith(MARKER_PREFIXES[2])
+                stripped.startswith((MARKER_PREFIXES[0], MARKER_PREFIXES[2])) or stripped == MARKER_PREFIXES[1]
             ):
                 preview = stripped[:60]
                 hits.append(f"{rel}:{lineno}: {preview}")
@@ -132,7 +130,7 @@ def check_conflict_markers(repo_root: Path, runner: Runner = run_command) -> Che
     )
 
 
-def default_yaml_loader() -> Optional[YamlLoader]:
+def default_yaml_loader() -> YamlLoader | None:
     try:
         import yaml  # type: ignore
     except Exception:
@@ -140,9 +138,9 @@ def default_yaml_loader() -> Optional[YamlLoader]:
     return yaml.safe_load
 
 
-def check_yaml_syntax(repo_root: Path, loader: Optional[YamlLoader] = None) -> CheckResult:
+def check_yaml_syntax(repo_root: Path, loader: YamlLoader | None = None) -> CheckResult:
     start = time.monotonic()
-    yaml_files: List[Path] = []
+    yaml_files: list[Path] = []
     for rel_root in ("src", "tests/fixtures"):
         root = repo_root / rel_root
         if not root.is_dir():
@@ -172,7 +170,7 @@ def check_yaml_syntax(repo_root: Path, loader: Optional[YamlLoader] = None) -> C
             duration_s=time.monotonic() - start,
         )
 
-    errors: List[str] = []
+    errors: list[str] = []
     for path in yaml_files:
         rel = path.relative_to(repo_root)
         try:
@@ -257,8 +255,8 @@ def run_preflight(
     *,
     full: bool,
     runner: Runner = run_command,
-    yaml_loader: Optional[YamlLoader] = None,
-) -> List[CheckResult]:
+    yaml_loader: YamlLoader | None = None,
+) -> list[CheckResult]:
     results = [
         check_conflict_markers(repo_root, runner=runner),
         check_yaml_syntax(repo_root, loader=yaml_loader),

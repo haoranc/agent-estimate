@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.4] - 2026-08-10
+
+### Added
+- GitHub Action: `issue-comment` output mode — posts the estimate report as a comment on the triggering issue (`issues` / `issue_comment` events; PR-attached comments are skipped — use `pr-comment`). Ships with a label-triggered `auto-estimate.yml` workflow (label `estimate` → estimate comment); README expanded into Marketplace landing content with per-mode worked examples.
+- GitHub Action: `output-mode` is now validated up front (unknown modes fail the run instead of silently posting nowhere), and comment-body truncation is computed once, UTF-8-safely, for all comment steps.
+
+### Changed
+- Lint: adopted the ruff 0.16 default ruleset — 131 findings resolved (108 auto-fixed, the rest hand-fixed or scoped: typer's argument-default idiom exempted via `extend-immutable-calls`, CLI boundary handlers keep per-file `BLE001` ignores, content-shape `ValueError`s keep their contract under `noqa`). `ruff` is now minor-capped (`>=0.16,<0.17`) so future default-rule promotions land deliberately; `typing-extensions` promoted to a direct dependency (`Self` on py3.10).
+- `typer` floor raised to `>=0.12.4`: PEP 604 CLI annotations (`str | None`) fail command construction on 0.12.0. CI gained a `test-min-deps` job that installs the declared dependency floors and smoke-tests the CLI, so floor regressions surface in CI instead of user environments.
+
 ## [0.7.3] - 2026-07-10
 
 ### Fixed
@@ -116,6 +126,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modifier flags: `--warm-context`, `--spec-clarity`, `--issues`
 - PyPI package: `pip install agent-estimate`
 
+[0.7.4]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.7.4
 [0.7.3]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.7.3
 [0.7.2]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.7.2
 [0.7.1]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.7.1

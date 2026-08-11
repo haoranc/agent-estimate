@@ -146,14 +146,18 @@ $ agent-estimate estimate --file tasks.txt
 
 ### GitHub Action
 
+Available on the [GitHub Marketplace](https://github.com/marketplace/actions/agent-estimate):
+
 ```yaml
 - uses: kiloloop/agent-estimate@v0
   with:
     issues: '11,12,14'
 ```
 
+The report goes wherever `output-mode` points: the job summary (`summary`, the default), a PR comment (`pr-comment`), an issue comment (`issue-comment`), or a step output for downstream steps (`step-output`) — combinable with `+` (e.g. `summary+pr-comment`).
+
 <details>
-<summary>Full workflow example</summary>
+<summary>Estimate on every PR</summary>
 
 ```yaml
 name: Estimate
@@ -180,6 +184,73 @@ jobs:
 </details>
 
 <details>
+<summary>Auto-estimate on label</summary>
+
+Label an issue `estimate` and the Action posts the estimate back as an issue comment (the label match is exact and case-sensitive):
+
+```yaml
+name: Auto-estimate
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  estimate:
+    if: github.event.label.name == 'estimate'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: kiloloop/agent-estimate@v0
+        with:
+          issues: ${{ github.event.issue.number }}
+          output-mode: issue-comment
+          title: 'Agent Estimate — issue #${{ github.event.issue.number }}'
+```
+
+This repo runs it on itself — see [`.github/workflows/auto-estimate.yml`](.github/workflows/auto-estimate.yml).
+
+</details>
+
+<details>
+<summary>Gate on the estimate (JSON step output)</summary>
+
+With `format: json` the Action exposes `expected-minutes` as a step output — use it to gate or route downstream steps:
+
+```yaml
+name: Estimate gate
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  issues: read
+
+jobs:
+  gate:
+    if: github.event.label.name == 'estimate'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: kiloloop/agent-estimate@v0
+        id: estimate
+        with:
+          issues: ${{ github.event.issue.number }}
+          format: json
+          output-mode: step-output
+      - name: Flag oversized tasks
+        if: steps.estimate.outputs.expected-minutes != '' && fromJSON(steps.estimate.outputs.expected-minutes) > 120
+        env:
+          AE_MINUTES: ${{ steps.estimate.outputs.expected-minutes }}
+        run: echo "::warning::Expected ${AE_MINUTES} min — consider splitting before dispatching an agent."
+```
+
+The full JSON report is available as `steps.estimate.outputs.report` for custom processing.
+
+</details>
+
+<details>
 <summary>Action inputs and outputs</summary>
 
 | Input | Required | Default | Description |
@@ -187,7 +258,7 @@ jobs:
 | `issues` | yes | — | GitHub issue numbers (comma-separated) |
 | `repo` | no | current repo | GitHub repo (owner/name) |
 | `format` | no | `markdown` | Output format: `markdown` or `json` |
-| `output-mode` | no | `summary` | `summary`, `pr-comment`, `step-output`, `summary+pr-comment` |
+| `output-mode` | no | `summary` | `summary`, `pr-comment`, `issue-comment`, `step-output`, or a `+`-joined combo |
 | `config` | no | — | Path to agent config YAML |
 | `title` | no | `Agent Estimate Report` | Report title |
 | `review-mode` | no | `standard` | Review tier: `none`, `standard`, `complex`, `3-round` |

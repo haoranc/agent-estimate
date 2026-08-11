@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import NoReturn, Optional
+from typing import NoReturn
 
 import typer
 
@@ -32,7 +32,7 @@ def run(
         help="Number of sequential rounds.",
         min=1,
     ),
-    type: str = typer.Option(  # noqa: A002
+    type: str = typer.Option(
         "brainstorm",
         "--type",
         "-t",
@@ -42,7 +42,7 @@ def run(
             + "."
         ),
     ),
-    coordination_overhead: Optional[float] = typer.Option(
+    coordination_overhead: float | None = typer.Option(
         None,
         "--coordination-overhead",
         help=(
@@ -50,12 +50,12 @@ def run(
             f"(default: {DEFAULT_COORDINATION_OVERHEAD_MINUTES:.0f}m)."
         ),
     ),
-    per_round_minutes: Optional[float] = typer.Option(
+    per_round_minutes: float | None = typer.Option(
         None,
         "--per-round-minutes",
         help="Override per-agent per-round duration in minutes (skips type lookup).",
     ),
-    format: str = typer.Option(  # noqa: A002
+    format: str = typer.Option(
         "markdown",
         "--format",
         help="Output format: markdown or json.",

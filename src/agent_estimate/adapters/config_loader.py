@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Mapping, Sequence
 from importlib.metadata import EntryPoint, entry_points
 from importlib.resources import as_file, files
 from pathlib import Path
 from typing import Any
-import warnings
 
 import yaml
 from pydantic import ValidationError
@@ -38,7 +38,9 @@ def load_config(path: str | Path) -> EstimationConfig:
     if raw_data is None:
         raw_data = {}
     if not isinstance(raw_data, dict):
-        raise ValueError(f"Invalid config file at {config_path}: root must be a YAML mapping")
+        raise ValueError(  # noqa: TRY004 — parsed-content shape check; ValueError is the contract
+            f"Invalid config file at {config_path}: root must be a YAML mapping"
+        )
 
     try:
         config = EstimationConfig.model_validate(raw_data)
@@ -134,7 +136,7 @@ def _coerce_plugin_profile(raw: object, entry_point_name: str) -> AgentProfile:
     elif isinstance(candidate, Mapping):
         payload = dict(candidate)
     else:
-        raise ValueError(
+        raise ValueError(  # noqa: TRY004 — parsed-content shape check; ValueError is the contract
             "Entry point "
             f"{entry_point_name!r} must resolve to an AgentProfile, mapping, "
             "AgentProfileProtocol instance, or zero-arg callable that returns one."

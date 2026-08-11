@@ -35,7 +35,7 @@ _CATEGORY_PATTERNS: list[tuple[re.Pattern[str], EstimationCategory]] = [
             r"(?=.*\b(research|citation|citations|sources?|primary[- ]source|"
             r"evidence|oss|open[- ]source|github|compare|survey|benchmark|"
             r"landscape)\b)",
-            re.I,
+            re.IGNORECASE,
         ),
         EstimationCategory.RESEARCH,
     ),
@@ -47,7 +47,7 @@ _CATEGORY_PATTERNS: list[tuple[re.Pattern[str], EstimationCategory]] = [
             r"ci/?cd|ci pipeline|deploy pipeline|monitoring|alerting|oncall|runbook|"
             r"config (?:file|change|update|migration|setting)|"
             r"env(?:ironment)? var(?:iable)?s?|secret(?:s| management)?)\b",
-            re.I,
+            re.IGNORECASE,
         ),
         EstimationCategory.CONFIG_SRE,
     ),
@@ -57,7 +57,7 @@ _CATEGORY_PATTERNS: list[tuple[re.Pattern[str], EstimationCategory]] = [
             r"\b(front[- ]?end|ui|ux|landing page|web page|page build|"
             r"component page|design system|mdx|seo snippet|structured data|"
             r"copy update|single[- ]section|hero section)\b",
-            re.I,
+            re.IGNORECASE,
         ),
         EstimationCategory.FRONTEND,
     ),
@@ -66,7 +66,7 @@ _CATEGORY_PATTERNS: list[tuple[re.Pattern[str], EstimationCategory]] = [
         re.compile(
             r"\b(app[- ]?dev|app shell|desktop app|mobile app|electron|tauri|"
             r"native app|mac app|ios app|android app|application shell)\b",
-            re.I,
+            re.IGNORECASE,
         ),
         EstimationCategory.APP_DEV,
     ),
@@ -75,7 +75,7 @@ _CATEGORY_PATTERNS: list[tuple[re.Pattern[str], EstimationCategory]] = [
         re.compile(
             r"\b(brainstorm|ideate|explore ideas?|design session|whiteboard|discuss|"
             r"spike|discovery|kickoff|alignment)\b",
-            re.I,
+            re.IGNORECASE,
         ),
         EstimationCategory.BRAINSTORM,
     ),
@@ -84,7 +84,7 @@ _CATEGORY_PATTERNS: list[tuple[re.Pattern[str], EstimationCategory]] = [
         re.compile(
             r"\b(research|investigate|analyze|analyse|survey|evaluate|"
             r"feasibility|benchmarks?|compare|assessment|audit)\b",
-            re.I,
+            re.IGNORECASE,
         ),
         EstimationCategory.RESEARCH,
     ),
@@ -93,7 +93,7 @@ _CATEGORY_PATTERNS: list[tuple[re.Pattern[str], EstimationCategory]] = [
         re.compile(
             r"\b(doc(?:umentation|s)?|readme|write up|write-up|changelog|"
             r"api docs?|wiki|confluence|technical writing|specification)\b",
-            re.I,
+            re.IGNORECASE,
         ),
         EstimationCategory.DOCUMENTATION,
     ),
@@ -128,13 +128,13 @@ _APP_DEV_BASELINES = (45.0, 95.0, 180.0)
 _RESEARCH_DEEP_PATTERNS = re.compile(
     r"\b(deep|thorough|comprehensive|in[-\s]?depth|extensive|detailed|"
     r"literature review|systematic|full|complete)\b",
-    re.I,
+    re.IGNORECASE,
 )
 
 _FRONTEND_CONTENT_PATTERNS = re.compile(
     r"\b(content|copy|seo|snippet|structured data|metadata|mdx|markdown|"
     r"single[- ]section|text update|copy update|small patch|minor patch)\b",
-    re.I,
+    re.IGNORECASE,
 )
 
 

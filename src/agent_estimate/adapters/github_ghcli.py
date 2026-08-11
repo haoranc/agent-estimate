@@ -6,7 +6,7 @@ import json
 import subprocess
 import time
 import warnings
-from typing import Callable, Sequence
+from collections.abc import Callable, Sequence
 
 from agent_estimate.adapters.github_adapter import (
     GitHubAdapterError,

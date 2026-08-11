@@ -18,30 +18,30 @@ TIER_BASELINES: dict[SizeTier, tuple[float, float, float]] = {
 
 # Signal words / patterns for size classification
 _SIZE_SIGNALS: list[tuple[re.Pattern[str], SizeTier, str]] = [
-    (re.compile(r"\b(trivial|typo|one[- ]?liner|rename)\b", re.I), SizeTier.XS, "trivial-keyword"),
-    (re.compile(r"\b(small|simple|quick|minor|stub)\b", re.I), SizeTier.S, "small-keyword"),
-    (re.compile(r"\b(medium|moderate|standard|typical)\b", re.I), SizeTier.M, "medium-keyword"),
-    (re.compile(r"\b(large|complex|multi[- ]?file|significant)\b", re.I), SizeTier.L, "large-keyword"),
-    (re.compile(r"\b(epic|massive|rewrite|overhaul|redesign)\b", re.I), SizeTier.XL, "epic-keyword"),
+    (re.compile(r"\b(trivial|typo|one[- ]?liner|rename)\b", re.IGNORECASE), SizeTier.XS, "trivial-keyword"),
+    (re.compile(r"\b(small|simple|quick|minor|stub)\b", re.IGNORECASE), SizeTier.S, "small-keyword"),
+    (re.compile(r"\b(medium|moderate|standard|typical)\b", re.IGNORECASE), SizeTier.M, "medium-keyword"),
+    (re.compile(r"\b(large|complex|multi[- ]?file|significant)\b", re.IGNORECASE), SizeTier.L, "large-keyword"),
+    (re.compile(r"\b(epic|massive|rewrite|overhaul|redesign)\b", re.IGNORECASE), SizeTier.XL, "epic-keyword"),
 ]
 
 # Complexity signals that push the tier up
 _COMPLEXITY_SIGNALS: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"\b(database|migration|schema)\b", re.I), "database-change"),
-    (re.compile(r"\b(security|auth|encrypt|token)\b", re.I), "security-concern"),
-    (re.compile(r"\b(api|endpoint|rest|graphql)\b", re.I), "api-surface"),
-    (re.compile(r"\b(test|coverage|ci|pipeline)\b", re.I), "test-infra"),
-    (re.compile(r"\b(refactor|restructure|architecture)\b", re.I), "structural-change"),
+    (re.compile(r"\b(database|migration|schema)\b", re.IGNORECASE), "database-change"),
+    (re.compile(r"\b(security|auth|encrypt|token)\b", re.IGNORECASE), "security-concern"),
+    (re.compile(r"\b(api|endpoint|rest|graphql)\b", re.IGNORECASE), "api-surface"),
+    (re.compile(r"\b(test|coverage|ci|pipeline)\b", re.IGNORECASE), "test-infra"),
+    (re.compile(r"\b(refactor|restructure|architecture)\b", re.IGNORECASE), "structural-change"),
 ]
 
 # Task-type detection patterns
 _TYPE_PATTERNS: list[tuple[re.Pattern[str], TaskType]] = [
-    (re.compile(r"\b(boilerplate|scaffold|template|stub|generate)\b", re.I), TaskType.BOILERPLATE),
-    (re.compile(r"\b(bug|fix|patch|hotfix|regression|broken)\b", re.I), TaskType.BUG_FIX),
-    (re.compile(r"\b(tests?|specs?|coverage|assertions?)\b", re.I), TaskType.TEST),
-    (re.compile(r"\b(docs?|readme|comments?|changelog)\b", re.I), TaskType.DOCS),
-    (re.compile(r"\b(feature|implement|add|create|build|new)\b", re.I), TaskType.FEATURE),
-    (re.compile(r"\b(refactor|restructure|clean|rewrite|simplify)\b", re.I), TaskType.REFACTOR),
+    (re.compile(r"\b(boilerplate|scaffold|template|stub|generate)\b", re.IGNORECASE), TaskType.BOILERPLATE),
+    (re.compile(r"\b(bug|fix|patch|hotfix|regression|broken)\b", re.IGNORECASE), TaskType.BUG_FIX),
+    (re.compile(r"\b(tests?|specs?|coverage|assertions?)\b", re.IGNORECASE), TaskType.TEST),
+    (re.compile(r"\b(docs?|readme|comments?|changelog)\b", re.IGNORECASE), TaskType.DOCS),
+    (re.compile(r"\b(feature|implement|add|create|build|new)\b", re.IGNORECASE), TaskType.FEATURE),
+    (re.compile(r"\b(refactor|restructure|clean|rewrite|simplify)\b", re.IGNORECASE), TaskType.REFACTOR),
 ]
 
 _TIER_ORDER = [SizeTier.XS, SizeTier.S, SizeTier.M, SizeTier.L, SizeTier.XL]

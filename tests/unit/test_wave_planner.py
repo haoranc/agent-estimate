@@ -7,7 +7,6 @@ import pytest
 from agent_estimate.core.models import AgentProfile, TaskNode
 from agent_estimate.core.wave_planner import plan_waves
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

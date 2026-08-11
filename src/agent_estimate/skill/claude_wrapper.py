@@ -56,7 +56,7 @@ def run_estimate(
     if title != "Agent Estimate Report":
         cmd += ["--title", title]
 
-    return subprocess.run(cmd, capture_output=True, text=True)
+    return subprocess.run(cmd, capture_output=True, text=True, check=False)
 
 
 def run_validate(
@@ -68,7 +68,7 @@ def run_validate(
     cmd.append(str(observation_file))
     if db is not None:
         cmd += ["--db", str(db)]
-    return subprocess.run(cmd, capture_output=True, text=True)
+    return subprocess.run(cmd, capture_output=True, text=True, check=False)
 
 
 def run_calibrate(db: Path | None = None) -> subprocess.CompletedProcess[str]:
@@ -76,4 +76,4 @@ def run_calibrate(db: Path | None = None) -> subprocess.CompletedProcess[str]:
     cmd: list[str] = _build_base_cmd("calibrate")
     if db is not None:
         cmd += ["--db", str(db)]
-    return subprocess.run(cmd, capture_output=True, text=True)
+    return subprocess.run(cmd, capture_output=True, text=True, check=False)

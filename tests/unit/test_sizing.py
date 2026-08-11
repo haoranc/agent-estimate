@@ -5,7 +5,6 @@ from __future__ import annotations
 from agent_estimate.core.models import SizeTier, TaskType
 from agent_estimate.core.sizing import _bump_tier, classify_task
 
-
 # ---------------------------------------------------------------------------
 # Task type detection — all types
 # ---------------------------------------------------------------------------

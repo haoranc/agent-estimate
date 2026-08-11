@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from typing_extensions import Self
 
 from agent_estimate.core.models import SizeTier, SizingResult, TaskType
 from agent_estimate.core.modifiers import build_modifier_set
@@ -55,7 +56,7 @@ class TestLoadMetrThresholdsMalformed:
                 def read_text(self, encoding: str) -> str:
                     return "models:\n  opus:\n    no_p80_key: 10\n"
 
-                def __enter__(self) -> "FakePath":
+                def __enter__(self) -> Self:
                     return self
 
                 def __exit__(self, *_: object) -> None:
@@ -70,9 +71,11 @@ class TestLoadMetrThresholdsMalformed:
             def fake_as_file(resource: object):  # type: ignore[misc]
                 yield FakePath()
 
-            with patch("agent_estimate.core.pert.as_file", fake_as_file):
-                with pytest.raises(RuntimeError, match="Malformed"):
-                    load_metr_thresholds()
+            with (
+                patch("agent_estimate.core.pert.as_file", fake_as_file),
+                pytest.raises(RuntimeError, match="Malformed"),
+            ):
+                load_metr_thresholds()
 
     def test_malformed_metr_yaml_via_file(self, tmp_path: Path) -> None:
         # Write a YAML that parses OK but has wrong structure (no p80_minutes key)
@@ -87,9 +90,11 @@ class TestLoadMetrThresholdsMalformed:
         def fake_as_file(resource: object):  # type: ignore[misc]
             yield bad_yaml
 
-        with patch("agent_estimate.core.pert.as_file", fake_as_file):
-            with pytest.raises(RuntimeError, match="Malformed"):
-                load_metr_thresholds()
+        with (
+            patch("agent_estimate.core.pert.as_file", fake_as_file),
+            pytest.raises(RuntimeError, match="Malformed"),
+        ):
+            load_metr_thresholds()
 
 
 # ---------------------------------------------------------------------------

@@ -6,7 +6,7 @@ import json
 import os
 import subprocess
 import time
-from typing import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen

@@ -28,7 +28,7 @@ settings:
 
 @pytest.fixture(autouse=True)
 def _disable_real_entry_point_discovery(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(config_loader, "_iter_agent_entry_points", lambda: [])
+    monkeypatch.setattr(config_loader, "_iter_agent_entry_points", list)
 
 
 def _write(tmp_path: Path, filename: str, content: str) -> Path:

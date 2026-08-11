@@ -8,10 +8,12 @@ import typer
 
 from agent_estimate.adapters.sqlite_store import SQLiteCalibrationStore
 
+_DEFAULT_DB = Path.home() / ".agent-estimate" / "calibration.db"
+
 
 def run(
     db: Path = typer.Option(
-        Path.home() / ".agent-estimate" / "calibration.db",
+        _DEFAULT_DB,
         "--db",
         help="Path to calibration database.",
     ),

@@ -10,11 +10,11 @@ from pathlib import Path
 
 import pytest
 
-from agent_estimate.audit import reset_audit_logger
 from agent_estimate.adapters import github_rest
 from agent_estimate.adapters.github_adapter import GitHubAdapterError
 from agent_estimate.adapters.github_ghcli import GitHubGhCliAdapter
 from agent_estimate.adapters.github_rest import GitHubRestAdapter
+from agent_estimate.audit import reset_audit_logger
 
 
 def test_rest_adapter_fetches_issues_by_number_and_builds_task_descriptions() -> None:

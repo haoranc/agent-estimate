@@ -520,13 +520,7 @@ class TestValidate:
     def test_validate_bad_optional_field_is_input_error(self, tmp_path: Path) -> None:
         observation = tmp_path / "obs.yaml"
         observation.write_text(
-            "\n".join(
-                [
-                    "estimated_minutes: 10",
-                    "actual_work_minutes: 12",
-                    "review_overhead_minutes: abc",
-                ]
-            ),
+            "estimated_minutes: 10\nactual_work_minutes: 12\nreview_overhead_minutes: abc",
             encoding="utf-8",
         )
         result = runner.invoke(app, ["validate", str(observation), "--db", str(tmp_path / "c.db")])
@@ -537,26 +531,7 @@ class TestValidate:
     def test_validate_with_db_stores_observation_round_trip(self, tmp_path: Path) -> None:
         observation = tmp_path / "obs.yaml"
         observation.write_text(
-            "\n".join(
-                [
-                    "task_type: feature",
-                    "estimated_minutes: 10",
-                    "actual_work_minutes: 12",
-                    "actual_total_minutes: 15",
-                    "file_count: 2",
-                    "line_count: 80",
-                    "test_count: 3",
-                    "project_hash: proj-abc",
-                    "execution_mode: batch",
-                    "review_mode: standard",
-                    "review_overhead_minutes: 3",
-                    "modifiers:",
-                    "  spec_clarity: 0.8",
-                    "  warm_context: 0.7",
-                    "modifiers_should_have_been:",
-                    "  spec_clarity: 0.9",
-                ]
-            ),
+            "task_type: feature\nestimated_minutes: 10\nactual_work_minutes: 12\nactual_total_minutes: 15\nfile_count: 2\nline_count: 80\ntest_count: 3\nproject_hash: proj-abc\nexecution_mode: batch\nreview_mode: standard\nreview_overhead_minutes: 3\nmodifiers:\n  spec_clarity: 0.8\n  warm_context: 0.7\nmodifiers_should_have_been:\n  spec_clarity: 0.9",
             encoding="utf-8",
         )
         db_path = tmp_path / "calibration.db"
@@ -595,13 +570,7 @@ class TestValidate:
     ) -> None:
         observation = tmp_path / "obs.yaml"
         observation.write_text(
-            "\n".join(
-                [
-                    "task_type: bugfix",
-                    "estimated_minutes: 10",
-                    "actual_work_minutes: 12",
-                ]
-            ),
+            "task_type: bugfix\nestimated_minutes: 10\nactual_work_minutes: 12",
             encoding="utf-8",
         )
         db_path = tmp_path / "calibration.db"
@@ -628,13 +597,7 @@ class TestValidate:
     def test_validate_db_null_field_is_input_error(self, tmp_path: Path) -> None:
         observation = tmp_path / "obs.yaml"
         observation.write_text(
-            "\n".join(
-                [
-                    "estimated_minutes: 10",
-                    "actual_work_minutes: 12",
-                    "file_count:",
-                ]
-            ),
+            "estimated_minutes: 10\nactual_work_minutes: 12\nfile_count:",
             encoding="utf-8",
         )
 
@@ -657,13 +620,7 @@ class TestValidate:
     ) -> None:
         observation = tmp_path / "obs.yaml"
         observation.write_text(
-            "\n".join(
-                [
-                    "estimated_minutes: 10",
-                    "actual_work_minutes: 12",
-                    field_body,
-                ]
-            ),
+            f"estimated_minutes: 10\nactual_work_minutes: 12\n{field_body}",
             encoding="utf-8",
         )
 

@@ -9,7 +9,6 @@ import pytest
 from agent_estimate.core.human_comparison import compute_human_equivalent, get_human_multiplier
 from agent_estimate.core.models import TaskType
 
-
 # Expected geometric-mean multipliers from _HUMAN_MULTIPLIERS
 _EXPECTED_MULTIPLIERS: dict[TaskType, tuple[float, float]] = {
     TaskType.BOILERPLATE: (3.0, 5.0),

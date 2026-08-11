@@ -1,7 +1,6 @@
 """Typer application entrypoint."""
 
 import logging
-from typing import Optional
 
 import typer
 
@@ -30,7 +29,7 @@ def _global_options(
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable debug logging."
     ),
-    version: Optional[bool] = typer.Option(  # noqa: ARG001
+    version: bool | None = typer.Option(
         None,
         "--version",
         callback=_version_callback,

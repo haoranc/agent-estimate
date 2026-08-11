@@ -10,6 +10,8 @@ from pathlib import Path
 from threading import RLock
 from typing import Any
 
+from typing_extensions import Self
+
 SCHEMA_VERSION = 1
 
 
@@ -59,7 +61,7 @@ class SQLiteCalibrationStore:
             self._connection.close()
             raise
 
-    def __enter__(self) -> SQLiteCalibrationStore:
+    def __enter__(self) -> Self:
         """Allow `with SQLiteCalibrationStore(...) as store:` usage."""
         return self
 
@@ -87,10 +89,9 @@ class SQLiteCalibrationStore:
         week_start = _week_start(observed_at)
         encoded_modifiers = json.dumps(observation.modifiers_should_have_been, sort_keys=True)
 
-        with self._lock:
-            with self._connection:
-                cursor = self._connection.execute(
-                    """
+        with self._lock, self._connection:
+            cursor = self._connection.execute(
+                """
                     INSERT INTO observations (
                       task_type_id,
                       observed_at,
@@ -112,27 +113,27 @@ class SQLiteCalibrationStore:
                       modifiers_should_have_been
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
-                    (
-                        task_type_id,
-                        observed_at,
-                        week_start,
-                        observation.estimated_secs,
-                        observation.actual_work_secs,
-                        observation.actual_total_secs,
-                        observation.error_ratio,
-                        observation.file_count,
-                        observation.line_count,
-                        observation.test_count,
-                        observation.project_hash,
-                        observation.spec_clarity_modifier,
-                        observation.warm_context_modifier,
-                        observation.execution_mode,
-                        observation.review_mode,
-                        observation.review_overhead_secs,
-                        observation.verdict,
-                        encoded_modifiers,
-                    ),
-                )
+                (
+                    task_type_id,
+                    observed_at,
+                    week_start,
+                    observation.estimated_secs,
+                    observation.actual_work_secs,
+                    observation.actual_total_secs,
+                    observation.error_ratio,
+                    observation.file_count,
+                    observation.line_count,
+                    observation.test_count,
+                    observation.project_hash,
+                    observation.spec_clarity_modifier,
+                    observation.warm_context_modifier,
+                    observation.execution_mode,
+                    observation.review_mode,
+                    observation.review_overhead_secs,
+                    observation.verdict,
+                    encoded_modifiers,
+                ),
+            )
         return int(cursor.lastrowid)
 
     def _query_observations(
@@ -278,18 +279,17 @@ class SQLiteCalibrationStore:
             self._connection.execute("PRAGMA busy_timeout=5000")
 
     def _create_schema(self) -> None:
-        with self._lock:
-            with self._connection:
-                self._connection.execute(
-                    """
+        with self._lock, self._connection:
+            self._connection.execute(
+                """
                     CREATE TABLE IF NOT EXISTS task_types (
                       id INTEGER PRIMARY KEY AUTOINCREMENT,
                       name TEXT NOT NULL UNIQUE
                     )
                     """,
-                )
-                self._connection.execute(
-                    """
+            )
+            self._connection.execute(
+                """
                     CREATE TABLE IF NOT EXISTS observations (
                       id INTEGER PRIMARY KEY AUTOINCREMENT,
                       task_type_id INTEGER NOT NULL,
@@ -313,9 +313,9 @@ class SQLiteCalibrationStore:
                       FOREIGN KEY (task_type_id) REFERENCES task_types(id)
                     )
                     """,
-                )
-                self._connection.execute(
-                    """
+            )
+            self._connection.execute(
+                """
                     CREATE TABLE IF NOT EXISTS calibration_summary (
                       id INTEGER PRIMARY KEY AUTOINCREMENT,
                       week_start TEXT NOT NULL,
@@ -329,21 +329,21 @@ class SQLiteCalibrationStore:
                       FOREIGN KEY (task_type_id) REFERENCES task_types(id)
                     )
                     """,
-                )
-                self._connection.execute(
-                    """
+            )
+            self._connection.execute(
+                """
                     CREATE TABLE IF NOT EXISTS schema_version (
                       version INTEGER PRIMARY KEY,
                       applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
                     """,
-                )
-                self._connection.execute(
-                    """
+            )
+            self._connection.execute(
+                """
                     INSERT OR IGNORE INTO schema_version (version) VALUES (?)
                     """,
-                    (SCHEMA_VERSION,),
-                )
+                (SCHEMA_VERSION,),
+            )
 
     def _validate_schema_version(self) -> None:
         with self._lock:
@@ -418,7 +418,9 @@ def _validate_observation(observation: ObservationInput) -> None:
         if not str(key).strip():
             raise ValueError("modifiers_should_have_been keys must be non-empty")
         if not isinstance(value, (int, float)):
-            raise ValueError("modifiers_should_have_been values must be numeric")
+            raise ValueError(  # noqa: TRY004 — parsed-content shape check
+                "modifiers_should_have_been values must be numeric"
+            )
 
 
 def _normalize_timestamp(value: str | None) -> str:

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Generator
 from pathlib import Path
-import threading
 
 import pytest
 
@@ -24,25 +24,25 @@ def store(tmp_path: Path) -> Generator[SQLiteCalibrationStore, None, None]:
 
 
 def _observation(**overrides: object) -> ObservationInput:
-    base = dict(
-        task_type="feature",
-        estimated_secs=120.0,
-        actual_work_secs=140.0,
-        actual_total_secs=150.0,
-        error_ratio=0.2,
-        file_count=3,
-        line_count=220,
-        test_count=4,
-        project_hash="proj-123",
-        spec_clarity_modifier=0.8,
-        warm_context_modifier=0.6,
-        execution_mode="sync",
-        review_mode="async",
-        review_overhead_secs=30.0,
-        verdict="pass",
-        modifiers_should_have_been={"spec_clarity": 0.75},
-        observed_at="2026-02-16T12:00:00+00:00",
-    )
+    base = {
+        "task_type": "feature",
+        "estimated_secs": 120.0,
+        "actual_work_secs": 140.0,
+        "actual_total_secs": 150.0,
+        "error_ratio": 0.2,
+        "file_count": 3,
+        "line_count": 220,
+        "test_count": 4,
+        "project_hash": "proj-123",
+        "spec_clarity_modifier": 0.8,
+        "warm_context_modifier": 0.6,
+        "execution_mode": "sync",
+        "review_mode": "async",
+        "review_overhead_secs": 30.0,
+        "verdict": "pass",
+        "modifiers_should_have_been": {"spec_clarity": 0.75},
+        "observed_at": "2026-02-16T12:00:00+00:00",
+    }
     base.update(overrides)
     return ObservationInput(**base)  # type: ignore[arg-type]
 

@@ -4,4 +4,4 @@ from agent_estimate import __version__
 
 
 def test_version_string_present() -> None:
-    assert __version__ == "0.7.3"
+    assert __version__ == "0.7.4"

@@ -43,7 +43,7 @@ class ReportTask:
         ) / 6
 
     @classmethod
-    def from_estimate(cls, *, name: str, agent: str, estimate: TaskEstimate) -> "ReportTask":
+    def from_estimate(cls, *, name: str, agent: str, estimate: TaskEstimate) -> ReportTask:
         """Construct a report row from a TaskEstimate."""
         warning = estimate.metr_warning.message if estimate.metr_warning is not None else None
         return cls(

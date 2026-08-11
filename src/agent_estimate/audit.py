@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+import itertools
 import json
 import os
 import re
 import sys
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import RLock
-from typing import Any, Mapping
+from typing import Any
 from uuid import uuid4
 
 _LEVEL_ORDER = {
@@ -41,7 +43,7 @@ _SENSITIVE_VALUE_PATTERNS = (
 _EMAIL_PATTERN = re.compile(r"\b[^@\s]+@[^@\s]+\.[^@\s]+\b")
 _MAX_STRING_LENGTH = 240
 
-_audit_logger: "AuditLogger | None" = None
+_audit_logger: AuditLogger | None = None
 # Guards swaps of the process-global logger instance.
 _audit_lock = RLock()
 
@@ -57,7 +59,7 @@ class AuditConfig:
     environment: str
 
     @classmethod
-    def from_env(cls) -> "AuditConfig":
+    def from_env(cls) -> AuditConfig:
         enabled_raw = os.getenv("AGENT_ESTIMATE_AUDIT_ENABLED")
         destination = os.getenv("AGENT_ESTIMATE_AUDIT_DESTINATION", "").strip()
         enabled = _parse_bool(enabled_raw) if enabled_raw is not None else bool(destination)
@@ -224,4 +226,4 @@ def _is_sensitive_key(key: str) -> bool:
     segments = tuple(part for part in normalized.split("_") if part)
     if any(segment in _SENSITIVE_KEY_SEGMENTS for segment in segments):
         return True
-    return any(pair in _SENSITIVE_KEY_PAIRS for pair in zip(segments, segments[1:]))
+    return any(pair in _SENSITIVE_KEY_PAIRS for pair in itertools.pairwise(segments))

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agent-estimate"
-version = "0.7.3"
+version = "0.7.4"
 description = "Know what an AI task will cost before you run it"
 readme = "README.md"
 license = "Apache-2.0"
@@ -22,16 +22,22 @@ classifiers = [
   "Topic :: Software Development :: Quality Assurance",
 ]
 dependencies = [
-  "typer>=0.12,<1.0",
+  # 0.12.4 floor: PEP 604 unions in CLI signatures (0.12.0 raises
+  # "Type not yet supported: str | None" at command construction)
+  "typer>=0.12.4,<1.0",
   "pyyaml>=6.0,<7.0",
   "pydantic>=2.4,<3.0",
   "networkx>=3.0,<4.0",
+  # direct import (Self on py3.10) — previously only a transitive dep via pydantic
+  "typing-extensions>=4.0,<5.0",
 ]
 
 [project.optional-dependencies]
 dev = [
   "pytest>=8.0,<9.0",
-  "ruff>=0.9,<1.0",
+  # minor-capped on purpose: ruff minor releases promote new default rules
+  # (0.16 added ~131 findings overnight) — bump the cap deliberately, with the sweep
+  "ruff>=0.16,<0.17",
 ]
 
 [project.urls]
@@ -51,3 +57,14 @@ testpaths = ["tests"]
 [tool.ruff]
 target-version = "py310"
 line-length = 100
+
+[tool.ruff.lint.flake8-bugbear]
+# typer's Option/Argument-in-default idiom — exempted precisely so B008 stays
+# live for any other call-in-default in the CLI modules
+extend-immutable-calls = ["typer.Option", "typer.Argument"]
+
+[tool.ruff.lint.per-file-ignores]
+# BLE001: CLI boundary handlers catch broadly by design to render friendly errors
+"src/agent_estimate/cli/commands/*.py" = ["BLE001"]
+# BLE001: the check runner is a harness — it must survive any check's failure
+"scripts/preflight.py" = ["BLE001"]

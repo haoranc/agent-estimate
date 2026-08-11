@@ -26,13 +26,13 @@ jobs:
           python-version: '3.12'
       - name: Install from source
         run: pip install -e .
-      - name: Run action (markdown + summary)
+      - name: Run action (markdown + summary; issue-comment exercises its event-mismatch skip path)
         id: estimate
         uses: ./
         with:
           issues: '2,3'
           format: markdown
-          output-mode: summary
+          output-mode: summary+issue-comment
       - name: Verify report output
         env:
           AE_REPORT: ${{ steps.estimate.outputs.report }}
@@ -80,3 +80,59 @@ jobs:
             exit 1
           }
           echo "Expected minutes: $AE_MINUTES"
+
+  test-action-invalid-mode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Invalid output-mode (typo)
+        id: bad-typo
+        continue-on-error: true
+        uses: ./
+        with:
+          issues: '2'
+          output-mode: sumary+pr-coment
+      - name: Invalid output-mode (empty)
+        id: bad-empty
+        continue-on-error: true
+        uses: ./
+        with:
+          issues: '2'
+          output-mode: ''
+      - name: Invalid output-mode (leading +)
+        id: bad-leading
+        continue-on-error: true
+        uses: ./
+        with:
+          issues: '2'
+          output-mode: +summary
+      - name: Invalid output-mode (trailing +)
+        id: bad-trailing
+        continue-on-error: true
+        uses: ./
+        with:
+          issues: '2'
+          output-mode: summary+
+      - name: Invalid output-mode (doubled +)
+        id: bad-doubled
+        continue-on-error: true
+        uses: ./
+        with:
+          issues: '2'
+          output-mode: summary++pr-comment
+      - name: Verify every invalid mode failed fast
+        env:
+          O_TYPO: ${{ steps.bad-typo.outcome }}
+          O_EMPTY: ${{ steps.bad-empty.outcome }}
+          O_LEADING: ${{ steps.bad-leading.outcome }}
+          O_TRAILING: ${{ steps.bad-trailing.outcome }}
+          O_DOUBLED: ${{ steps.bad-doubled.outcome }}
+        run: |
+          rc=0
+          for pair in "typo:$O_TYPO" "empty:$O_EMPTY" "leading:$O_LEADING" "trailing:$O_TRAILING" "doubled:$O_DOUBLED"; do
+            if [ "${pair##*:}" != "failure" ]; then
+              echo "::error::invalid output-mode case '${pair%%:*}' did not fail (outcome '${pair##*:}')"
+              rc=1
+            fi
+          done
+          exit $rc

@@ -22,7 +22,6 @@ from agent_estimate.core.task_type_models import (
     estimate_research,
 )
 
-
 # ---------------------------------------------------------------------------
 # detect_estimation_category
 # ---------------------------------------------------------------------------
@@ -381,15 +380,15 @@ class TestPipelineRouting:
     """Integration-level: verify pipeline routes to correct model per category."""
 
     def setup_method(self) -> None:
+        from agent_estimate.core.sizing import TIER_BASELINES, SizeTier
         from agent_estimate.core.task_type_models import (
-            _BRAINSTORM_BASELINES,
             _APP_DEV_BASELINES,
+            _BRAINSTORM_BASELINES,
             _CONFIG_SRE_BASELINES,
             _DOCUMENTATION_BASELINES,
             _FRONTEND_BUILD_BASELINES,
             _RESEARCH_BASELINES_SHALLOW,
         )
-        from agent_estimate.core.sizing import TIER_BASELINES, SizeTier
 
         self.brainstorm_m = _BRAINSTORM_BASELINES[1]
         self.research_m = _RESEARCH_BASELINES_SHALLOW[1]

@@ -16,7 +16,6 @@ from agent_estimate.core.models import (
 from agent_estimate.core.modifiers import build_modifier_set
 from agent_estimate.core.sizing import TIER_BASELINES
 
-
 # ---------------------------------------------------------------------------
 # AgentProfile validation
 # ---------------------------------------------------------------------------

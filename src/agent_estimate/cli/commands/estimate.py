@@ -6,7 +6,7 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import NoReturn, Optional
+from typing import NoReturn
 
 import typer
 
@@ -26,11 +26,11 @@ logger = logging.getLogger("agent_estimate")
 
 
 def run(
-    task: Optional[str] = typer.Argument(None, help="Task description to estimate."),
-    file: Optional[Path] = typer.Option(
+    task: str | None = typer.Argument(None, help="Task description to estimate."),
+    file: Path | None = typer.Option(
         None, "--file", "-f", help="Path to a task file (one task per line)."
     ),
-    config: Optional[Path] = typer.Option(
+    config: Path | None = typer.Option(
         None, "--config", "-c", help="Path to config YAML."
     ),
     format: str = typer.Option(
@@ -44,13 +44,13 @@ def run(
             "3-round (35 m)."
         ),
     ),
-    issues: Optional[str] = typer.Option(
+    issues: str | None = typer.Option(
         None,
         "--issues",
         "-i",
         help="GitHub issue numbers (comma/space separated, '#' optional).",
     ),
-    repo: Optional[str] = typer.Option(
+    repo: str | None = typer.Option(
         None, "--repo", "-r", help="GitHub repo (owner/name)."
     ),
     title: str = typer.Option(
@@ -61,7 +61,7 @@ def run(
         "--spec-clarity",
         help="Spec clarity modifier (range: 0.3 to 1.3; lower means clearer spec).",
     ),
-    warm_context: Optional[float] = typer.Option(
+    warm_context: float | None = typer.Option(
         None,
         "--warm-context",
         help=(
@@ -74,17 +74,17 @@ def run(
         "--agent-fit",
         help="Agent fit modifier (range: 0.9 to 1.2; lower means better fit).",
     ),
-    history_file: Optional[Path] = typer.Option(
+    history_file: Path | None = typer.Option(
         None,
         "--history-file",
         help="Dispatch history JSON for auto warm-context detection.",
     ),
-    history_agent: Optional[str] = typer.Option(
+    history_agent: str | None = typer.Option(
         None,
         "--history-agent",
         help="Filter dispatch history by agent name.",
     ),
-    history_project: Optional[str] = typer.Option(
+    history_project: str | None = typer.Option(
         None,
         "--history-project",
         help="Filter dispatch history by project name.",
@@ -94,22 +94,22 @@ def run(
         "--no-auto-tier/--auto-tier",
         help="Disable tier auto-correction based on scope signals.",
     ),
-    estimated_tests: Optional[int] = typer.Option(
+    estimated_tests: int | None = typer.Option(
         None,
         "--estimated-tests",
         help="Expected number of tests (used for tier auto-correction).",
     ),
-    estimated_lines: Optional[int] = typer.Option(
+    estimated_lines: int | None = typer.Option(
         None,
         "--estimated-lines",
         help="Expected lines of code changed (used for tier auto-correction).",
     ),
-    num_concerns: Optional[int] = typer.Option(
+    num_concerns: int | None = typer.Option(
         None,
         "--num-concerns",
         help="Number of distinct modules/APIs/schemas involved (used for tier auto-correction).",
     ),
-    task_type: Optional[str] = typer.Option(
+    task_type: str | None = typer.Option(
         None,
         "--type",
         help=(
