@@ -16,7 +16,7 @@ agent-estimate estimate \
 
 | Task | Model | Tier | Agent | Base PERT (O/M/P) | Modifiers | Effective Duration | Human Equivalent |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Write quickstart guide and README with protocol comparison …** | documentation | S | Claude | 10m / 25m / 45m (E=25.8m) | spec 1.00 x warm 1.00 x fit 1.00 = 1.00 | 25.8m | 173.2m |
+| **Write quickstart guide and README with protocol comparison …** | documentation | S | Claude | 10m / 25m / 45m (E=25.8m) | spec 1.00 x warm 1.00 x fit 1.00 = 1.00 | 25.8m | 109.6m |
 
 ### Wave Plan
 
@@ -31,8 +31,8 @@ agent-estimate estimate \
 | Best case | 27.4m |
 | Expected case | 44.7m |
 | Worst case | 65.7m |
-| Human-speed equivalent | 173.2m |
-| Compression ratio | 3.87x |
+| Human-speed equivalent | 109.6m |
+| Compression ratio | 2.45x |
 | Review overhead (per-task, pre-amortization) | 15m |
 
 ### Review Overhead
@@ -57,13 +57,21 @@ agent in the wave.  Per-task values below are the naive (pre-amortization) figur
 
 **Write quickstart guide and README with protocol comparison …**
 
+### Assumptions
+
+- CLI task descriptions carry no dependency edges; scheduling assumes independence.
+- Calibration store: n=0 observations applied; the estimate pipeline does not consume calibration feedback.
+- Bundled-prior thinking-level baseline: Claude Code high and Codex extra-high.
+- Human equivalent covers agent work only; human review is reported separately.
+- Cost is a heuristic that assumes one agent turn per 5 minutes of work.
+
 ### Tier Corrections
 
 No tier corrections.
 
-### METR Warnings
+### Reliability Horizon Warnings
 
-No METR threshold warnings.
+No reliability horizon warnings.
 
 
 ## What actually happened
@@ -80,4 +88,4 @@ Almost exactly on estimate. Documentation tasks are the most predictable categor
 
 ## Key takeaway
 
-Documentation has the highest human-multiplier range (3.0-6.0x) because humans find technical writing tedious and slow. Agents produce consistent, structured output quickly. The 3.87x wall-clock compression accounts for the review cycle — without review (`--review-mode none`), an executed none-mode run reports 25.8m effective duration, 29.7m expected case, 109.6m human-equivalent time, and 3.69x compression.
+Documentation has the highest human-multiplier range (3.0-6.0x) because humans find technical writing tedious and slow. Agents produce consistent, structured output quickly. The 2.45x end-to-end compression keeps the 15m review cycle separate — without review (`--review-mode none`), an executed none-mode run reports 25.8m effective duration, 29.7m expected case, the same 109.6m work-only human equivalent, and 3.69x compression.

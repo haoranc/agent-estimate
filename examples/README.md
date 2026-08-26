@@ -4,32 +4,32 @@ Real input/output examples from production agent dispatches. Every command below
 
 | Example | Task type | Tier | Compression | File |
 |---------|-----------|------|-------------|------|
-| Fix pyproject URLs after org rename | Coding | XS | 2.00x | [coding-s.md](./coding-s.md) |
-| Implement CLI command with code generation | Coding | M | 3.00x | [coding-m.md](./coding-m.md) |
-| Audit cloud infrastructure providers | Research | S | 2.61x | [research.md](./research.md) |
-| Write quickstart guide + README | Documentation | S | 3.87x | [documentation.md](./documentation.md) |
-| 3-agent parallel session (3 features) | Multi-agent | M×3 | 8.07x | [multi-agent.md](./multi-agent.md) |
+| Fix pyproject URLs after org rename | Coding | XS | 0.84x | [coding-s.md](./coding-s.md) |
+| Implement CLI command with code generation | Coding | M | 2.34x | [coding-m.md](./coding-m.md) |
+| Audit cloud infrastructure providers | Research | S | 1.49x | [research.md](./research.md) |
+| Write quickstart guide + README | Documentation | S | 2.45x | [documentation.md](./documentation.md) |
+| 3-agent parallel session (3 features) | Multi-agent | M×3 | 6.28x | [multi-agent.md](./multi-agent.md) |
 
 ## How to read the output
 
 - **Tier** — task size: XS (~10m), S (~24m), M (~52m), L (~100m), XL (~195m)
 - **PERT (O/M/P)** — optimistic / most-likely / pessimistic estimates, weighted to expected
-- **Human Equivalent** — how long this would take a human developer (task-type-specific multiplier)
+- **Human Equivalent** — how long the agent's work would take a human developer; review stays separate
 - **Compression ratio** — human time / agent time. Higher = more agent leverage.
 - **Wave** — parallel scheduling group. Tasks in the same wave run concurrently.
-- **METR warning** — fires when an estimate exceeds the model's reliability threshold
+- **Reliability warning** — fires when friction-adjusted work exceeds a provenance-labeled policy limit
 - **What actually happened** — real dispatch data showing estimate vs actual outcome
 
 ## Calibration data
 
-These examples are drawn from a production multi-agent fleet (Claude, Codex, Gemini) running real development tasks. Key stats from the calibration dataset:
+These examples are drawn from a production multi-agent fleet (Claude, Codex, Gemini) running real development tasks. The shipped priors are informed by internal dispatches, but the estimate pipeline does not yet apply the local calibration store:
 
 | Metric | Value |
 |--------|-------|
-| Validated dispatches | 149+ |
-| Total dispatches tracked | 190+ |
-| M-tier accuracy | Expected case within ±20% |
+| Coding dispatches informing priors | 33 |
+| Brainstorm dispatches informing priors | 6 |
+| SQLite calibration-store observations applied | 0 |
 | Task types covered | Coding, research, documentation, brainstorm, config |
-| Agents calibrated against | Claude Code (Opus 4.7, High thinking), Codex (GPT-5.4, Extra High thinking) |
+| Thinking-level baseline | Claude Code High, Codex Extra High |
 
-Estimates improve with calibration data. Use `agent-estimate validate` to feed your own dispatch outcomes back into the model.
+Use `agent-estimate validate` to record your own dispatch outcomes. The current estimate pipeline reports bundled priors until a future calibrated snapshot is wired into forecasting.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 
 import pytest
@@ -21,7 +22,6 @@ agents:
 settings:
   friction_multiplier: 1.1
   inter_wave_overhead: 0.25
-  review_overhead: 0.15
   metr_fallback_threshold: 40.0
 """
 
@@ -40,31 +40,32 @@ def _write(tmp_path: Path, filename: str, content: str) -> Path:
 def test_load_config_valid_file_returns_estimation_config(tmp_path: Path) -> None:
     config_path = _write(tmp_path, "config.yaml", VALID_CONFIG)
 
-    config = load_config(config_path)
+    with warnings.catch_warnings(record=True) as captured:
+        warnings.simplefilter("always")
+        config = load_config(config_path)
 
+    assert not captured
     assert config.settings.friction_multiplier == pytest.approx(1.1)
+    assert config.settings.review_overhead == pytest.approx(0.0)
     assert len(config.agents) == 1
     assert config.agents[0].name == "Claude"
     assert config.agents[0].capabilities == ["planning", "implementation"]
 
 
-def test_load_config_missing_required_field_has_clear_error(tmp_path: Path) -> None:
-    missing_review = """\
-agents:
-  - name: Claude
-    capabilities: [planning]
-    parallelism: 2
-    cost_per_turn: 0.12
-    model_tier: frontier
-settings:
-  friction_multiplier: 1.1
-  inter_wave_overhead: 0.25
-  metr_fallback_threshold: 40.0
-"""
-    config_path = _write(tmp_path, "missing.yaml", missing_review)
+def test_load_config_warns_when_review_overhead_is_set(tmp_path: Path) -> None:
+    deprecated_config = VALID_CONFIG.replace(
+        "  metr_fallback_threshold: 40.0\n",
+        "  review_overhead: 0.15\n  metr_fallback_threshold: 40.0\n",
+    )
+    config_path = _write(tmp_path, "deprecated.yaml", deprecated_config)
 
-    with pytest.raises(ValueError, match=r"settings\.review_overhead: Field required"):
-        load_config(config_path)
+    with pytest.warns(
+        FutureWarning,
+        match=r"settings\.review_overhead is deprecated.*removed in v0\.8",
+    ):
+        config = load_config(config_path)
+
+    assert config.settings.review_overhead == pytest.approx(0.15)
 
 
 def test_load_config_malformed_yaml_has_parse_error(tmp_path: Path) -> None:
@@ -90,7 +91,6 @@ agents:
 settings:
   friction_multiplier: 1.1
   inter_wave_overhead: 0.25
-  review_overhead: 0.15
   metr_fallback_threshold: 40.0
   extra_setting: true
 """
@@ -111,7 +111,6 @@ agents:
 settings:
   friction_multiplier: 1
   inter_wave_overhead: 0
-  review_overhead: 1
   metr_fallback_threshold: 30
 """
     config_path = _write(tmp_path, "int-values.yaml", int_values)
@@ -166,7 +165,6 @@ agents:
 settings:
   friction_multiplier: 1.1
   inter_wave_overhead: 0.25
-  review_overhead: 0.15
   metr_fallback_threshold: 40.0
 """
     config_path = _write(tmp_path, "with-codex.yaml", with_codex)

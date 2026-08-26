@@ -27,5 +27,4 @@ agents:
 settings:
   friction_multiplier: 1.15
   inter_wave_overhead: 0.25
-  review_overhead: 0.2
   metr_fallback_threshold: 45.0

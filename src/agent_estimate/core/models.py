@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Annotated, Protocol, runtime_checkable
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
@@ -58,7 +58,7 @@ class ProjectSettings(BaseModel):
 
     friction_multiplier: Annotated[float, Field(gt=0)]
     inter_wave_overhead: Annotated[float, Field(ge=0)]
-    review_overhead: Annotated[float, Field(ge=0)]
+    review_overhead: Annotated[float, Field(ge=0)] = 0.0
     metr_fallback_threshold: Annotated[float, Field(gt=0)]
 
 
@@ -69,6 +69,19 @@ class EstimationConfig(BaseModel):
 
     agents: list[AgentProfile] = Field(min_length=1)
     settings: ProjectSettings
+
+    @model_validator(mode="after")
+    def reject_duplicate_agent_names(self) -> EstimationConfig:
+        seen: set[str] = set()
+        duplicates: set[str] = set()
+        for agent in self.agents:
+            if agent.name in seen:
+                duplicates.add(agent.name)
+            seen.add(agent.name)
+        if duplicates:
+            names = ", ".join(repr(name) for name in sorted(duplicates))
+            raise ValueError(f"agent names must be unique; duplicates: {names}")
+        return self
 
 
 # ---------------------------------------------------------------------------

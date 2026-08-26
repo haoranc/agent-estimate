@@ -1,0 +1,77 @@
+schema_version: 1
+as_of: "2026-08-23"
+ledgers:
+  coding_dispatches:
+    observation_window:
+      start: "2026-02-17"
+      end: "2026-02-19"
+    sample_size: 33
+    reported_actual_to_estimate_ratio: 0.85
+    sources:
+      - kind: internal-ledger
+        locator: "internal dispatch validation ledger (not publicly available)"
+      - kind: public-issue
+        locator: "https://github.com/kiloloop/agent-estimate/issues/46"
+      - kind: public-issue
+        locator: "https://github.com/kiloloop/agent-estimate/issues/55"
+    fed:
+      - "coding PERT and task-category prior claims"
+      - "additive review-mode overheads"
+    caveats:
+      - >-
+        Issue 55 and the shipped code report 0.85x for the 33 coding rows. The
+        source ledger's 33-row checkpoint reports about 1.12x, while its
+        39-row checkpoint after six brainstorm rows reports about 0.85x. The
+        shipped claim is preserved here as reported provenance and should be
+        recomputed before it is used as a calibration snapshot.
+
+  brainstorm_dispatches:
+    observation_window:
+      start: "2026-02-20"
+      end: "2026-02-20"
+    sample_size: 6
+    reported_actual_to_estimate_ratio: 0.08
+    sources:
+      - kind: internal-ledger
+        locator: "internal dispatch validation ledger (not publicly available)"
+      - kind: public-issue
+        locator: "https://github.com/kiloloop/agent-estimate/issues/55"
+    fed:
+      - "brainstorm flat-duration prior and task-category model"
+    caveats:
+      - "One Gemini round-two timestamp was marked unreliable in the source ledger."
+
+  elevated_thinking_dispatches:
+    observation_window:
+      start: "2026-02-17"
+      end: "2026-03-07"
+    sample_size_minimum: 83
+    reported_execution_profiles:
+      claude_code: high
+      codex: extra-high
+    sources:
+      - kind: public-issue
+        locator: "https://github.com/kiloloop/agent-estimate/issues/78"
+    fed:
+      - "bundled-prior thinking-level assumption in rendered reports and documentation"
+    caveats:
+      - "No thinking-level duration or cost modifier is applied in v0.7.x."
+
+  coordinator_validation_corpus:
+    observation_window:
+      start: "2026-02-17"
+      end: "2026-08-17"
+    sample_size: 495
+    reported_actual_to_estimate_ratio_approximate: 0.83
+    sources:
+      - kind: internal-ledger
+        locator: "internal dispatch validation ledger (not publicly available)"
+        snapshot: "2026-08-17"
+    fed:
+      - "class-first validation context for the v0.7.5 provenance disclosure"
+      - "future calibration and execution-profile roadmap inputs"
+    caveats:
+      - >-
+        The pooled ratio is not applied as a runtime correction. The source
+        ledger says task class is the first-order split and warns against
+        sizing from the lifetime mean.

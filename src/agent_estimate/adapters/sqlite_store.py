@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -17,7 +18,11 @@ SCHEMA_VERSION = 1
 
 @dataclass(frozen=True)
 class ObservationInput:
-    """Input payload for one calibration observation."""
+    """Input payload for one calibration observation.
+
+    ``error_ratio`` remains a validated compatibility input, but the store
+    recomputes the authoritative persisted value from the timing fields.
+    """
 
     task_type: str
     estimated_secs: float
@@ -84,6 +89,8 @@ class SQLiteCalibrationStore:
     def insert_observation(self, observation: ObservationInput) -> int:
         """Insert one observation row and return its id."""
         _validate_observation(observation)
+        error_ratio = observation.actual_work_secs / observation.estimated_secs
+        _require_finite_number("computed error_ratio", error_ratio)
         task_type_id = self._upsert_task_type(observation.task_type.strip())
         observed_at = _normalize_timestamp(observation.observed_at)
         week_start = _week_start(observed_at)
@@ -120,7 +127,7 @@ class SQLiteCalibrationStore:
                     observation.estimated_secs,
                     observation.actual_work_secs,
                     observation.actual_total_secs,
-                    observation.error_ratio,
+                    error_ratio,
                     observation.file_count,
                     observation.line_count,
                     observation.test_count,
@@ -396,31 +403,48 @@ def _validate_observation(observation: ObservationInput) -> None:
     if not observation.verdict.strip():
         raise ValueError("verdict must be non-empty")
 
-    for name, value in (
+    numeric_fields = (
         ("estimated_secs", observation.estimated_secs),
         ("actual_work_secs", observation.actual_work_secs),
         ("actual_total_secs", observation.actual_total_secs),
         ("error_ratio", observation.error_ratio),
+        ("file_count", observation.file_count),
+        ("line_count", observation.line_count),
+        ("test_count", observation.test_count),
+        ("spec_clarity_modifier", observation.spec_clarity_modifier),
+        ("warm_context_modifier", observation.warm_context_modifier),
+        ("review_overhead_secs", observation.review_overhead_secs),
+    )
+    for name, value in numeric_fields:
+        _require_finite_number(name, value)
+
+    if observation.estimated_secs <= 0:
+        raise ValueError("estimated_secs must be > 0")
+    for name, value in (
+        ("actual_work_secs", observation.actual_work_secs),
+        ("actual_total_secs", observation.actual_total_secs),
+        ("error_ratio", observation.error_ratio),
+        ("file_count", observation.file_count),
+        ("line_count", observation.line_count),
+        ("test_count", observation.test_count),
         ("review_overhead_secs", observation.review_overhead_secs),
     ):
         if value < 0:
             raise ValueError(f"{name} must be >= 0")
-
-    for name, value in (
-        ("file_count", observation.file_count),
-        ("line_count", observation.line_count),
-        ("test_count", observation.test_count),
-    ):
-        if value < 0:
-            raise ValueError(f"{name} must be >= 0")
+    if observation.actual_total_secs < observation.actual_work_secs:
+        raise ValueError("actual_total_secs must be >= actual_work_secs")
 
     for key, value in observation.modifiers_should_have_been.items():
         if not str(key).strip():
             raise ValueError("modifiers_should_have_been keys must be non-empty")
-        if not isinstance(value, (int, float)):
-            raise ValueError(  # noqa: TRY004 — parsed-content shape check
-                "modifiers_should_have_been values must be numeric"
-            )
+        _require_finite_number(f"modifiers_should_have_been[{key!r}]", value)
+
+
+def _require_finite_number(name: str, value: object) -> None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{name} must be numeric")  # noqa: TRY004 — input validation contract
+    if not math.isfinite(value):
+        raise ValueError(f"{name} must be finite")
 
 
 def _normalize_timestamp(value: str | None) -> str:

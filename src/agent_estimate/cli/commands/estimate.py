@@ -36,6 +36,11 @@ def run(
     format: str = typer.Option(
         "markdown", "--format", help="Output format: markdown or json."
     ),
+    compact: bool = typer.Option(
+        False,
+        "--compact",
+        help="Use compact Markdown for a single-task comment.",
+    ),
     review_mode: str = typer.Option(
         "standard",
         "--review-mode",
@@ -66,7 +71,8 @@ def run(
         "--warm-context",
         help=(
             "Warm context modifier (range: 0.3 to 1.15; lower means warmer context). "
-            "When omitted, auto-infers from --history-file or ./data.json when present."
+            "When omitted, auto-infers from --history-file or, outside GitHub Actions, "
+            "./data.json when present."
         ),
     ),
     agent_fit: float = typer.Option(
@@ -199,7 +205,7 @@ def run(
 
     # --- Infer warm context from dispatch history ---
     history_path = history_file
-    if history_path is None:
+    if history_path is None and "GITHUB_ACTIONS" not in os.environ:
         default_history = Path("data.json")
         if default_history.exists():
             history_path = default_history
@@ -272,7 +278,7 @@ def run(
 
     # --- Output ---
     if format == "markdown":
-        typer.echo(render_markdown_report(report))
+        typer.echo(render_markdown_report(report, compact=compact))
     else:
         typer.echo(render_json_report(report), nl=False)
 

@@ -16,8 +16,8 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -25,21 +25,87 @@ jobs:
       - name: Run preflight (full)
         run: make preflight ARGS="--full"
 
+  # A dev-only corpus is kept out of two independent carriers: hatchling's sdist
+  # exclude, and `export-ignore` for the public `git archive` export. Config alone
+  # proves neither carrier honours it, nor that what still ships is internally
+  # consistent — an artifact carrying a test but not its fixture fails on arrival
+  # (PR #80 F-001 for the sdist, F-003 for the archive). Both are built and run.
+  export-boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Build the sdist
+        run: |
+          pip install build
+          python -m build --sdist --outdir dist
+      - name: Extract it
+        run: |
+          mkdir -p extracted
+          tar -xzf dist/*.tar.gz -C extracted --strip-components=1
+      - name: Dev-only paths must be absent from the artifact
+        run: |
+          cd extracted
+          status=0
+          for path in \
+            tests/fixtures/github_issue_mode_regressions.json \
+            tests/unit/test_issue_mode_regressions.py \
+            tests/unit/test_packaging.py
+          do
+            if [ -e "$path" ]; then
+              echo "::error::$path shipped in the sdist but is dev-only"
+              status=1
+            fi
+          done
+          exit $status
+      - name: Every test the sdist ships must pass from inside it
+        run: |
+          cd extracted
+          pip install -e .[dev]
+          python -m pytest tests/ -q
+
+      - name: Export the public archive
+        run: |
+          mkdir -p exported
+          git archive --format=tar HEAD | tar -x -C exported
+      - name: Dev-only paths must be absent from the public export
+        run: |
+          cd exported
+          status=0
+          for path in \
+            tests/fixtures/github_issue_mode_regressions.json \
+            tests/unit/test_issue_mode_regressions.py \
+            tests/unit/test_packaging.py
+          do
+            if [ -e "$path" ]; then
+              echo "::error::$path is in the public export but is dev-only"
+              status=1
+            fi
+          done
+          exit $status
+      - name: Every test the public export ships must pass from inside it
+        run: |
+          cd exported
+          pip install -e .[dev]
+          python -m pytest tests/ -q
+
   # CI's fresh installs resolve the newest allowed dependencies, so declared
   # FLOORS are never exercised — a typer floor too low for PEP 604 CLI
   # annotations shipped green until reviewed at the floor (PR #61 F-001).
   test-min-deps:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.10'
       - name: Install at declared dependency floors
         run: |
-          # click pinned to the floor era too: typer 0.12.x breaks against
-          # click >= 8.2 ("Secondary flag is not valid for non-boolean flag")
-          pip install typer==0.12.4 click==8.1.7 pyyaml==6.0 pydantic==2.4.0 networkx==3.0 typing-extensions==4.6.1
+          # Click 8.2 exercises the compatibility boundary and the
+          # no_args_is_help fix that establishes the Typer floor.
+          pip install typer==0.16.1 click==8.2.0 pyyaml==6.0 pydantic==2.4.0 networkx==3.0 typing-extensions==4.6.1
           pip install --no-deps -e .
       - name: CLI constructs and answers at the floors
         run: |

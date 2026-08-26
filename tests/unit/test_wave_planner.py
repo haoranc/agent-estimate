@@ -198,6 +198,18 @@ class TestUtilizationMetrics:
         assert max(utils.values()) == pytest.approx(1.0)
         assert min(utils.values()) == pytest.approx(40.0 / 60.0)
 
+    def test_multi_slot_agent_utilization_is_capacity_bounded(self) -> None:
+        tasks = [_node("A", 60), _node("B", 60)]
+        plan = plan_waves(
+            tasks,
+            [_agent("alpha", parallelism=2)],
+            inter_wave_overhead_hours=0,
+        )
+
+        assert plan.total_wall_clock_minutes == pytest.approx(60.0)
+        assert plan.agent_utilization["alpha"] == pytest.approx(1.0)
+        assert 0.0 <= plan.agent_utilization["alpha"] <= 1.0
+
 
 class TestInterWaveOverhead:
     """Verify overhead is added between waves but not after the last."""

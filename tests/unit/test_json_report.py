@@ -7,6 +7,7 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
+from agent_estimate import __version__
 from agent_estimate.cli.app import app
 from agent_estimate.render.json_report import render_json_report
 from agent_estimate.render.report_models import (
@@ -95,6 +96,8 @@ def _build_report() -> EstimationReport:
             ),
         ),
         critical_path=("Implement auth", "Add tests"),
+        engine_version="test-engine",
+        registry_version="test-registry",
     )
 
 
@@ -124,6 +127,12 @@ def test_render_json_report_is_canonical_and_round_trips() -> None:
     assert payload["tier_correction_warnings"] == [
         {"task": "Implement auth", "warning": "Upgraded M→L: 4 concerns"}
     ]
+    assert payload["footer"] == {
+        "engine_version": "test-engine",
+        "registry_version": "test-registry",
+    }
+    assert payload["agent_load"][0]["heuristic_cost"] == 9.3
+    assert payload["agent_load"][0]["estimated_cost"] == 9.3
 
 
 def test_estimate_command_json_format_outputs_json() -> None:
@@ -137,3 +146,7 @@ def test_estimate_command_json_format_outputs_json() -> None:
     assert "tasks" in payload
     assert "waves" in payload
     assert "timeline" in payload
+    assert payload["footer"] == {
+        "engine_version": __version__,
+        "registry_version": "v0.7.5-policy-1",
+    }

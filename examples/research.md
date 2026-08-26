@@ -16,7 +16,7 @@ agent-estimate estimate \
 
 | Task | Model | Tier | Agent | Base PERT (O/M/P) | Modifiers | Effective Duration | Human Equivalent |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Audit cloud infrastructure providers for production deploym…** | research | S | Claude | 10m / 20m / 30m (E=20m) | spec 1.00 x warm 1.00 x fit 1.00 = 1.00 | 20m | 99m |
+| **Audit cloud infrastructure providers for production deploym…** | research | S | Claude | 10m / 20m / 30m (E=20m) | spec 1.00 x warm 1.00 x fit 1.00 = 1.00 | 20m | 56.6m |
 
 ### Wave Plan
 
@@ -31,8 +31,8 @@ agent-estimate estimate \
 | Best case | 27.1m |
 | Expected case | 38m |
 | Worst case | 48.9m |
-| Human-speed equivalent | 99m |
-| Compression ratio | 2.61x |
+| Human-speed equivalent | 56.6m |
+| Compression ratio | 1.49x |
 | Review overhead (per-task, pre-amortization) | 15m |
 
 ### Review Overhead
@@ -57,13 +57,21 @@ agent in the wave.  Per-task values below are the naive (pre-amortization) figur
 
 **Audit cloud infrastructure providers for production deploym…**
 
+### Assumptions
+
+- CLI task descriptions carry no dependency edges; scheduling assumes independence.
+- Calibration store: n=0 observations applied; the estimate pipeline does not consume calibration feedback.
+- Bundled-prior thinking-level baseline: Claude Code high and Codex extra-high.
+- Human equivalent covers agent work only; human review is reported separately.
+- Cost is a heuristic that assumes one agent turn per 5 minutes of work.
+
 ### Tier Corrections
 
 No tier corrections.
 
-### METR Warnings
+### Reliability Horizon Warnings
 
-No METR threshold warnings.
+No reliability horizon warnings.
 
 
 ## What actually happened
@@ -79,4 +87,4 @@ The agent finished well under the estimate — research tasks with web access te
 
 ## Key takeaway
 
-Research tasks use the generic human-multiplier range (2.0-4.0x) while the research model handles the agent-side time box. Pattern matching across large datasets is still tedious for humans but routine for agents: scanning 7 cloud providers' pricing, compliance, and feature matrices would take a human most of a workday. Use `--type research` to select the research estimation model — it uses a flat PERT curve with depth scaling instead of the tier-based coding model.
+Research tasks use the generic human-multiplier range (2.0-4.0x) while the research model handles the agent-side time box. Pattern matching across large datasets is still tedious for humans but routine for agents: scanning 7 cloud providers' pricing, compliance, and feature matrices would take a human most of a workday. Use `--type research` to select the research estimation model — it preserves the research-specific PERT shape while scaling it with the same scope signals used by other task types.

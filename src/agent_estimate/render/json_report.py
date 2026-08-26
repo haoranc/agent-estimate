@@ -71,11 +71,17 @@ def _build_payload(report: EstimationReport) -> dict[str, Any]:
                 "agent": load.agent,
                 "task_count": load.task_count,
                 "total_work_minutes": load.total_work_minutes,
+                "heuristic_cost": load.heuristic_cost,
+                # Compatibility alias; scheduled for removal with the v0.8 schema.
                 "estimated_cost": load.estimated_cost,
             }
             for load in sorted(report.agent_load, key=lambda load: load.agent)
         ],
         "critical_path": list(report.critical_path),
+        "footer": {
+            "engine_version": report.engine_version,
+            "registry_version": report.registry_version,
+        },
         "metr_warnings": warnings,
         "tier_correction_warnings": [
             {

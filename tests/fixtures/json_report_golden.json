@@ -3,12 +3,14 @@
     {
       "agent": "Claude",
       "estimated_cost": 9.3,
+      "heuristic_cost": 9.3,
       "task_count": 1,
       "total_work_minutes": 30.5
     },
     {
       "agent": "Codex",
       "estimated_cost": 18.4,
+      "heuristic_cost": 18.4,
       "task_count": 1,
       "total_work_minutes": 72.5
     }
@@ -17,6 +19,10 @@
     "Implement auth",
     "Add tests"
   ],
+  "footer": {
+    "engine_version": "test-engine",
+    "registry_version": "test-registry"
+  },
   "metr_warnings": [
     {
       "task": "Implement auth",

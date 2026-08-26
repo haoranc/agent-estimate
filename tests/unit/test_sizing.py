@@ -64,6 +64,55 @@ class TestWhitespaceDescription:
         assert "no-description-default-M" in result.signals
 
 
+class TestStructuralSizeSignals:
+    def test_scope_items_vote_on_tier(self) -> None:
+        result = classify_task(
+            """Implement the change
+
+## Scope
+1. First surface.
+2. Second surface.
+3. Third surface.
+4. Fourth surface.
+"""
+        )
+
+        assert result.tier == SizeTier.M
+        assert "scope-items-4" in result.signals
+
+    def test_h1_scope_items_vote_on_tier(self) -> None:
+        result = classify_task(
+            """Implement the change
+
+# Scope
+1. First surface.
+2. Second surface.
+3. Third surface.
+4. Fourth surface.
+"""
+        )
+
+        assert result.tier == SizeTier.M
+        assert "scope-items-4" in result.signals
+
+    def test_inline_file_references_vote_on_tier(self) -> None:
+        result = classify_task(
+            "Touch `src/a.py`, `src/b.py`, `src/c.py`, `src/d.py`, "
+            "`src/e.py`, and `src/f.py`."
+        )
+
+        assert result.tier == SizeTier.L
+        assert "file-references-6" in result.signals
+
+    def test_multiple_repository_references_vote_on_tier(self) -> None:
+        result = classify_task(
+            "Coordinate repo kiloloop/alpha with repository kiloloop/beta."
+        )
+
+        assert result.tier == SizeTier.M
+        assert "repositories-2" in result.signals
+
+
 # ---------------------------------------------------------------------------
 # Multiple complexity signals — bump by 2
 # ---------------------------------------------------------------------------

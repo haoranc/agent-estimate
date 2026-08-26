@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling>=1.24.0"]
+requires = ["hatchling>=1.32,<2"]
 build-backend = "hatchling.build"
 
 [project]
 name = "agent-estimate"
-version = "0.7.4"
+version = "0.7.5"
 description = "Know what an AI task will cost before you run it"
 readme = "README.md"
 license = "Apache-2.0"
@@ -22,22 +22,24 @@ classifiers = [
   "Topic :: Software Development :: Quality Assurance",
 ]
 dependencies = [
-  # 0.12.4 floor: PEP 604 unions in CLI signatures (0.12.0 raises
-  # "Type not yet supported: str | None" at command construction)
-  "typer>=0.12.4,<1.0",
+  # 0.16.1 supports Click 8.2 and fixes duplicate no-args help output.
+  "typer>=0.16.1,<1.0",
   "pyyaml>=6.0,<7.0",
   "pydantic>=2.4,<3.0",
   "networkx>=3.0,<4.0",
-  # direct import (Self on py3.10) — previously only a transitive dep via pydantic
-  "typing-extensions>=4.0,<5.0",
+  # direct import (Self on py3.10); align with pydantic 2.4's effective floor
+  "typing-extensions>=4.6.1,<5.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-  "pytest>=8.0,<9.0",
+  "pytest>=9.0.3,<10.0",
   # minor-capped on purpose: ruff minor releases promote new default rules
   # (0.16 added ~131 findings overnight) — bump the cap deliberately, with the sweep
   "ruff>=0.16,<0.17",
+  # tomllib landed in 3.11; the packaging guard parses pyproject as real TOML
+  # so a commented-out or misspelled table fails instead of silently passing.
+  'tomli>=2.0; python_version<"3.11"',
 ]
 
 [project.urls]
@@ -50,6 +52,19 @@ Support = "https://github.com/kiloloop/agent-estimate/blob/main/SUPPORT.md"
 
 [project.scripts]
 agent-estimate = "agent_estimate.cli.app:main"
+
+[tool.hatch.build.targets.sdist]
+# `export-ignore` in .gitattributes only governs `git archive`; hatchling does not
+# honour it, so dev-only files need excluding here too or they ride the sdist.
+# These three leave together: an artifact carrying a test but not its fixture is
+# broken on arrival. `export-ignore` in .gitattributes pins the same set for the
+# other carrier, and the `export-boundary` CI job proves both by building each
+# artifact and running the tests it ships from inside it.
+exclude = [
+  "tests/fixtures/github_issue_mode_regressions.json",
+  "tests/unit/test_issue_mode_regressions.py",
+  "tests/unit/test_packaging.py",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

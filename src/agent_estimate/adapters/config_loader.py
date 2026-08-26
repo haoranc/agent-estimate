@@ -42,6 +42,15 @@ def load_config(path: str | Path) -> EstimationConfig:
             f"Invalid config file at {config_path}: root must be a YAML mapping"
         )
 
+    settings = raw_data.get("settings")
+    if isinstance(settings, Mapping) and "review_overhead" in settings:
+        warnings.warn(
+            "settings.review_overhead is deprecated and will be removed in v0.8; "
+            "select review overhead with the review mode instead",
+            FutureWarning,
+            stacklevel=2,
+        )
+
     try:
         config = EstimationConfig.model_validate(raw_data)
     except ValidationError as exc:

@@ -65,7 +65,8 @@ class TestSingleTaskSimpleLinear:
             "Review Overhead",
             "Agent Load Summary",
             "Critical Path",
-            "METR Warnings",
+            "Assumptions",
+            "Reliability Horizon Warnings",
         ]
         for section in expected_sections:
             assert f"## {section}" in output, f"Missing section: {section}"

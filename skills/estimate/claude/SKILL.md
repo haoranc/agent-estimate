@@ -1,12 +1,12 @@
 ---
 name: estimate
-description: Estimate effort for AI coding agent tasks using PERT three-point estimation with METR reliability thresholds and wave planning.
+description: Estimate effort for AI coding agent tasks using PERT three-point estimation, provenance-labeled reliability policies, and wave planning.
 disable-model-invocation: true
 ---
 
 # /estimate — AI Agent Effort Estimation
 
-Run PERT three-point estimation with METR reliability thresholds and wave planning for one or more tasks.
+Run PERT three-point estimation with provenance-labeled reliability policies and wave planning for one or more tasks.
 
 ## Usage
 
@@ -156,4 +156,5 @@ modifiers:
 - Default config uses bundled `default_agents.yaml`. Pass `--config` to override agent definitions.
 - `--review-mode` defaults to `standard` (15 m additive; clean 2x-LGTM). Use `complex` (25 m) for involved or security-sensitive review, `3-round` (35 m) for explicit 3-round cross-agent review, or `none` for self-merge workflows.
 - JSON output is available via `--format json`.
-- METR p80 reliability thresholds back the over-threshold warnings. Current model keys: `opus_4_7` (Opus 4.7, 90 m), `gpt_5_5` (90 m), `gpt_5_4` (60 m), `gemini_3_1_pro` (45 m), `sonnet_4_6` (30 m), `haiku_4_5` (15 m). `opus_4_x` is a forward-compatible Opus alias; legacy keys (`opus_4_6`, `opus`, `gpt_5`/`5.2`/`5.3`, `gemini_3_pro`, `sonnet`) remain accepted.
+- Over-threshold warnings compare friction-adjusted work only against provenance-labeled registry values. The shipped values are local reliability policy (unmeasured), not published METR horizons. Current model keys: `opus_4_7` (Opus 4.7, 90 m), `gpt_5_5` (90 m), `gpt_5_4` (60 m), `gemini_3_1_pro` (45 m), `sonnet_4_6` (30 m), `haiku_4_5` (15 m). `opus_4_x` is a forward-compatible Opus alias; legacy keys (`opus_4_6`, `opus`, `gpt_5`/`5.2`/`5.3`, `gemini_3_pro`, `sonnet`) remain accepted.
+- Duration priors draw on 33 internal coding dispatches and 6 brainstorm dispatches; the report states that the estimate pipeline applies no SQLite calibration-store feedback.

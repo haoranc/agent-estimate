@@ -2,16 +2,19 @@
 
 README and examples/*.md embed captured CLI output. These tests re-run the same
 estimates and assert the embedded examples still match what the tool actually
-prints, so a recalibration, multiplier, or METR model-key bump fails CI instead
+prints, so a prior, multiplier, or reliability-policy key bump fails CI instead
 of silently rotting the docs.
 """
 
+import re
+import subprocess
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import pytest
+import yaml
 from typer.testing import CliRunner
 
 from agent_estimate.cli.app import app
@@ -30,9 +33,9 @@ MULTI_AGENT_TASKS = [
 # need re-capturing.
 HEADLINE_LINES = [
     "| Expected case | 75.4m |",
-    "| Compression ratio | 8.07x |",
-    "exceeds gpt_5_4 p80 threshold (60m)",
-    "exceeds gemini_3_1_pro p80 threshold (45m)",
+    "| Compression ratio | 6.28x |",
+    "Work estimate (60.4m) exceeds gpt_5_4 local reliability policy (unmeasured) (60m)",
+    "Work estimate (60.4m) exceeds gemini_3_1_pro local reliability policy (unmeasured) (45m)",
 ]
 
 runner = CliRunner()
@@ -238,7 +241,68 @@ class TestDocsFreshness:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         assert "agent-estimate session" in readme
 
+    def test_report_states_five_minute_cost_assumption(self):
+        output = _invoke_example(EXAMPLE_CASES[0])
+        assert "Cost is a heuristic that assumes one agent turn per 5 minutes" in output
+
     def test_release_checklist_mentions_floating_v0_action_tag(self):
         contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
         assert "floating public Action tag" in contributing
         assert "git tag -f v0" in contributing
+
+    def test_calibration_provenance_manifest_names_four_dated_ledgers(self):
+        manifest = yaml.safe_load(
+            (ROOT / "docs" / "calibration" / "provenance.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+
+        assert manifest["schema_version"] == 1
+        assert set(manifest["ledgers"]) == {
+            "coding_dispatches",
+            "brainstorm_dispatches",
+            "elevated_thinking_dispatches",
+            "coordinator_validation_corpus",
+        }
+        for ledger in manifest["ledgers"].values():
+            window = ledger["observation_window"]
+            assert window["start"] <= window["end"]
+            assert ledger["sources"]
+            assert ledger["fed"]
+
+    def test_release_export_contains_no_private_staging_material(self):
+        # The export set is defined by Git attributes, so this can only run in a
+        # checkout. The sdist ships this file but carries no .git, where the bare
+        # `git ls-files` below raised instead of skipping (found in PR #80).
+        if not (ROOT / ".git").exists():
+            pytest.skip("export boundary is only checkable from a git checkout")
+
+        tracked = subprocess.run(
+            ["git", "ls-files", "-z"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+        ).stdout.split(b"\0")
+        tracked = [path for path in tracked if path]
+        attributes = subprocess.run(
+            ["git", "check-attr", "-z", "--stdin", "export-ignore"],
+            cwd=ROOT,
+            check=True,
+            input=b"\0".join(tracked) + b"\0",
+            capture_output=True,
+        ).stdout.split(b"\0")
+        exported = {
+            path.decode()
+            for path, _attribute, value in zip(
+                attributes[0::3], attributes[1::3], attributes[2::3]
+            )
+            if path and value != b"set"
+        }
+        private_fixture = "tests/fixtures/github_issue_mode_regressions.json"
+        private_repo = re.compile(rb"github\.com/kiloloop/[A-Za-z0-9._-]+-dev")
+
+        assert private_fixture not in exported
+        offenders = [
+            path for path in exported if private_repo.search((ROOT / path).read_bytes())
+        ]
+        assert offenders == []

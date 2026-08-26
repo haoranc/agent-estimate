@@ -117,9 +117,9 @@ class TestProjectSettingsValidation:
 
 
 class TestEstimationConfig:
-    def _agent(self) -> AgentProfile:
+    def _agent(self, name: str = "Claude") -> AgentProfile:
         return AgentProfile(
-            name="Claude",
+            name=name,
             capabilities=["code"],
             parallelism=1,
             cost_per_turn=0.0,
@@ -144,10 +144,17 @@ class TestEstimationConfig:
 
     def test_multiple_agents_accepted(self) -> None:
         cfg = EstimationConfig(
-            agents=[self._agent(), self._agent()],
+            agents=[self._agent("Claude"), self._agent("Codex")],
             settings=self._settings(),
         )
         assert len(cfg.agents) == 2
+
+    def test_duplicate_agent_names_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="agent names must be unique"):
+            EstimationConfig(
+                agents=[self._agent("Claude"), self._agent("Claude")],
+                settings=self._settings(),
+            )
 
 
 # ---------------------------------------------------------------------------

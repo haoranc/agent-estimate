@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
 import typer
@@ -42,8 +43,23 @@ def run(
         typer.echo(f"Error: Missing or invalid field: {exc}", err=True)
         raise typer.Exit(code=2)
 
+    for name, value in (
+        ("estimated_minutes", estimated),
+        ("actual_work_minutes", actual_work),
+        ("actual_total_minutes", actual_total),
+    ):
+        if not math.isfinite(value):
+            typer.echo(f"Error: {name} must be finite", err=True)
+            raise typer.Exit(code=2)
+
     if estimated <= 0:
         typer.echo("Error: estimated_minutes must be > 0", err=True)
+        raise typer.Exit(code=2)
+    if actual_work < 0:
+        typer.echo("Error: actual_work_minutes must be >= 0", err=True)
+        raise typer.Exit(code=2)
+    if actual_total < actual_work:
+        typer.echo("Error: actual_total_minutes must be >= actual_work_minutes", err=True)
         raise typer.Exit(code=2)
 
     # Compute verdict

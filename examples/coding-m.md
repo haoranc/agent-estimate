@@ -14,7 +14,7 @@ agent-estimate estimate "Implement add-agent CLI command with SPEC.md generation
 
 | Task | Model | Tier | Agent | Base PERT (O/M/P) | Modifiers | Effective Duration | Human Equivalent |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Implement add-agent CLI command with SPEC.md generation** | coding | M | Claude | 25m / 50m / 90m (E=52.5m) | spec 1.00 x warm 1.00 x fit 1.00 = 1.00 | 52.5m | 226.4m |
+| **Implement add-agent CLI command with SPEC.md generation** | coding | M | Claude | 25m / 50m / 90m (E=52.5m) | spec 1.00 x warm 1.00 x fit 1.00 = 1.00 | 52.5m | 176.1m |
 
 ### Wave Plan
 
@@ -29,8 +29,8 @@ agent-estimate estimate "Implement add-agent CLI command with SPEC.md generation
 | Best case | 44.7m |
 | Expected case | 75.4m |
 | Worst case | 117.2m |
-| Human-speed equivalent | 226.4m |
-| Compression ratio | 3.00x |
+| Human-speed equivalent | 176.1m |
+| Compression ratio | 2.34x |
 | Review overhead (per-task, pre-amortization) | 15m |
 
 ### Review Overhead
@@ -55,13 +55,21 @@ agent in the wave.  Per-task values below are the naive (pre-amortization) figur
 
 **Implement add-agent CLI command with SPEC.md generation**
 
+### Assumptions
+
+- CLI task descriptions carry no dependency edges; scheduling assumes independence.
+- Calibration store: n=0 observations applied; the estimate pipeline does not consume calibration feedback.
+- Bundled-prior thinking-level baseline: Claude Code high and Codex extra-high.
+- Human equivalent covers agent work only; human review is reported separately.
+- Cost is a heuristic that assumes one agent turn per 5 minutes of work.
+
 ### Tier Corrections
 
 No tier corrections.
 
-### METR Warnings
+### Reliability Horizon Warnings
 
-No METR threshold warnings.
+No reliability horizon warnings.
 
 ## With modifiers — vague spec, cold context
 
@@ -94,4 +102,4 @@ The task ran slightly over the expected case due to a second review round. This 
 
 ## Key takeaway
 
-M-tier tasks are the most common dispatch target — complex enough to justify agent overhead, predictable enough for reliable estimation. The 3.00x compression means a feature that takes a human developer ~3.8 hours lands in ~75 minutes of wall clock time.
+M-tier tasks are the most common dispatch target — complex enough to justify agent overhead, predictable enough for useful planning. The work-only human equivalent is ~2.9 hours; including the separately modeled review cycle, the forecast is 2.34x faster at ~75 minutes wall clock.

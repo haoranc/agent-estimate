@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import re
 from collections.abc import Mapping
+from dataclasses import dataclass
 from importlib.resources import as_file, files
 
 import yaml
@@ -22,6 +23,32 @@ from agent_estimate.core.modifiers import apply_modifiers, compute_review_overhe
 
 METR_THRESHOLDS_FILENAME = "metr_thresholds.yaml"
 logger = logging.getLogger("agent_estimate")
+
+_ALLOWED_THRESHOLD_BASES = frozenset({"measured", "extrapolated", "local-policy"})
+
+
+@dataclass(frozen=True)
+class _ThresholdProvenance:
+    """Provenance attached to one backwards-compatible numeric threshold."""
+
+    basis: str
+    source: str
+    source_version: str
+    as_of: str
+
+
+class _ThresholdRegistry(dict[str, float]):
+    """Numeric threshold mapping with non-schema provenance metadata."""
+
+    def __init__(
+        self,
+        values: Mapping[str, float],
+        provenance: Mapping[str, _ThresholdProvenance],
+        registry_version: str,
+    ) -> None:
+        super().__init__(values)
+        self.provenance = dict(provenance)
+        self.registry_version = registry_version
 
 _MODEL_KEY_ALIASES: dict[str, str] = {
     # Current fleet (2026-05)
@@ -96,20 +123,53 @@ def compute_pert(optimistic: float, most_likely: float, pessimistic: float) -> P
 
 
 def load_metr_thresholds() -> dict[str, float]:
-    """Load METR p80 thresholds from the packaged YAML file.
+    """Load reliability thresholds from the packaged YAML file.
 
-    Returns a dict mapping model_key -> p80_minutes.
+    The public return shape remains ``dict[model_key, minutes]`` for backwards
+    compatibility. The concrete mapping also retains registry provenance for
+    warning labels.
     """
     resource = files("agent_estimate").joinpath(METR_THRESHOLDS_FILENAME)
     with as_file(resource) as path:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     try:
-        return {
-            key: float(entry["p80_minutes"])
-            for key, entry in raw.get("models", {}).items()
-        }
+        if not isinstance(raw, Mapping):
+            raise TypeError("root must be a mapping")
+        registry_version = raw["registry_version"]
+        if not isinstance(registry_version, str) or not registry_version.strip():
+            raise ValueError("registry_version must be a non-empty string")
+        values: dict[str, float] = {}
+        provenance: dict[str, _ThresholdProvenance] = {}
+        for key, entry in raw.get("models", {}).items():
+            basis = str(entry["basis"])
+            if basis not in _ALLOWED_THRESHOLD_BASES:
+                raise ValueError(f"unsupported basis {basis!r} for {key!r}")
+            values[key] = float(entry["p80_minutes"])
+            provenance[key] = _ThresholdProvenance(
+                basis=basis,
+                source=str(entry["source"]),
+                source_version=str(entry["source_version"]),
+                as_of=str(entry["as_of"]),
+            )
+        return _ThresholdRegistry(values, provenance, registry_version.strip())
     except (KeyError, TypeError, ValueError) as exc:
         raise RuntimeError(f"Malformed {METR_THRESHOLDS_FILENAME}: {exc}") from exc
+
+
+def _basis_label(provenance: _ThresholdProvenance | None) -> str:
+    if provenance is None or provenance.basis == "local-policy":
+        return "local reliability policy (unmeasured)"
+    if provenance.basis == "extrapolated":
+        return "extrapolated reliability horizon (unmeasured)"
+    return (
+        "measured p80 reliability horizon "
+        f"(source: {provenance.source}, {provenance.source_version}, "
+        f"as of {provenance.as_of})"
+    )
+
+
+def _format_threshold_minutes(value: float) -> str:
+    return str(int(value)) if float(value).is_integer() else str(value)
 
 
 def check_metr_threshold(
@@ -117,16 +177,21 @@ def check_metr_threshold(
     estimated_minutes: float,
     *,
     thresholds: Mapping[str, float] | None = None,
-    fallback_threshold: float = 40.0,
+    fallback_threshold: float | None = 40.0,
     agent_name: str | None = None,
 ) -> MetrWarning | None:
-    """Check whether an estimate exceeds the METR p80 reliability threshold.
+    """Check whether work exceeds a configured reliability threshold.
+
+    The function name is retained for API compatibility. A threshold is only
+    described as measured p80 evidence when its registry row supplies the
+    corresponding provenance; configured and fallback values are local policy.
 
     Args:
         model_key: Concrete model identifier (e.g. "opus", "sonnet").
-        estimated_minutes: The total estimated minutes for the task.
+        estimated_minutes: Work-only estimated minutes for the task.
         thresholds: Optional pre-loaded thresholds dict. If None, loads from YAML.
-        fallback_threshold: Used when model_key is not found in thresholds.
+        fallback_threshold: Local-policy fallback for an unknown model. ``None``
+            records the reliability horizon as unavailable and emits no warning.
         agent_name: Optional assigned agent name for resolving legacy model tiers.
 
     Returns:
@@ -137,27 +202,44 @@ def check_metr_threshold(
 
     resolved_model_key = _resolve_threshold_model_key(model_key, agent_name=agent_name)
     threshold = thresholds.get(resolved_model_key)
+    provenance = (
+        thresholds.provenance.get(resolved_model_key)
+        if isinstance(thresholds, _ThresholdRegistry)
+        else None
+    )
     if threshold is None:
+        if fallback_threshold is None:
+            logger.warning(
+                "Reliability horizon unavailable for model_key=%r "
+                "(resolved=%r, agent_name=%r); no fallback policy configured",
+                model_key,
+                resolved_model_key,
+                agent_name,
+            )
+            return None
         logger.warning(
-            "METR threshold not found for model_key=%r (resolved=%r, agent_name=%r); "
-            "using fallback_threshold=%.1f",
+            "METR threshold not found for model_key=%r "
+            "(resolved=%r, agent_name=%r); using local reliability policy "
+            "(unmeasured) %sm",
             model_key,
             resolved_model_key,
             agent_name,
-            fallback_threshold,
+            _format_threshold_minutes(fallback_threshold),
         )
         threshold = fallback_threshold
 
     if estimated_minutes <= threshold:
         return None
 
+    threshold_text = _format_threshold_minutes(threshold)
     return MetrWarning(
         model_key=resolved_model_key,
         threshold_minutes=threshold,
         estimated_minutes=estimated_minutes,
         message=(
-            f"Estimate ({estimated_minutes:.0f}m) exceeds {resolved_model_key} "
-            f"p80 threshold ({threshold:.0f}m). Consider splitting the task."
+            f"Work estimate ({estimated_minutes:.1f}m) exceeds {resolved_model_key} "
+            f"{_basis_label(provenance)} ({threshold_text}m). "
+            "Consider splitting the task."
         ),
     )
 
@@ -173,15 +255,15 @@ def estimate_task(
     agent_name: str | None = None,
     human_equivalent_minutes: float | None = None,
 ) -> TaskEstimate:
-    """Full estimation pipeline: sizing -> PERT -> modifiers -> review -> METR check.
+    """Full estimation pipeline: sizing -> PERT -> modifiers -> review -> policy check.
 
     Args:
         sizing: Task sizing result with calibrated baselines.
         modifiers: Modifier set to apply to baselines.
         review_mode: Code review overhead model.
-        model_key: Concrete model identifier for METR check.
-        thresholds: Pre-loaded METR thresholds (optional).
-        fallback_threshold: METR fallback when model_key is unknown.
+        model_key: Concrete model identifier for the reliability check.
+        thresholds: Pre-loaded reliability thresholds (optional).
+        fallback_threshold: Local-policy fallback when model_key is unknown.
         agent_name: Optional assigned agent name for resolving legacy model tiers.
         human_equivalent_minutes: Pre-computed human equivalent (optional).
 
@@ -202,7 +284,7 @@ def estimate_task(
 
     metr_warning = check_metr_threshold(
         model_key,
-        total,
+        pert.expected,
         thresholds=thresholds,
         fallback_threshold=fallback_threshold,
         agent_name=agent_name,

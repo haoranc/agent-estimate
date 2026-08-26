@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.5] - 2026-08-26
+
+### Added
+- [GitHub Action](https://github.com/kiloloop/agent-estimate#github-action) now documents least-privilege permissions by output mode.
+- [Report provenance](https://github.com/kiloloop/agent-estimate/blob/main/docs/calibration/provenance.yaml) now records the engine and reliability-policy registry versions alongside one dated manifest for the four source ledgers.
+
+### Fixed
+- Observation validation now rejects non-finite and inconsistent timings before computing a verdict.
+- Calibration storage now recomputes error ratios instead of trusting caller-supplied values.
+- Duplicate agent names are now rejected, and planner utilization is bounded by agent capacity.
+- Reliability warning text preserves user-supplied fractional fallback thresholds.
+- GitHub Action multiline outputs now use collision-checked random delimiters.
+- GitHub Action runs no longer infer warm context from a checkout-local `data.json`.
+
+### Changed
+- [Cost output](https://github.com/kiloloop/agent-estimate#output-formats) now names the five-minute-turn approximation `heuristic_cost` and retains `estimated_cost` as a compatibility alias.
+- [Configuration hygiene](https://github.com/kiloloop/agent-estimate#configuration) now warns that `settings.review_overhead` will be removed in v0.8 and drops two empty packaged modules.
+- GitHub Action comment modes now update one marked bot-authored comment in place.
+- Single-issue GitHub Action comments now omit idle agents and the one-row wave plan.
+- Reliability warnings now compare friction-adjusted work only and label every registry value by provenance, marking shipped limits as local policy.
+- Human-equivalent time now excludes review, and Markdown reports state their dependency, calibration, thinking-level, review, and cost assumptions.
+- Issue-mode category detection now scores title intent against implementation structure, and all task categories share scope/path/repository-size signals so non-coding estimates scale with explicit scope instead of collapsing to a fixed S tier.
+- GitHub Action now installs `agent-estimate` from its checked-out Action path by default and reports the resolved package version and install source.
+- Raised the Typer floor to 0.16.1 for Click 8.2 and `no_args_is_help` compatibility, aligned the direct `typing-extensions` declaration with the effective Pydantic 2.4 floor, and moved pytest to the patched 9.x line.
+- Refreshed the build backend, release tools, publisher, checkout, and Python setup actions to immutable current-release pins.
+
 ## [0.7.4] - 2026-08-10
 
 ### Added
@@ -126,6 +152,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modifier flags: `--warm-context`, `--spec-clarity`, `--issues`
 - PyPI package: `pip install agent-estimate`
 
+[0.7.5]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.7.5
 [0.7.4]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.7.4
 [0.7.3]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.7.3
 [0.7.2]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.7.2

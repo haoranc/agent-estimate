@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
+
 from agent_estimate.core.models import EstimationCategory, ReviewMode, TaskType
 from agent_estimate.core.modifiers import build_modifier_set
+from agent_estimate.core.sizing import classify_task
 from agent_estimate.core.task_type_models import (
     _APP_DEV_BASELINES,
     _BRAINSTORM_BASELINES,
@@ -124,6 +127,66 @@ class TestDetectEstimationCategory:
         assert detect_estimation_category("BRAINSTORM new features") == EstimationCategory.BRAINSTORM
         assert detect_estimation_category("RESEARCH competitors") == EstimationCategory.RESEARCH
 
+    def test_body_provenance_keyword_does_not_override_coding_structure(self) -> None:
+        description = """[P1] Fix the parser regression
+
+## Summary
+Source: prior audit and research notes.
+
+## Scope
+1. Update `src/parser.py`.
+2. Add `tests/test_parser.py`.
+
+## Done criteria
+- CI passes on the pull request.
+"""
+        assert detect_estimation_category(description) == EstimationCategory.CODING
+
+    def test_title_research_imperative_outweighs_probe_structure(self) -> None:
+        description = """[P2] Evaluate two rendering approaches
+
+## Probe
+- Run `scripts/render.py` against `examples/page.md`.
+- Compare the output and report a recommendation.
+"""
+        assert detect_estimation_category(description) == EstimationCategory.RESEARCH
+
+    def test_coding_imperative_outweighs_noncoding_title_noun(self) -> None:
+        description = """Fix research audit logging
+
+## Scope
+1. Update `src/audit.py`.
+2. Add `tests/test_audit.py`.
+"""
+        assert detect_estimation_category(description) == EstimationCategory.CODING
+
+    def test_explicit_documentation_action_outweighs_coding_structure(self) -> None:
+        description = """Update the API docs
+
+## Scope
+1. Rewrite `docs/api.md`.
+2. Rewrite `docs/reference.md`.
+
+## Done criteria
+- CI passes on the pull request.
+"""
+        assert (
+            detect_estimation_category(description)
+            == EstimationCategory.DOCUMENTATION
+        )
+
+    def test_research_title_noun_beats_structure_without_coding_change(self) -> None:
+        description = """Vector database research
+
+## Scope
+1. Review `notes/vector.md`.
+2. Compare `notes/storage.md`.
+
+## Done criteria
+- Return a recommendation.
+"""
+        assert detect_estimation_category(description) == EstimationCategory.RESEARCH
+
 
 # ---------------------------------------------------------------------------
 # estimate_brainstorm
@@ -178,6 +241,17 @@ class TestEstimateBrainstorm:
     def test_signal_label_in_sizing(self) -> None:
         est = estimate_brainstorm("Brainstorm ideas", self.modifiers)
         assert "brainstorm-flat-model" in est.sizing.signals
+
+    def test_size_hint_does_not_change_category_task_type(self) -> None:
+        hint = classify_task("Brainstorm the README restructure")
+        est = estimate_brainstorm(
+            "Brainstorm the README restructure",
+            self.modifiers,
+            size_hint=hint,
+        )
+
+        assert hint.task_type == TaskType.DOCS
+        assert est.sizing.task_type == TaskType.UNKNOWN
 
 
 # ---------------------------------------------------------------------------
@@ -435,21 +509,25 @@ class TestPipelineRouting:
     def test_brainstorm_category_produces_flat_model(self) -> None:
         report = self._run_pipeline("Do some work", EstimationCategory.BRAINSTORM)
         assert report.tasks[0].estimation_category == EstimationCategory.BRAINSTORM
+        assert report.tasks[0].tier == "S"
         assert report.tasks[0].base_pert_most_likely_minutes == self.brainstorm_m
 
     def test_research_category_produces_research_model(self) -> None:
         report = self._run_pipeline("Do some work", EstimationCategory.RESEARCH)
         assert report.tasks[0].estimation_category == EstimationCategory.RESEARCH
+        assert report.tasks[0].tier == "S"
         assert report.tasks[0].base_pert_most_likely_minutes == self.research_m
 
     def test_config_category_produces_config_model(self) -> None:
         report = self._run_pipeline("Do some work", EstimationCategory.CONFIG_SRE)
         assert report.tasks[0].estimation_category == EstimationCategory.CONFIG_SRE
+        assert report.tasks[0].tier == "S"
         assert report.tasks[0].base_pert_most_likely_minutes == self.config_m
 
     def test_documentation_category_produces_doc_model(self) -> None:
         report = self._run_pipeline("Do some work", EstimationCategory.DOCUMENTATION)
         assert report.tasks[0].estimation_category == EstimationCategory.DOCUMENTATION
+        assert report.tasks[0].tier == "S"
         assert report.tasks[0].base_pert_most_likely_minutes == self.doc_m
 
     def test_frontend_category_produces_frontend_model(self) -> None:
@@ -460,7 +538,63 @@ class TestPipelineRouting:
     def test_app_dev_category_produces_app_dev_model(self) -> None:
         report = self._run_pipeline("Build a desktop app", EstimationCategory.APP_DEV)
         assert report.tasks[0].estimation_category == EstimationCategory.APP_DEV
+        assert report.tasks[0].tier == "L"
         assert report.tasks[0].base_pert_most_likely_minutes == self.app_dev_m
+
+    @pytest.mark.parametrize(
+        "category",
+        [
+            EstimationCategory.BRAINSTORM,
+            EstimationCategory.RESEARCH,
+            EstimationCategory.CONFIG_SRE,
+            EstimationCategory.DOCUMENTATION,
+            EstimationCategory.FRONTEND,
+            EstimationCategory.APP_DEV,
+        ],
+    )
+    def test_non_coding_categories_scale_with_structural_scope(
+        self,
+        category: EstimationCategory,
+    ) -> None:
+        neutral = self._run_pipeline("Work item", category)
+        one_complexity_signal = self._run_pipeline("Work on an API", category)
+        two_complexity_signals = self._run_pipeline(
+            "Work on API auth options",
+            category,
+        )
+        small = self._run_pipeline(
+            "Work item\n\n## Scope\n1. Inspect `src/a.py`.",
+            category,
+        )
+        large = self._run_pipeline(
+            """Work item
+
+## Scope
+1. Inspect `src/a.py`.
+2. Inspect `src/b.py`.
+3. Inspect `src/c.py`.
+4. Inspect `src/d.py`.
+5. Inspect `src/e.py`.
+6. Inspect `src/f.py`.
+7. Inspect `src/g.py`.
+""",
+            category,
+        )
+
+        assert (
+            one_complexity_signal.tasks[0].base_pert_most_likely_minutes
+            == neutral.tasks[0].base_pert_most_likely_minutes
+        )
+        assert (
+            two_complexity_signals.tasks[0].base_pert_most_likely_minutes
+            == neutral.tasks[0].base_pert_most_likely_minutes
+        )
+        assert small.tasks[0].tier == "S"
+        assert large.tasks[0].tier == "L"
+        assert (
+            large.tasks[0].base_pert_most_likely_minutes
+            > small.tasks[0].base_pert_most_likely_minutes
+        )
 
     def test_coding_category_uses_pert_tier_model(self) -> None:
         report = self._run_pipeline("Do some work", EstimationCategory.CODING)

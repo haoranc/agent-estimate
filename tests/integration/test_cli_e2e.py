@@ -74,6 +74,13 @@ class TestEstimateSingleTask:
         assert result.exit_code == 0
         assert "My Custom Report" in result.output
 
+    def test_estimate_compact_omits_single_wave(self) -> None:
+        result = runner.invoke(app, ["estimate", "--compact", "Add login button"])
+
+        assert result.exit_code == 0
+        assert "## Wave Plan" not in result.output
+        assert "## Agent Load Summary" in result.output
+
     def test_estimate_emits_audit_events(self, monkeypatch, tmp_path: Path) -> None:
         audit_log = tmp_path / "audit.jsonl"
         monkeypatch.setenv("AGENT_ESTIMATE_AUDIT_ENABLED", "1")
@@ -517,6 +524,38 @@ class TestValidate:
         result = runner.invoke(app, ["validate", str(incomplete)])
         assert result.exit_code != 0
 
+    @pytest.mark.parametrize(
+        ("body", "expected_error"),
+        [
+            ("estimated_minutes: .inf\nactual_work_minutes: 5", "estimated_minutes must be finite"),
+            ("estimated_minutes: 10\nactual_work_minutes: .nan", "actual_work_minutes must be finite"),
+            ("estimated_minutes: 10\nactual_work_minutes: .inf", "actual_work_minutes must be finite"),
+            ("estimated_minutes: 10\nactual_work_minutes: -5", "actual_work_minutes must be >= 0"),
+            (
+                "estimated_minutes: 10\nactual_work_minutes: 40\nactual_total_minutes: 10",
+                "actual_total_minutes must be >= actual_work_minutes",
+            ),
+            (
+                "estimated_minutes: 10\nactual_work_minutes: 5\nactual_total_minutes: .inf",
+                "actual_total_minutes must be finite",
+            ),
+        ],
+    )
+    def test_validate_rejects_invalid_core_numeric_fields(
+        self,
+        tmp_path: Path,
+        body: str,
+        expected_error: str,
+    ) -> None:
+        observation = tmp_path / "obs.yaml"
+        observation.write_text(body, encoding="utf-8")
+
+        result = runner.invoke(app, ["validate", str(observation)])
+
+        assert result.exit_code == 2
+        assert expected_error in result.output
+        assert "Verdict:" not in result.output
+
     def test_validate_bad_optional_field_is_input_error(self, tmp_path: Path) -> None:
         observation = tmp_path / "obs.yaml"
         observation.write_text(
@@ -753,3 +792,69 @@ class TestEstimateHistoryFile:
         data = json.loads(result.output)
         task = data["tasks"][0]
         assert task["modifiers"]["warm_context"] == 1.0
+
+    def test_github_actions_ignores_default_data_json(
+        self,
+        tmp_path: Path,
+        monkeypatch,
+    ) -> None:
+        from datetime import timedelta
+
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("GITHUB_ACTIONS", "true")
+        recent = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+        Path("data.json").write_text(
+            json.dumps(
+                {
+                    "dispatches": [
+                        {"agent": "codex", "project": "proj", "completed_at": recent}
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        result = runner.invoke(
+            app, ["estimate", "--format", "json", "Add a button"]
+        )
+
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["tasks"][0]["modifiers"]["warm_context"] == 1.0
+
+    def test_github_actions_honors_explicit_history_file(
+        self,
+        tmp_path: Path,
+        monkeypatch,
+    ) -> None:
+        from datetime import timedelta
+
+        monkeypatch.setenv("GITHUB_ACTIONS", "true")
+        recent = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+        history = tmp_path / "history.json"
+        history.write_text(
+            json.dumps(
+                {
+                    "dispatches": [
+                        {"agent": "codex", "project": "proj", "completed_at": recent}
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        result = runner.invoke(
+            app,
+            [
+                "estimate",
+                "--history-file",
+                str(history),
+                "--format",
+                "json",
+                "Add a button",
+            ],
+        )
+
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["tasks"][0]["modifiers"]["warm_context"] < 1.0

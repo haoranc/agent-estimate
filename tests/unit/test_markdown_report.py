@@ -185,7 +185,9 @@ def test_render_markdown_report_contains_required_sections() -> None:
     assert "## Timeline Summary" in rendered
     assert "## Agent Load Summary" in rendered
     assert "## Critical Path" in rendered
-    assert "## METR Warnings" in rendered
+    assert "## Assumptions" in rendered
+    assert "Calibration store: n=0 observations applied" in rendered
+    assert "## Reliability Horizon Warnings" in rendered
     assert "| Review overhead (per-task, pre-amortization) | 25m |" in rendered
     assert "| **Total (naive)** | **25m** |" in rendered
     assert "**Implement auth**" in rendered
@@ -231,7 +233,7 @@ def test_render_markdown_report_handles_empty_path_and_warnings() -> None:
     rendered = render_markdown_report(report)
 
     assert "No critical path provided." in rendered
-    assert "No METR threshold warnings." in rendered
+    assert "No reliability horizon warnings." in rendered
 
 
 def test_render_markdown_report_normalizes_multiline_cells() -> None:
@@ -320,3 +322,64 @@ def test_render_markdown_report_sanitizes_title_and_warm_detail() -> None:
     assert "agent\\|name<br>project" in rendered
     assert "## Tier Corrections" in rendered
     assert "Upgraded S→L: 4 concerns" in rendered
+    assert "Calibration store: n=0 observations applied" in rendered
+    assert "Calibration: n=0 local observations applied" not in rendered
+
+
+def test_render_markdown_report_compact_omits_single_wave_and_idle_agents() -> None:
+    task = ReportTask(
+        name="One issue",
+        tier="S",
+        agent="Codex",
+        base_pert_optimistic_minutes=12.0,
+        base_pert_most_likely_minutes=23.0,
+        base_pert_pessimistic_minutes=40.0,
+        modifier_spec_clarity=1.0,
+        modifier_warm_context=1.0,
+        modifier_agent_fit=1.0,
+        modifier_combined=1.0,
+        modifier_raw_combined=1.0,
+        modifier_clamped=False,
+        effective_duration_minutes=24.0,
+        human_equivalent_minutes=60.0,
+        review_overhead_minutes=15.0,
+    )
+    report = EstimationReport(
+        title="Compact issue estimate",
+        tasks=(task,),
+        waves=(
+            ReportWave(
+                number=0,
+                tasks=("One issue",),
+                duration_minutes=39.0,
+                agent_assignments={"Codex": ("One issue",)},
+            ),
+        ),
+        timeline=ReportTimeline(
+            best_case_minutes=27.0,
+            expected_case_minutes=39.0,
+            worst_case_minutes=55.0,
+            human_equivalent_minutes=60.0,
+        ),
+        agent_load=(
+            ReportAgentLoad(
+                agent="Codex",
+                task_count=1,
+                total_work_minutes=24.0,
+                estimated_cost=1.25,
+            ),
+            ReportAgentLoad(
+                agent="Idle",
+                task_count=0,
+                total_work_minutes=0.0,
+                estimated_cost=0.0,
+            ),
+        ),
+        critical_path=("One issue",),
+    )
+
+    rendered = render_markdown_report(report, compact=True)
+
+    assert "## Wave Plan" not in rendered
+    assert "| Codex | 1 | 24m | $1.25 |" in rendered
+    assert "| Idle |" not in rendered

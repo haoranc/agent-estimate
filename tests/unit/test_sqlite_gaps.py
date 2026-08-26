@@ -44,6 +44,8 @@ def _observation(**overrides: object) -> ObservationInput:
         "observed_at": "2026-02-16T12:00:00+00:00",
     }
     base.update(overrides)
+    if "error_ratio" in overrides and "actual_work_secs" not in overrides:
+        base["actual_work_secs"] = float(base["estimated_secs"]) * float(base["error_ratio"])
     return ObservationInput(**base)  # type: ignore[arg-type]
 
 
@@ -94,7 +96,7 @@ class TestValidateObservationNegativeValues:
 
     def test_negative_error_ratio_raises(self, store: SQLiteCalibrationStore) -> None:
         with pytest.raises(ValueError, match="error_ratio"):
-            store.insert_observation(_observation(error_ratio=-0.1))
+            store.insert_observation(_observation(error_ratio=-0.1, actual_work_secs=140.0))
 
     def test_negative_review_overhead_secs_raises(self, store: SQLiteCalibrationStore) -> None:
         with pytest.raises(ValueError, match="review_overhead_secs"):
@@ -110,6 +112,52 @@ class TestValidateObservationNegativeValues:
             )
         )
         assert obs_id > 0
+
+    def test_zero_estimated_secs_raises(self, store: SQLiteCalibrationStore) -> None:
+        with pytest.raises(ValueError, match="estimated_secs"):
+            store.insert_observation(_observation(estimated_secs=0.0))
+
+    def test_actual_total_below_work_raises(self, store: SQLiteCalibrationStore) -> None:
+        with pytest.raises(ValueError, match="actual_total_secs must be >= actual_work_secs"):
+            store.insert_observation(
+                _observation(actual_work_secs=40.0, actual_total_secs=10.0)
+            )
+
+
+class TestValidateObservationFiniteValues:
+    @pytest.mark.parametrize(
+        "field",
+        [
+            "estimated_secs",
+            "actual_work_secs",
+            "actual_total_secs",
+            "error_ratio",
+            "file_count",
+            "line_count",
+            "test_count",
+            "spec_clarity_modifier",
+            "warm_context_modifier",
+            "review_overhead_secs",
+        ],
+    )
+    @pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+    def test_non_finite_numeric_field_raises(
+        self,
+        store: SQLiteCalibrationStore,
+        field: str,
+        value: float,
+    ) -> None:
+        overrides = {field: value}
+        if field == "error_ratio":
+            overrides["actual_work_secs"] = 140.0
+        with pytest.raises(ValueError, match=field):
+            store.insert_observation(_observation(**overrides))
+
+    def test_non_finite_modifier_target_raises(self, store: SQLiteCalibrationStore) -> None:
+        with pytest.raises(ValueError, match="modifiers_should_have_been"):
+            store.insert_observation(
+                _observation(modifiers_should_have_been={"spec_clarity": float("nan")})
+            )
 
 
 class TestTimestampNormalization:

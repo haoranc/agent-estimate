@@ -1,44 +1,101 @@
+registry_version: "v0.7.5-policy-1"
 models:
   opus_4_x:
     display_name: "Opus 4.x"
     p80_minutes: 90
+    basis: local-policy
+    source: "agent-estimate default reliability policy"
+    source_version: "v0.7.5-policy-1"
+    as_of: "2026-08-23"
   opus_4_7:
     display_name: "Opus 4.7"
     p80_minutes: 90
+    basis: local-policy
+    source: "agent-estimate default reliability policy"
+    source_version: "v0.7.5-policy-1"
+    as_of: "2026-08-23"
   opus_4_6:
     display_name: "Opus 4.6"
     p80_minutes: 90
+    basis: local-policy
+    source: "agent-estimate default reliability policy"
+    source_version: "v0.7.5-policy-1"
+    as_of: "2026-08-23"
   gpt_5_5:
     display_name: "GPT-5.5"
     p80_minutes: 90
+    basis: local-policy
+    source: "agent-estimate default reliability policy"
+    source_version: "v0.7.5-policy-1"
+    as_of: "2026-08-23"
   gpt_5_4:
     display_name: "GPT-5.4"
     p80_minutes: 60
+    basis: local-policy
+    source: "agent-estimate default reliability policy"
+    source_version: "v0.7.5-policy-1"
+    as_of: "2026-08-23"
   gemini_3_1_pro:
     display_name: "Gemini 3.1 Pro"
     p80_minutes: 45
+    basis: local-policy
+    source: "agent-estimate default reliability policy"
+    source_version: "v0.7.5-policy-1"
+    as_of: "2026-08-23"
   sonnet_4_6:
     display_name: "Sonnet 4.6"
     p80_minutes: 30
+    basis: local-policy
+    source: "agent-estimate default reliability policy"
+    source_version: "v0.7.5-policy-1"
+    as_of: "2026-08-23"
   haiku_4_5:
     display_name: "Haiku 4.5"
     p80_minutes: 15
+    basis: local-policy
+    source: "agent-estimate default reliability policy"
+    source_version: "v0.7.5-policy-1"
+    as_of: "2026-08-23"
   # Legacy keys — kept for backward compatibility with existing configs.
   opus:
     display_name: "Opus"
     p80_minutes: 90
+    basis: local-policy
+    source: "agent-estimate default reliability policy"
+    source_version: "v0.7.5-policy-1"
+    as_of: "2026-08-23"
   gpt_5_3:
     display_name: "GPT-5.3"
     p80_minutes: 60
+    basis: local-policy
+    source: "agent-estimate default reliability policy"
+    source_version: "v0.7.5-policy-1"
+    as_of: "2026-08-23"
   gpt_5:
     display_name: "GPT-5"
     p80_minutes: 50
+    basis: local-policy
+    source: "agent-estimate default reliability policy"
+    source_version: "v0.7.5-policy-1"
+    as_of: "2026-08-23"
   gpt_5_2:
     display_name: "GPT-5.2"
     p80_minutes: 55
+    basis: local-policy
+    source: "agent-estimate default reliability policy"
+    source_version: "v0.7.5-policy-1"
+    as_of: "2026-08-23"
   gemini_3_pro:
     display_name: "Gemini 3 Pro"
     p80_minutes: 45
+    basis: local-policy
+    source: "agent-estimate default reliability policy"
+    source_version: "v0.7.5-policy-1"
+    as_of: "2026-08-23"
   sonnet:
     display_name: "Sonnet"
     p80_minutes: 30
+    basis: local-policy
+    source: "agent-estimate default reliability policy"
+    source_version: "v0.7.5-policy-1"
+    as_of: "2026-08-23"

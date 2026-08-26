@@ -5,27 +5,30 @@ from __future__ import annotations
 from agent_estimate.render.report_models import EstimationReport
 
 
-def render_markdown_report(report: EstimationReport) -> str:
+def render_markdown_report(report: EstimationReport, *, compact: bool = False) -> str:
     """Render an estimation report as GitHub-compatible Markdown."""
     lines: list[str] = [
         f"# {_normalize_inline(report.title)}",
         "",
     ]
     lines.extend(_render_task_table(report))
-    lines.extend([""])
-    lines.extend(_render_wave_table(report))
+    if not compact:
+        lines.extend([""])
+        lines.extend(_render_wave_table(report))
     lines.extend([""])
     lines.extend(_render_timeline_summary(report))
     lines.extend([""])
     lines.extend(_render_review_overhead(report))
     lines.extend([""])
-    lines.extend(_render_agent_load_table(report))
+    lines.extend(_render_agent_load_table(report, include_idle=not compact))
     lines.extend([""])
     lines.extend(_render_critical_path(report))
     lines.extend([""])
+    lines.extend(_render_assumptions(report))
+    lines.extend([""])
     lines.extend(_render_tier_correction_warnings(report))
     lines.extend([""])
-    lines.extend(_render_metr_warnings(report))
+    lines.extend(_render_reliability_warnings(report))
     lines.append("")
     return "\n".join(lines)
 
@@ -124,7 +127,9 @@ def _render_review_overhead(report: EstimationReport) -> list[str]:
     return lines
 
 
-def _render_agent_load_table(report: EstimationReport) -> list[str]:
+def _render_agent_load_table(
+    report: EstimationReport, *, include_idle: bool = True
+) -> list[str]:
     lines = [
         "## Agent Load Summary",
         "",
@@ -132,6 +137,8 @@ def _render_agent_load_table(report: EstimationReport) -> list[str]:
         "| --- | --- | --- | --- |",
     ]
     for load in report.agent_load:
+        if not include_idle and load.task_count == 0:
+            continue
         lines.append(
             f"| {_escape_cell(load.agent)} | {load.task_count} | "
             f"{_format_minutes(load.total_work_minutes)} | ${load.estimated_cost:.2f} |"
@@ -147,6 +154,18 @@ def _render_critical_path(report: EstimationReport) -> list[str]:
     path = " -> ".join(f"**{_escape_cell(task_name)}**" for task_name in report.critical_path)
     lines.append(path)
     return lines
+
+
+def _render_assumptions(_report: EstimationReport) -> list[str]:
+    return [
+        "## Assumptions",
+        "",
+        "- CLI task descriptions carry no dependency edges; scheduling assumes independence.",
+        "- Calibration store: n=0 observations applied; the estimate pipeline does not consume calibration feedback.",
+        "- Bundled-prior thinking-level baseline: Claude Code high and Codex extra-high.",
+        "- Human equivalent covers agent work only; human review is reported separately.",
+        "- Cost is a heuristic that assumes one agent turn per 5 minutes of work.",
+    ]
 
 
 def _render_tier_correction_warnings(report: EstimationReport) -> list[str]:
@@ -165,11 +184,11 @@ def _render_tier_correction_warnings(report: EstimationReport) -> list[str]:
     return lines
 
 
-def _render_metr_warnings(report: EstimationReport) -> list[str]:
-    lines = ["## METR Warnings", ""]
+def _render_reliability_warnings(report: EstimationReport) -> list[str]:
+    lines = ["## Reliability Horizon Warnings", ""]
     warnings = [(task.name, task.metr_warning) for task in report.tasks if task.metr_warning]
     if not warnings:
-        lines.append("No METR threshold warnings.")
+        lines.append("No reliability horizon warnings.")
         return lines
     for task_name, warning in warnings:
         lines.append(f"- **{_escape_cell(task_name)}**: {_escape_cell(str(warning))}")

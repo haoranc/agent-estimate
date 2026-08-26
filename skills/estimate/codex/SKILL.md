@@ -62,9 +62,9 @@ the research band instead of the flat brainstorm band.
 - `frontend`: UI/page work. Content patches use 15/25/40; page builds use 40/60/90.
 - `app_dev`: app shells and desktop/mobile builds. Uses a cold generic L-style prior; use modifiers for warm or highly specified work.
 
-## METR Model Keys
+## Reliability Policy Model Keys
 
-Current threshold keys include:
+Current provenance-labeled local-policy keys include:
 
 - `opus_4_x`, `opus_4_7`, `opus_4_6`
 - `gpt_5_5`, `gpt_5_4`
@@ -74,6 +74,11 @@ Current threshold keys include:
 
 Legacy keys such as `opus`, `gpt_5`, `gpt_5_2`, `gpt_5_3`,
 `gemini_3_pro`, and `sonnet` remain accepted.
+
+Warnings compare friction-adjusted work only. The shipped values are local
+reliability policy (unmeasured), not published METR horizons. Duration priors
+draw on 33 internal coding dispatches and 6 brainstorm dispatches; the report
+states that the estimate pipeline applies no SQLite calibration-store feedback.
 
 ## Execution Rules
 

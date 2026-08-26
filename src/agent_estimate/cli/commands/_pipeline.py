@@ -81,6 +81,19 @@ def _estimate_by_category(
     """
     task_tier_warnings: list[str] = []
 
+    if auto_tier:
+        correction = auto_correct_tier(
+            sizing,
+            estimated_tests=estimated_tests,
+            estimated_lines=estimated_lines,
+            num_concerns=num_concerns,
+        )
+        if correction.warnings:
+            for warning in correction.warnings:
+                logger.warning("auto-tier: %s", warning)
+                task_tier_warnings.append(warning)
+        sizing = correction.sizing
+
     if category == EstimationCategory.BRAINSTORM:
         est = estimate_brainstorm(
             desc,
@@ -90,8 +103,9 @@ def _estimate_by_category(
             thresholds=thresholds,
             fallback_threshold=fallback,
             agent_name=agent_name,
+            size_hint=sizing,
         )
-        human_eq = compute_human_equivalent(est.total_expected_minutes, est.sizing.task_type)
+        human_eq = compute_human_equivalent(est.pert.expected, est.sizing.task_type)
         est = replace(est, human_equivalent_minutes=human_eq)
         return est, task_tier_warnings
 
@@ -104,8 +118,9 @@ def _estimate_by_category(
             thresholds=thresholds,
             fallback_threshold=fallback,
             agent_name=agent_name,
+            size_hint=sizing,
         )
-        human_eq = compute_human_equivalent(est.total_expected_minutes, est.sizing.task_type)
+        human_eq = compute_human_equivalent(est.pert.expected, est.sizing.task_type)
         est = replace(est, human_equivalent_minutes=human_eq)
         return est, task_tier_warnings
 
@@ -118,8 +133,9 @@ def _estimate_by_category(
             thresholds=thresholds,
             fallback_threshold=fallback,
             agent_name=agent_name,
+            size_hint=sizing,
         )
-        human_eq = compute_human_equivalent(est.total_expected_minutes, est.sizing.task_type)
+        human_eq = compute_human_equivalent(est.pert.expected, est.sizing.task_type)
         est = replace(est, human_equivalent_minutes=human_eq)
         return est, task_tier_warnings
 
@@ -132,8 +148,9 @@ def _estimate_by_category(
             thresholds=thresholds,
             fallback_threshold=fallback,
             agent_name=agent_name,
+            size_hint=sizing,
         )
-        human_eq = compute_human_equivalent(est.total_expected_minutes, est.sizing.task_type)
+        human_eq = compute_human_equivalent(est.pert.expected, est.sizing.task_type)
         est = replace(est, human_equivalent_minutes=human_eq)
         return est, task_tier_warnings
 
@@ -146,8 +163,9 @@ def _estimate_by_category(
             thresholds=thresholds,
             fallback_threshold=fallback,
             agent_name=agent_name,
+            size_hint=sizing,
         )
-        human_eq = compute_human_equivalent(est.total_expected_minutes, est.sizing.task_type)
+        human_eq = compute_human_equivalent(est.pert.expected, est.sizing.task_type)
         est = replace(est, human_equivalent_minutes=human_eq)
         return est, task_tier_warnings
 
@@ -160,26 +178,13 @@ def _estimate_by_category(
             thresholds=thresholds,
             fallback_threshold=fallback,
             agent_name=agent_name,
+            size_hint=sizing,
         )
-        human_eq = compute_human_equivalent(est.total_expected_minutes, est.sizing.task_type)
+        human_eq = compute_human_equivalent(est.pert.expected, est.sizing.task_type)
         est = replace(est, human_equivalent_minutes=human_eq)
         return est, task_tier_warnings
 
-    # Default: CODING — PERT tier model with auto-correction
-    if auto_tier:
-        correction = auto_correct_tier(
-            sizing,
-            estimated_tests=estimated_tests,
-            estimated_lines=estimated_lines,
-            num_concerns=num_concerns,
-        )
-        if correction.warnings:
-            for w in correction.warnings:
-                logger.warning("auto-tier: %s", w)
-                task_tier_warnings.append(w)
-        sizing = correction.sizing
-
-    # First pass — get total_expected_minutes
+    # Default: CODING — PERT tier model
     est = estimate_task(
         sizing,
         modifiers,
@@ -190,7 +195,7 @@ def _estimate_by_category(
         agent_name=agent_name,
     )
     # Compute human equivalent and re-estimate with it filled in
-    human_eq = compute_human_equivalent(est.total_expected_minutes, sizing.task_type)
+    human_eq = compute_human_equivalent(est.pert.expected, sizing.task_type)
     est = estimate_task(
         sizing,
         modifiers,
@@ -226,7 +231,7 @@ def run_estimate_pipeline(
         _error("config.agents must be non-empty", 2)
 
     thresholds = load_metr_thresholds()
-    # Use first agent's tier for initial estimation pass; METR warnings are
+    # Use first agent's tier for initial estimation pass; reliability warnings are
     # corrected per-task after wave planning assigns each task to an agent.
     initial_model_key = config.agents[0].model_tier
     initial_agent_name = config.agents[0].name
@@ -251,8 +256,9 @@ def run_estimate_pipeline(
         else:
             category = detect_estimation_category(desc)
 
-        # classify_task runs the PERT coding model; skip it for non-coding categories
-        sizing = classify_task(desc) if category == EstimationCategory.CODING else None
+        # One size classifier feeds every category; category models scale their
+        # own baselines instead of collapsing all non-coding work to a fixed S.
+        sizing = classify_task(desc)
 
         est, task_tier_warnings = _estimate_by_category(
             category,
@@ -325,15 +331,15 @@ def _build_report(
     agent_model_tier: dict[str, str] = {a.name: a.model_tier for a in config.agents}
     default_tier = config.agents[0].model_tier
 
-    # Report tasks — re-evaluate METR warnings using the assigned agent's model tier
+    # Re-evaluate reliability warnings using the assigned agent's model tier.
     report_task_list: list[ReportTask] = []
     for i, est in enumerate(estimates):
         assigned_agent = assignment_map.get(str(i), default_agent)
         model_tier = agent_model_tier.get(assigned_agent, default_tier)
 
-        # Re-check METR threshold with the assigned agent's model tier and the
+        # Re-check the policy with the assigned agent's model tier and the
         # same frictioned work duration the wave planner schedules.
-        metr_minutes = (est.pert.expected * config.settings.friction_multiplier) + est.review_minutes
+        metr_minutes = est.pert.expected * config.settings.friction_multiplier
         corrected_warning = check_metr_threshold(
             model_tier,
             metr_minutes,
@@ -446,4 +452,5 @@ def _build_report(
         agent_load=report_agent_load,
         critical_path=critical_path,
         title=title,
+        registry_version=getattr(thresholds, "registry_version", "unversioned"),
     )

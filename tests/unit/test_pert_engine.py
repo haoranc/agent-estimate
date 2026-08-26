@@ -327,6 +327,17 @@ class TestMetrThresholds:
         assert result is not None
         assert result.threshold_minutes == pytest.approx(40.0)
 
+    def test_fractional_fallback_threshold_preserves_precision(self) -> None:
+        result = check_metr_threshold(
+            "unknown_model",
+            50.0,
+            thresholds={},
+            fallback_threshold=40.25,
+        )
+
+        assert result is not None
+        assert "(40.25m)" in result.message
+
     def test_at_threshold_returns_none(self) -> None:
         thresholds = {"opus": 90.0}
         result = check_metr_threshold("opus", 90.0, thresholds=thresholds)

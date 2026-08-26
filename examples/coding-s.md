@@ -14,7 +14,7 @@ agent-estimate estimate "Fix pyproject.toml URLs after org rename"
 
 | Task | Model | Tier | Agent | Base PERT (O/M/P) | Modifiers | Effective Duration | Human Equivalent |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Fix pyproject.toml URLs after org rename** | coding | XS | Claude | 5m / 10m / 20m (E=10.8m) | spec 1.00 x warm 1.00 x fit 1.00 = 1.00 | 10.8m | 54.8m |
+| **Fix pyproject.toml URLs after org rename** | coding | XS | Claude | 5m / 10m / 20m (E=10.8m) | spec 1.00 x warm 1.00 x fit 1.00 = 1.00 | 10.8m | 23m |
 
 ### Wave Plan
 
@@ -29,8 +29,8 @@ agent-estimate estimate "Fix pyproject.toml URLs after org rename"
 | Best case | 21.3m |
 | Expected case | 27.5m |
 | Worst case | 37.2m |
-| Human-speed equivalent | 54.8m |
-| Compression ratio | 2.00x |
+| Human-speed equivalent | 23m |
+| Compression ratio | 0.84x |
 | Review overhead (per-task, pre-amortization) | 15m |
 
 ### Review Overhead
@@ -55,13 +55,21 @@ agent in the wave.  Per-task values below are the naive (pre-amortization) figur
 
 **Fix pyproject.toml URLs after org rename**
 
+### Assumptions
+
+- CLI task descriptions carry no dependency edges; scheduling assumes independence.
+- Calibration store: n=0 observations applied; the estimate pipeline does not consume calibration feedback.
+- Bundled-prior thinking-level baseline: Claude Code high and Codex extra-high.
+- Human equivalent covers agent work only; human review is reported separately.
+- Cost is a heuristic that assumes one agent turn per 5 minutes of work.
+
 ### Tier Corrections
 
 No tier corrections.
 
-### METR Warnings
+### Reliability Horizon Warnings
 
-No METR threshold warnings.
+No reliability horizon warnings.
 
 
 ## What actually happened
@@ -74,8 +82,8 @@ No METR threshold warnings.
 
 The task was dispatched to Codex (better fit for mechanical find-and-replace across many files). Finished within the estimate window. XS tasks like this are the bread and butter of agent dispatch — low risk, predictable, and the 2x compression adds up across dozens of small tasks per week.
 
-> These results come from a calibrated dataset of 190+ real agent dispatches.
+> The shipped duration priors draw on 33 internal coding dispatches; this report applies no local calibration observations.
 
 ## Key takeaway
 
-XS tasks have a lower compression ratio (2.00x) because the fixed 15m review overhead dominates. For self-merged work where you trust the agent, use `--review-mode none` to remove the review overhead: an executed none-mode run keeps effective duration at 10.8m, drops expected case to 12.5m, and scales human-equivalent time down to 23m human time, for 1.84x compression. Human-equivalent time scales with the agent total, so removing review lowers both sides of the comparison and keeps roughly the same ~2x compression ratio instead of creating a 5x raw-speed claim.
+XS work is 1.84x faster than the work-only human equivalent, but the fixed 15m review cycle makes the end-to-end ratio 0.84x. For self-merged work where you trust the agent, use `--review-mode none`: an executed none-mode run keeps effective duration at 10.8m, drops expected case to 12.5m, and reports the same 23m work-only human equivalent for 1.84x compression. Review is deliberately not multiplied into the human comparison.

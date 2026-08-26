@@ -27,12 +27,15 @@ def _observation(
     *,
     task_type: str = "feature",
     error_ratio: float = 0.2,
+    actual_work_secs: float | None = None,
     observed_at: str = "2026-02-16T12:00:00+00:00",
 ) -> ObservationInput:
+    estimated_secs = 120.0
+    actual_work = estimated_secs * error_ratio if actual_work_secs is None else actual_work_secs
     return ObservationInput(
         task_type=task_type,
-        estimated_secs=120.0,
-        actual_work_secs=140.0,
+        estimated_secs=estimated_secs,
+        actual_work_secs=actual_work,
         actual_total_secs=150.0,
         error_ratio=error_ratio,
         file_count=3,
@@ -64,6 +67,13 @@ def test_insert_and_query_observation(store: SQLiteCalibrationStore) -> None:
     assert row["estimated_secs"] == pytest.approx(120.0)
     assert row["error_ratio"] == pytest.approx(0.2)
     assert json.loads(row["modifiers_should_have_been"])["spec_clarity"] == pytest.approx(0.75)
+
+
+def test_insert_recomputes_error_ratio(store: SQLiteCalibrationStore) -> None:
+    store.insert_observation(_observation(error_ratio=99.0, actual_work_secs=60.0))
+
+    row = store._query_observations(task_type="feature")[0]
+    assert row["error_ratio"] == pytest.approx(0.5)
 
 
 def test_calibrate_recomputes_weekly_summary(store: SQLiteCalibrationStore) -> None:
@@ -163,5 +173,5 @@ def test_insert_rejects_invalid_negative_values(store: SQLiteCalibrationStore) -
             "estimated_secs": -1.0,
         },
     )
-    with pytest.raises(ValueError, match="estimated_secs must be >= 0"):
+    with pytest.raises(ValueError, match="estimated_secs must be > 0"):
         store.insert_observation(invalid)

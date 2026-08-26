@@ -294,15 +294,17 @@ def plan_waves(
     )
     total_sequential = total_work + total_amortized_review
 
-    # Per-agent utilisation: busy_time / wall_clock
+    # Per-agent utilisation: busy_time / total slot capacity.
     # Initialise all input agents to 0.0 so idle agents appear in the output.
     agent_busy: dict[str, float] = {agent.name: 0.0 for agent in agents}
+    agent_parallelism = {agent.name: agent.parallelism for agent in agents}
     for (name, _idx), load in slot_load.items():
         agent_busy[name] += load
 
     if total_wall_clock > 0:
         agent_utilization = {
-            name: busy / total_wall_clock for name, busy in sorted(agent_busy.items())
+            name: busy / (agent_parallelism[name] * total_wall_clock)
+            for name, busy in sorted(agent_busy.items())
         }
         parallel_efficiency = min(1.0, total_sequential / (len(slots) * total_wall_clock))
     else:

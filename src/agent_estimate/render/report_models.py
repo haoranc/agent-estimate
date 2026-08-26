@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from agent_estimate.core.models import EstimationCategory, TaskEstimate
+from agent_estimate.version import __version__
 
 
 @dataclass(frozen=True)
@@ -108,6 +109,11 @@ class ReportAgentLoad:
     total_work_minutes: float
     estimated_cost: float
 
+    @property
+    def heuristic_cost(self) -> float:
+        """Return the five-minute-turn cost heuristic under its explicit name."""
+        return self.estimated_cost
+
 
 @dataclass(frozen=True)
 class EstimationReport:
@@ -119,6 +125,8 @@ class EstimationReport:
     agent_load: tuple[ReportAgentLoad, ...]
     critical_path: tuple[str, ...]
     title: str = "Agent Estimate Report"
+    engine_version: str = __version__
+    registry_version: str = "unversioned"
 
     @property
     def review_overhead_minutes(self) -> float:

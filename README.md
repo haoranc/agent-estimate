@@ -15,9 +15,9 @@ PERT estimates for AI-agent tasks — how long, which model's reliable enough, a
 
 AI agents can write the code — but *how long will the task actually take?* Manual estimation is slow and biased toward optimism; no estimate means scope creep and missed deadlines. The gap between "agents can do it" and "we know when it'll be done" is where projects break down.
 
-`agent-estimate` closes that gap in one command: a three-point PERT timeline calibrated on real agent runs, plus a human-speed comparison so you see the compression before you spend the compute. It sizes the task, picks a tier, routes it to a model, and flags when the work runs past that model's reliability horizon — calibrated forecasts in seconds, not meetings.
+`agent-estimate` closes that gap in one command: a three-point PERT timeline built from priors drawn from 33 internal coding dispatches and 6 brainstorm dispatches, plus a human-speed comparison so you see the compression before you spend the compute. It sizes the task, picks a tier, routes it to a model, and flags when the work exceeds that model's configured reliability policy — forecasts in seconds, not meetings.
 
-Multi-model matters because the models aren't interchangeable. Opus 4.7, GPT-5.5, and Gemini 3.1 have different reliability horizons ([METR p80](https://metr.org/)) and different costs per turn. A safe 40-minute job for one model is a coin flip for another. agent-estimate models the whole fleet, not a single agent — so the number reflects who actually runs the work.
+Multi-model matters because the models aren't interchangeable. A measured p80 horizon is the human-expert task duration at which a model is estimated to succeed 80% of the time. The shipped limits below are instead provenance-labeled local policy (unmeasured), because current models such as Opus 4.7 and GPT-5.5 do not have matching published measurements. agent-estimate models the whole fleet, not a single agent — so the number reflects who actually runs the work.
 
 ## Quick Start
 
@@ -60,12 +60,12 @@ agent-estimate session --agents 3 --rounds 2 --type review
 
 ## How It Works
 
-agent-estimate produces three-point [PERT](https://en.wikipedia.org/wiki/Program_evaluation_and_review_technique) estimates calibrated for agents, not humans:
+agent-estimate produces three-point [PERT](https://en.wikipedia.org/wiki/Program_evaluation_and_review_technique) estimates from agent-work priors, not human-duration estimates:
 
 - **Tier classification** — auto-sizes tasks XS→XL from complexity signals
 - **PERT math** — optimistic / most-likely / pessimistic, weighted to an expected value
 - **Human comparison** — a per-task-type multiplier, so you see the compression
-- **METR thresholds** — warns when an estimate exceeds a model's p80 reliability horizon
+- **Reliability policies** — warns when friction-adjusted work exceeds a provenance-labeled model limit
 - **Wave planning** — schedules independent tasks in parallel across the fleet
 - **Review overhead** — models review cycles as additive cost (`standard`, `complex`, `3-round`)
 - **Modifiers** — `--spec-clarity`, `--warm-context`, `--agent-fit` tune the estimate
@@ -82,18 +82,18 @@ agent-estimate produces three-point [PERT](https://en.wikipedia.org/wiki/Program
 | Frontend/UI | `--type frontend` | Content patches vs. component builds |
 | App dev | `--type app_dev` | App shells, desktop/mobile builds |
 
-### METR thresholds (defaults)
+### Reliability policy defaults
 
-| Model | p80 threshold |
-|-------|---------------|
-| Opus 4.7 | 90 min |
-| GPT-5.5 | 90 min |
-| GPT-5.4 | 60 min |
-| Gemini 3.1 Pro | 45 min |
-| Sonnet 4.6 | 30 min |
-| Haiku 4.5 | 15 min |
+| Model | Work limit | Basis |
+|-------|------------|-------|
+| Opus 4.7 | 90 min | Local policy (unmeasured) |
+| GPT-5.5 | 90 min | Local policy (unmeasured) |
+| GPT-5.4 | 60 min | Local policy (unmeasured) |
+| Gemini 3.1 Pro | 45 min | Local policy (unmeasured) |
+| Sonnet 4.6 | 30 min | Local policy (unmeasured) |
+| Haiku 4.5 | 15 min | Local policy (unmeasured) |
 
-`opus_4_x` is a forward-compatible alias that resolves to the current Opus threshold. Legacy keys (`opus_4_6`, GPT-5/5.2/5.3, Gemini 3 Pro, Sonnet) stay supported. Estimates are calibrated against Claude Code (Opus 4.7, high thinking) and Codex (GPT-5.4/5.5, extra-high) — shift with `--spec-clarity` and `--warm-context` for other setups.
+Every row records `basis`, `source`, `source_version`, and `as_of` in `metr_thresholds.yaml`; the defaults above come from the agent-estimate v0.7.5 local-policy registry as of 2026-08-23. `opus_4_x` is a forward-compatible alias that resolves to the current Opus policy. Legacy keys (`opus_4_6`, GPT-5/5.2/5.3, Gemini 3 Pro, Sonnet) stay supported. The bundled thinking-level baseline is Claude Code high and Codex extra-high — shift with `--spec-clarity` and `--warm-context` for other setups.
 
 ## Examples
 
@@ -103,7 +103,7 @@ Real estimates from production use — including the misses.
 
 **An honest over-estimate.** We pre-registered a UI mockup build at ~95 minutes with no prior app-dev data. Two agents did it in parallel in 12 and 25 minutes — a 4–8x over-estimate. agent-estimate now ships an `app_dev` prior shaped by that result. The miss stays in the README because calibration means showing where you were wrong.
 
-**Three tasks, three agents, in parallel** — what the tool prints, including the METR reliability flags. Input is the three-task `tasks.txt` from [`examples/multi-agent.md`](./examples/multi-agent.md); the output below is captured from a real run, trimmed to the timeline and warnings (the full report — per-task PERT table, wave plan, agent loads — is in that example):
+**Three tasks, three agents, in parallel** — what the tool prints, including the reliability-policy flags. Input is the three-task `tasks.txt` from [`examples/multi-agent.md`](./examples/multi-agent.md); the output below is captured from a real run, trimmed to the timeline and warnings (the full report — per-task PERT table, wave plan, assumptions, and agent loads — is in that example):
 
 ```text
 $ agent-estimate estimate --file tasks.txt
@@ -115,17 +115,17 @@ $ agent-estimate estimate --file tasks.txt
 | Best case | 44.7m |
 | Expected case | 75.4m |
 | Worst case | 117.2m |
-| Human-speed equivalent | 608.2m |
-| Compression ratio | 8.07x |
+| Human-speed equivalent | 473.1m |
+| Compression ratio | 6.28x |
 | Review overhead (per-task, pre-amortization) | 45m |
 
-## METR Warnings
+## Reliability Horizon Warnings
 
-- **Add known_debt.md as standard protocol memory file**: Estimate (75m) exceeds gpt_5_4 p80 threshold (60m). Consider splitting the task.
-- **Write quickstart guide with protocol comparison table**: Estimate (75m) exceeds gemini_3_1_pro p80 threshold (45m). Consider splitting the task.
+- **Add known_debt.md as standard protocol memory file**: Work estimate (60.4m) exceeds gpt_5_4 local reliability policy (unmeasured) (60m). Consider splitting the task.
+- **Write quickstart guide with protocol comparison table**: Work estimate (60.4m) exceeds gemini_3_1_pro local reliability policy (unmeasured) (45m). Consider splitting the task.
 ```
 
-~75 minutes wall-clock versus ~10.1 hours of sequential human work, at an estimated $3.51 fleet cost — plus two flags that the Codex- and Gemini-assigned tasks run past their models' p80 reliability horizons, so you split them or add a checkpoint before dispatching. The same three tasks were later run by real agents; the retro is in the example file. More in [`examples/`](./examples/) — coding S/M, research, documentation, multi-agent.
+~75 minutes wall-clock versus the work-only human equivalent, at an estimated $3.51 fleet cost — plus policy flags when assigned work exceeds a model's configured limit, so you split it or add a checkpoint before dispatching. Human review is modeled separately. The same three tasks were later run by real agents; the retro is in the example file. More in [`examples/`](./examples/) — coding S/M, research, documentation, multi-agent.
 
 ## Integrations
 
@@ -156,6 +156,28 @@ Available on the [GitHub Marketplace](https://github.com/marketplace/actions/age
 
 The report goes wherever `output-mode` points: the job summary (`summary`, the default), a PR comment (`pr-comment`), an issue comment (`issue-comment`), or a step output for downstream steps (`step-output`) — combinable with `+` (e.g. `summary+pr-comment`).
 
+Grant only the permissions required by the selected output modes:
+
+| Output mode | Required `permissions:` |
+|-------------|--------------------------|
+| `summary` | `issues: read` when issue input comes from a private repository |
+| `pr-comment` | `issues: read` when issue input comes from a private repository, plus `pull-requests: write` |
+| `issue-comment` | `issues: write` |
+| `step-output` | `issues: read` when issue input comes from a private repository |
+
+Add `contents: read` only when the calling workflow uses `actions/checkout`; the Action itself does not require a checkout. Combined modes need the union of their rows.
+
+By default, the Action installs `agent-estimate` from its own checked-out
+`GITHUB_ACTION_PATH`, so the Python implementation stays coupled to the
+`uses:` ref. Set `version` only when you deliberately want a published package
+version instead. Each run exposes the resolved `package-version` and
+`install-source`; Markdown reports repeat both values in their footer.
+
+On offline self-hosted runners, allow the source install's isolated build
+environment to resolve `hatchling>=1.32,<2` and the package dependencies from a
+configured package index or cache. Merely checking out the Action does not
+pre-provision the build backend used by pip's PEP 517 isolation.
+
 <details>
 <summary>Estimate on every PR</summary>
 
@@ -174,7 +196,7 @@ jobs:
   estimate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: kiloloop/agent-estimate@v0
         with:
           issues: '11,12,14'
@@ -186,7 +208,7 @@ jobs:
 <details>
 <summary>Auto-estimate on label</summary>
 
-Label an issue `estimate` and the Action posts the estimate back as an issue comment (the label match is exact and case-sensitive):
+Label an issue `estimate` and the Action posts or updates one marked estimate comment (the label match is exact and case-sensitive):
 
 ```yaml
 name: Auto-estimate
@@ -247,6 +269,9 @@ jobs:
 ```
 
 The full JSON report is available as `steps.estimate.outputs.report` for custom processing.
+Its footer records `engine_version` and `registry_version`. Agent-load rows expose
+the five-minute-turn estimate as `heuristic_cost`; `estimated_cost` remains as a
+compatibility alias until the v0.8 report schema.
 
 </details>
 
@@ -267,13 +292,15 @@ The full JSON report is available as `steps.estimate.outputs.report` for custom 
 | `agent-fit` | no | `1.0` | Agent fit modifier (0.9–1.2) |
 | `task-type` | no | — | Category: `coding`, `brainstorm`, `research`, `config`, `documentation`, `frontend`, `app_dev` |
 | `python-version` | no | `3.12` | Python version to use |
-| `version` | no | latest | `agent-estimate` version to install |
+| `version` | no | Action ref | Published `agent-estimate` version override |
 | `token` | no | `${{ github.token }}` | GitHub token |
 
 | Output | Description |
 |--------|-------------|
 | `report` | Full estimation report content |
 | `expected-minutes` | Expected minutes (when `format: json`) |
+| `package-version` | Resolved `agent-estimate` package version used by the run |
+| `install-source` | `action-path` by default, or `version-override` when `version` is set |
 
 </details>
 
@@ -313,9 +340,12 @@ agents:
 settings:
   friction_multiplier: 1.15
   inter_wave_overhead: 0.25
-  review_overhead: 0.2
   metr_fallback_threshold: 45.0
 ```
+
+Legacy configs that set `settings.review_overhead` emit a deprecation warning;
+the field is optional and ignored, and it will be removed in v0.8. Remove it and
+select additive review overhead with `--review-mode` instead.
 
 ```bash
 agent-estimate estimate "Ship packaging flow" --config ./my_agents.yaml

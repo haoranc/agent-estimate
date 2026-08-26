@@ -4,12 +4,18 @@ on:
   push:
     branches: [main]
     paths:
+      - '.github/workflows/test-action.yml'
+      - 'README.md'
       - 'action.yml'
+      - 'pyproject.toml'
       - 'src/**'
   pull_request:
     branches: [main]
     paths:
+      - '.github/workflows/test-action.yml'
+      - 'README.md'
       - 'action.yml'
+      - 'pyproject.toml'
       - 'src/**'
 
 permissions:
@@ -17,15 +23,91 @@ permissions:
   issues: read
 
 jobs:
+  test-action-cold-source-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run action without preinstall
+        id: estimate
+        uses: ./
+        with:
+          issues: '2'
+          # issue-comment enables compact rendering; its event-mismatch skip warning is expected here.
+          output-mode: step-output+issue-comment
+          title: |-
+            Delimiter regression
+            AE_EOF
+      - name: Verify source, package, and invoked versions
+        env:
+          AE_INSTALL_SOURCE: ${{ steps.estimate.outputs.install-source }}
+          AE_PACKAGE_VERSION: ${{ steps.estimate.outputs.package-version }}
+          AE_REPORT: ${{ steps.estimate.outputs.report }}
+        run: |
+          repo_version=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          cli_version=$(agent-estimate --version)
+          expected_cli_version="agent-estimate ${repo_version}"
+
+          if [ "$cli_version" != "$expected_cli_version" ]; then
+            echo "::error::invoked version '${cli_version}' does not match repository version '${expected_cli_version}'"
+            exit 1
+          fi
+          if [ "$AE_PACKAGE_VERSION" != "$repo_version" ]; then
+            echo "::error::package-version output '${AE_PACKAGE_VERSION}' does not match '${repo_version}'"
+            exit 1
+          fi
+          if [ "$AE_INSTALL_SOURCE" != "action-path" ]; then
+            echo "::error::install-source output is '${AE_INSTALL_SOURCE}', expected 'action-path'"
+            exit 1
+          fi
+          if ! grep -Fq "Install provenance: \`agent-estimate ${repo_version}\` via \`action-path\`." <<< "$AE_REPORT"; then
+            echo "::error::markdown report is missing source-install provenance"
+            exit 1
+          fi
+          if ! grep -Fq "Delimiter regression AE_EOF" <<< "$AE_REPORT"; then
+            echo "::error::delimiter-containing title did not survive step output"
+            exit 1
+          fi
+          if grep -Fq "## Wave Plan" <<< "$AE_REPORT"; then
+            echo "::error::single-issue comment report was not compact"
+            exit 1
+          fi
+
+  test-action-version-override:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run action with explicit package version
+        id: estimate
+        uses: ./
+        with:
+          issues: '2'
+          version: '0.7.4'
+          output-mode: step-output
+      - name: Verify explicit version override
+        env:
+          AE_INSTALL_SOURCE: ${{ steps.estimate.outputs.install-source }}
+          AE_PACKAGE_VERSION: ${{ steps.estimate.outputs.package-version }}
+        run: |
+          if [ "$AE_PACKAGE_VERSION" != "0.7.4" ]; then
+            echo "::error::package-version output is '${AE_PACKAGE_VERSION}', expected '0.7.4'"
+            exit 1
+          fi
+          if [ "$AE_INSTALL_SOURCE" != "version-override" ]; then
+            echo "::error::install-source output is '${AE_INSTALL_SOURCE}', expected 'version-override'"
+            exit 1
+          fi
+          if [ "$(agent-estimate --version)" != "agent-estimate 0.7.4" ]; then
+            echo "::error::explicit override did not invoke agent-estimate 0.7.4"
+            exit 1
+          fi
+
   test-action-summary:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
-      - name: Install from source
-        run: pip install -e .
       - name: Run action (markdown + summary; issue-comment exercises its event-mismatch skip path)
         id: estimate
         uses: ./
@@ -46,12 +128,10 @@ jobs:
   test-action-json:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
-      - name: Install from source
-        run: pip install -e .
       - name: Run action (json + step-output)
         id: estimate
         uses: ./
@@ -84,7 +164,7 @@ jobs:
   test-action-invalid-mode:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Invalid output-mode (typo)
         id: bad-typo
         continue-on-error: true

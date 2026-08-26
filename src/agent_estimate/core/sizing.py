@@ -25,6 +25,19 @@ _SIZE_SIGNALS: list[tuple[re.Pattern[str], SizeTier, str]] = [
     (re.compile(r"\b(epic|massive|rewrite|overhaul|redesign)\b", re.IGNORECASE), SizeTier.XL, "epic-keyword"),
 ]
 
+_SCOPE_SECTION_RE = re.compile(
+    r"(?ims)^#{1,6}\s+scope(?:[ \t]|\(|$)[^\n]*\n"
+    r"(?P<body>.*?)(?=^#{1,6}\s+|\Z)"
+)
+_MARKDOWN_LIST_ITEM_RE = re.compile(r"(?m)^\s*(?:[-*+]\s+|\d+[.)]\s+)")
+_INLINE_CODE_RE = re.compile(r"`([^`\n]+)`")
+_FILE_SUFFIX_RE = re.compile(r"\.[a-z0-9]{1,12}(?::\d+(?:-\d+)?)?$", re.IGNORECASE)
+_REPO_REFERENCE_RE = re.compile(
+    r"(?:https?://github\.com/|\b(?:repo(?:sitory)?|repositories)\s*[:=]?\s+)"
+    r"([a-z0-9_.-]+/[a-z0-9_.-]+)",
+    re.IGNORECASE,
+)
+
 # Complexity signals that push the tier up
 _COMPLEXITY_SIGNALS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\b(database|migration|schema)\b", re.IGNORECASE), "database-change"),
@@ -67,6 +80,52 @@ def _bump_tier(tier: SizeTier, steps: int = 1) -> SizeTier:
     idx = _TIER_ORDER.index(tier)
     new_idx = min(idx + steps, len(_TIER_ORDER) - 1)
     return _TIER_ORDER[new_idx]
+
+
+def _count_scope_items(description: str) -> int:
+    """Count checklist or numbered items in explicit Markdown Scope sections."""
+    return sum(
+        len(_MARKDOWN_LIST_ITEM_RE.findall(match.group("body")))
+        for match in _SCOPE_SECTION_RE.finditer(description)
+    )
+
+
+def count_inline_file_references(description: str) -> int:
+    """Count distinct path-like inline-code references without treating commands as files."""
+    references: set[str] = set()
+    for raw_value in _INLINE_CODE_RE.findall(description):
+        value = raw_value.strip().rstrip(".,;")
+        if not value or re.search(r"\s", value):
+            continue
+        if "/" in value or _FILE_SUFFIX_RE.search(value):
+            references.add(value.casefold())
+    return len(references)
+
+
+def _count_repository_references(description: str) -> int:
+    """Count distinct repositories named with an explicit repo or GitHub marker."""
+    return len(
+        {
+            match.group(1).rstrip("/.,);").casefold()
+            for match in _REPO_REFERENCE_RE.finditer(description)
+        }
+    )
+
+
+def _scope_item_tier(count: int) -> SizeTier:
+    if count <= 3:
+        return SizeTier.S
+    if count <= 6:
+        return SizeTier.M
+    return SizeTier.L
+
+
+def _file_reference_tier(count: int) -> SizeTier:
+    if count <= 2:
+        return SizeTier.S
+    if count <= 5:
+        return SizeTier.M
+    return SizeTier.L
 
 
 @dataclass(frozen=True)
@@ -182,6 +241,22 @@ def classify_task(description: str) -> SizingResult:
         if pattern.search(description):
             tier_votes.append(tier)
             signals.append(signal_name)
+
+    scope_items = _count_scope_items(description)
+    if scope_items:
+        tier_votes.append(_scope_item_tier(scope_items))
+        signals.append(f"scope-items-{scope_items}")
+
+    file_references = count_inline_file_references(description)
+    if file_references:
+        tier_votes.append(_file_reference_tier(file_references))
+        signals.append(f"file-references-{file_references}")
+
+    repository_references = _count_repository_references(description)
+    if repository_references >= 2:
+        repo_tier = SizeTier.M if repository_references == 2 else SizeTier.L
+        tier_votes.append(repo_tier)
+        signals.append(f"repositories-{repository_references}")
 
     # Base tier: conservative upper-middle vote, or M as default. For an even
     # vote count this intentionally picks the higher tier (e.g. [S, L] -> L).
