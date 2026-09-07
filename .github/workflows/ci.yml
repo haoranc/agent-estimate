@@ -85,6 +85,22 @@ jobs:
             fi
           done
           exit $status
+      - name: Workflows in the public export must only import modules it ships
+        run: |
+          cd exported
+          status=0
+          # A workflow naming an export-ignore'd module passes here and fails only
+          # after promotion, where the module is absent. Resolve every module an
+          # exported workflow imports against the export itself.
+          for mod in $(grep -rhoE 'import agent_estimate[A-Za-z0-9_.]*' .github/workflows/ \
+                       | sed 's/^import //' | sort -u); do
+            rel=$(echo "$mod" | tr '.' '/')
+            if [ ! -e "src/${rel}.py" ] && [ ! -e "src/${rel}/__init__.py" ]; then
+              echo "::error::exported workflows import ${mod}, which the public export does not ship"
+              status=1
+            fi
+          done
+          exit $status
       - name: Every test the public export ships must pass from inside it
         run: |
           cd exported
@@ -114,5 +130,10 @@ jobs:
       - name: Import and test the package at the floors
         run: |
           pip install 'pytest>=9.0.3,<10.0' 'tomli>=2.0'
-          python -c "import agent_estimate.tracing.schema"
+          # Import a module that SHIPS: tracing/ is export-ignore'd, so naming it
+          # here passes upstream and fails in the public repo, where it is absent.
+          # contract.schema exercises the same Pydantic floor (AwareDatetime,
+          # StringConstraints, AfterValidator); trace schemas keep their own test,
+          # which the pytest run below picks up wherever the module exists.
+          python -c "import agent_estimate.contract.schema"
           python -m pytest tests/unit/ -x -q
