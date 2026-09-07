@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import logging
+import math
+from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import replace
+from numbers import Real
 from typing import NoReturn
 
 from agent_estimate.core import (
@@ -225,6 +228,7 @@ def run_estimate_pipeline(
     estimated_lines: int | None = None,
     num_concerns: int | None = None,
     task_category: EstimationCategory | None = None,
+    required_capabilities: Sequence[str] = (),
 ) -> EstimationReport:
     """Run the full estimation pipeline and produce a report."""
     if not config.agents:
@@ -290,6 +294,7 @@ def run_estimate_pipeline(
             duration_minutes=est.pert.expected * friction,
             # review_minutes is flat additive overhead, not scaled by friction
             review_minutes=est.review_minutes,
+            required_capabilities=tuple(required_capabilities),
         )
         for i, est in enumerate(estimates)
     ]
@@ -299,11 +304,134 @@ def run_estimate_pipeline(
         config.agents,
         inter_wave_overhead_hours=config.settings.inter_wave_overhead,
     )
+    estimates, wave_plan = _adjust_assigned_estimates(estimates, task_nodes, wave_plan, config)
 
     return _build_report(
         names, estimates, wave_plan, config, title, thresholds, fallback,
         warm_context_detail=warm_context_detail,
         tier_warnings=tier_warnings,
+    )
+
+
+def _adjust_assigned_estimates(
+    estimates: list[TaskEstimate],
+    task_nodes: list[TaskNode],
+    plan: WavePlan,
+    config: EstimationConfig,
+) -> tuple[list[TaskEstimate], WavePlan]:
+    """Apply each selected profile once, then retime the fixed assignment.
+
+    The hook's result determines one scalar for the task's entire PERT range.
+    Review and human-equivalent work are unchanged. No scheduling fixpoint is run.
+    """
+    profiles = {agent.name: agent for agent in config.agents}
+    assigned = {a.task_id: a.agent_name for wave in plan.waves for a in wave.assignments}
+    factors: dict[str, float] = {}
+    adjusted_estimates: list[TaskEstimate] = []
+    for node, estimate in zip(task_nodes, estimates, strict=True):
+        agent = profiles[assigned[node.task_id]]
+        minutes = estimate.pert.expected
+        try:
+            adjusted = agent.adjust_estimate(minutes)
+        except Exception as exc:
+            raise ValueError(f"Agent {agent.name!r} adjust_estimate failed: {exc}") from exc
+        try:
+            finite = math.isfinite(adjusted) if isinstance(adjusted, Real) else False
+        except OverflowError:
+            finite = False
+        if (
+            isinstance(adjusted, bool)
+            or not isinstance(adjusted, Real)
+            or not finite
+            or (minutes > 0 and adjusted <= 0)
+            or (minutes == 0 and adjusted != 0)
+        ):
+            raise ValueError(
+                f"Agent {agent.name!r} adjust_estimate must return finite positive work "
+                "(or zero for zero work)."
+            )
+        factor = float(adjusted) / minutes if minutes else 1.0
+        if factor <= 0:
+            raise ValueError(f"Agent {agent.name!r} adjustment underflowed the estimate.")
+        pert = replace(
+            estimate.pert,
+            **{key: getattr(estimate.pert, key) * factor for key in (
+                "optimistic", "most_likely", "pessimistic", "expected", "sigma",
+            )},
+        )
+        if not all(math.isfinite(value) for value in (
+            factor, pert.optimistic, pert.most_likely, pert.pessimistic, pert.expected,
+            pert.sigma, pert.expected + estimate.review_minutes,
+        )):
+            raise ValueError(f"Agent {agent.name!r} adjustment overflowed the estimate.")
+        factors[node.task_id] = factor
+        adjusted_estimates.append(replace(
+            estimate, pert=pert, total_expected_minutes=pert.expected + estimate.review_minutes,
+            estimate_factor=factor, pre_adjustment_minutes=minutes,
+        ))
+
+    if all(factor == 1.0 for factor in factors.values()):
+        return estimates, plan
+
+    # Retain friction and the planner's co-dispatch reduction in each assignment.
+    waves = []
+    busy = {agent.name: 0.0 for agent in config.agents}
+    previous_end = 0.0
+    new_end = 0.0
+    for wave in plan.waves:
+        assignments = tuple(replace(
+            a, duration_minutes=a.duration_minutes * factors[a.task_id],
+        ) for a in wave.assignments)
+        slot_work: dict[tuple[str, int], float] = defaultdict(float)
+        for assignment in assignments:
+            slot_work[(assignment.agent_name, assignment.slot_index)] += assignment.duration_minutes
+            busy[assignment.agent_name] += assignment.duration_minutes
+        makespan = max((
+            work + wave.agent_review_minutes.get(name, 0.0)
+            for (name, _slot), work in slot_work.items()
+        ), default=0.0)
+        start = new_end + (wave.start_minutes - previous_end)
+        new_end = start + makespan
+        waves.append(replace(wave, assignments=assignments, start_minutes=start, end_minutes=new_end))
+        previous_end = wave.end_minutes
+
+    nodes = {node.task_id: node for node in task_nodes}
+    work = {node.task_id: node.duration_minutes * factors[node.task_id] for node in task_nodes}
+    distances: dict[str, float] = {}
+    predecessors: dict[str, str | None] = {}
+    # Existing waves supply dependency order; use adjusted pre-co-dispatch work,
+    # matching the planner's critical-path and sequential-baseline definitions.
+    for wave in waves:
+        for assignment in wave.assignments:
+            task_id = assignment.task_id
+            deps = nodes[task_id].dependencies
+            predecessor = max(deps, key=distances.__getitem__) if deps else None
+            predecessors[task_id] = predecessor
+            distances[task_id] = work[task_id] + (distances[predecessor] if predecessor else 0.0)
+    end = max(nodes, key=distances.__getitem__)
+    critical_minutes = distances[end]
+    path = []
+    cursor: str | None = end
+    while cursor is not None:
+        path.append(cursor)
+        cursor = predecessors[cursor]
+    sequential = sum(work.values()) + sum(
+        sum(wave.agent_review_minutes.values()) for wave in waves
+    )
+    if not all(math.isfinite(value) for value in (
+        new_end, sequential, *work.values(), *busy.values(), *distances.values(),
+    )):
+        raise ValueError("Profile adjustment overflowed the wave plan.")
+    utilization = {
+        name: value / new_end / profiles[name].parallelism if new_end else 0.0
+        for name, value in sorted(busy.items())
+    }
+    slots = sum(agent.parallelism for agent in config.agents)
+    return adjusted_estimates, replace(
+        plan, waves=tuple(waves), critical_path=tuple(reversed(path)),
+        critical_path_minutes=critical_minutes, agent_utilization=utilization,
+        parallel_efficiency=min(1.0, sequential / new_end / slots) if new_end else 0.0,
+        total_wall_clock_minutes=new_end, total_sequential_minutes=sequential,
     )
 
 
@@ -371,6 +499,8 @@ def _build_report(
                 warm_context_detail=warm_context_detail,
                 tier_correction_warnings=tuple(task_tier_warnings),
                 estimation_category=est.estimation_category,
+                estimate_factor=est.estimate_factor,
+                pre_adjustment_minutes=est.pre_adjustment_minutes,
             )
         )
     report_tasks = tuple(report_task_list)
@@ -416,6 +546,12 @@ def _build_report(
         worst_case_minutes=total_worst * ratio,
         human_equivalent_minutes=total_human,
     )
+    if not all(math.isfinite(value) for value in (
+        timeline.best_case_minutes, timeline.expected_case_minutes,
+        timeline.worst_case_minutes, timeline.human_equivalent_minutes,
+        timeline.compression_ratio,
+    )):
+        raise ValueError("Estimation overflowed the report timeline.")
 
     # Agent load — initialize all agents to 0
     agent_work: dict[str, float] = {a.name: 0.0 for a in config.agents}
@@ -439,6 +575,8 @@ def _build_report(
         )
         for name in agent_work
     )
+    if not all(math.isfinite(load.heuristic_cost) for load in report_agent_load):
+        raise ValueError("Estimation overflowed the heuristic cost.")
 
     # Critical path — map task_ids to names
     critical_path = tuple(
@@ -453,4 +591,8 @@ def _build_report(
         critical_path=critical_path,
         title=title,
         registry_version=getattr(thresholds, "registry_version", "unversioned"),
+        basis="expected-wall",
+        source="bundled task-category priors; n=0 calibration observations applied",
+        # No dated duration calibration snapshot is applied by this pipeline.
+        as_of=None,
     )

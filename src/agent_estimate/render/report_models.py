@@ -6,6 +6,7 @@ import dataclasses
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+from agent_estimate.contract.schema import TokenForecast
 from agent_estimate.core.models import EstimationCategory, TaskEstimate
 from agent_estimate.version import __version__
 
@@ -33,6 +34,15 @@ class ReportTask:
     warm_context_detail: str | None = None
     tier_correction_warnings: tuple[str, ...] = ()
     estimation_category: EstimationCategory | None = None
+    estimate_factor: float = 1.0
+    pre_adjustment_minutes: float | None = None
+
+    @property
+    def work_before_adjustment_minutes(self) -> float:
+        """Input to the applied profile hook; review and friction are separate."""
+        if self.pre_adjustment_minutes is not None:
+            return self.pre_adjustment_minutes
+        return self.effective_duration_minutes
 
     @property
     def base_pert_expected_minutes(self) -> float:
@@ -64,6 +74,8 @@ class ReportTask:
             human_equivalent_minutes=estimate.human_equivalent_minutes,
             review_overhead_minutes=estimate.review_minutes,
             metr_warning=warning,
+            estimate_factor=estimate.estimate_factor,
+            pre_adjustment_minutes=estimate.pre_adjustment_minutes,
         )
 
 
@@ -127,6 +139,11 @@ class EstimationReport:
     title: str = "Agent Estimate Report"
     engine_version: str = __version__
     registry_version: str = "unversioned"
+    schema_version: str | None = None
+    basis: str | None = None
+    source: str | None = None
+    as_of: str | None = None
+    tokens: TokenForecast | None = None
 
     @property
     def review_overhead_minutes(self) -> float:

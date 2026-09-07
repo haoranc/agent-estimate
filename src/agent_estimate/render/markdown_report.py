@@ -11,7 +11,30 @@ def render_markdown_report(report: EstimationReport, *, compact: bool = False) -
         f"# {_normalize_inline(report.title)}",
         "",
     ]
+    if report.schema_version is not None:
+        lines.extend([f"Schema: `{_normalize_inline(report.schema_version)}`", ""])
+    if report.basis is not None:
+        lines.extend([
+            (f"Forecast basis: `{_normalize_inline(report.basis)}`; "
+            f"source: {_normalize_inline(report.source or 'unknown')}; "
+            f"as_of: {_normalize_inline(report.as_of or 'unknown')}. "
+            "Admission caps are not forecast or scoring inputs."),
+            "",
+        ])
     lines.extend(_render_task_table(report))
+    if report.tokens is not None:
+        tokens = report.tokens
+        total = "unavailable" if tokens.expected_tokens_total is None else f"{tokens.expected_tokens_total:,}"
+        output = "unavailable" if tokens.expected_tokens_output is None else f"{tokens.expected_tokens_output:,}"
+        lines.extend([
+            "", "## Token Forecast", "",
+            f"- Expected total processed tokens (including cache carry): {total}",
+            f"- Expected output tokens: {output}",
+            (f"- basis: `{tokens.basis}`; source: {_normalize_inline(tokens.source or 'unknown')}; "
+             f"as_of: {tokens.as_of.isoformat() if tokens.as_of else 'unknown'}; "
+             f"population: {_normalize_inline(tokens.population or 'unknown')}"),
+            *[f"- {_normalize_inline(warning)}" for warning in tokens.warnings],
+        ])
     if not compact:
         lines.extend([""])
         lines.extend(_render_wave_table(report))
@@ -41,6 +64,10 @@ def _render_task_table(report: EstimationReport) -> list[str]:
         "| Task | Model | Tier | Agent | Base PERT (O/M/P) | Modifiers | Effective Duration | Human Equivalent |",
         "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
+    show_profile = any(task.estimate_factor != 1.0 for task in report.tasks)
+    if show_profile:
+        lines[2] += " Profile modifier (work minutes) |"
+        lines[3] += " --- |"
     for task in report.tasks:
         task_name = _escape_cell(task.name)
         if task.name in critical_tasks:
@@ -65,9 +92,15 @@ def _render_task_table(report: EstimationReport) -> list[str]:
             if task.human_equivalent_minutes is not None
             else "N/A"
         )
+        profile_cell = (
+            f" {task.estimate_factor:g}x: "
+            f"{_format_minutes(task.work_before_adjustment_minutes)} to "
+            f"{_format_minutes(task.effective_duration_minutes)} |"
+            if show_profile else ""
+        )
         lines.append(
             f"| {task_name} | {model_label} | {task.tier} | {_escape_cell(task.agent)} | {base_pert} | "
-            f"{modifiers} | {_format_minutes(task.effective_duration_minutes)} | {human} |"
+            f"{modifiers} | {_format_minutes(task.effective_duration_minutes)} | {human} |{profile_cell}"
         )
     return lines
 

@@ -1,5 +1,18 @@
 name: 'agent-estimate'
-description: 'Run AI agent effort estimation in CI — PERT + METR + wave planning'
+description: |-
+  Run AI agent effort estimation in CI — PERT + METR + wave planning.
+
+  Forecast contract: TaskSpec holds task facts; ExecutionProfile describes execution;
+  AdmissionEnvelope carries caps; ForecastRecord records expected wall forecasts.
+  This Action accepts GitHub issue input, with no spec or token-prior input.
+  The CLI accepts versioned requests: from the repository root with the matching
+  package installed, run agent-estimate estimate --spec examples/estimate-request.yaml --format json.
+  Contract, expected-versus-cap scoring, token honesty labels and caller-only priors:
+  https://github.com/kiloloop/agent-estimate#v08-forecast-contract
+
+  Comment updates match bot-authored markers. Use github.token or a GitHub App
+  installation token; PAT-authored comments are never adopted. Repeated PAT runs
+  create new comments when no matching bot-authored comment exists.
 author: 'Kiloloop'
 
 branding:
@@ -64,10 +77,10 @@ inputs:
     required: false
     default: '3.12'
   version:
-    description: 'agent-estimate version to install (e.g. "0.7.5"). Omit to install from this Action ref.'
+    description: 'agent-estimate version to install (e.g. "0.8.0"). Omit to install from this Action ref.'
     required: false
   token:
-    description: 'GitHub token for issue fetching and PR comments'
+    description: 'GitHub token for issue fetching and comment output. Use github.token or an App installation token for update-in-place comments; PAT-authored comments are never adopted, so repeated PAT runs create new comments when no matching bot comment exists.'
     required: false
     default: ${{ github.token }}
 

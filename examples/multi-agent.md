@@ -20,6 +20,8 @@ agent-estimate estimate --file tasks.txt
 
 ## Output
 
+Forecast basis: `expected-wall`; source: bundled task-category priors; n=0 calibration observations applied; as_of: unknown. Admission caps are not forecast or scoring inputs.
+
 ### Per-Task Estimates
 
 | Task | Model | Tier | Agent | Base PERT (O/M/P) | Modifiers | Effective Duration | Human Equivalent |

@@ -495,7 +495,6 @@ class TestPipelineRouting:
             settings=ProjectSettings(
                 friction_multiplier=1.0,
                 inter_wave_overhead=0.0,
-                review_overhead=0.0,
                 metr_fallback_threshold=40.0,
             ),
         )

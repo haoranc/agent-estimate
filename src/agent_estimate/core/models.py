@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import dataclasses
 import enum
-from collections.abc import Mapping, Sequence
+import math
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Annotated, Protocol, runtime_checkable
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, StringConstraints, model_validator
 
 NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
@@ -43,12 +44,16 @@ class AgentProfile(BaseModel):
     parallelism: Annotated[int, Field(ge=1)]
     cost_per_turn: Annotated[float, Field(ge=0)]
     model_tier: NonEmptyStr
+    estimate_multiplier: Annotated[float, Field(gt=0, allow_inf_nan=False, strict=True)] = 1.0
+    _adjustment_hook: Callable[[float], float] | None = PrivateAttr(default=None)
 
     def adjust_estimate(self, minutes: float) -> float:
-        """Default profile adjustment: identity transform."""
-        if minutes < 0:
-            raise ValueError(f"minutes must be >= 0, got {minutes}")
-        return float(minutes)
+        """Adjust work once after assignment; structural plugins retain their hook."""
+        if not math.isfinite(minutes) or minutes < 0:
+            raise ValueError(f"minutes must be finite and >= 0, got {minutes}")
+        if self._adjustment_hook is not None:
+            return self._adjustment_hook(minutes)
+        return float(minutes) * self.estimate_multiplier
 
 
 class ProjectSettings(BaseModel):
@@ -58,7 +63,6 @@ class ProjectSettings(BaseModel):
 
     friction_multiplier: Annotated[float, Field(gt=0)]
     inter_wave_overhead: Annotated[float, Field(ge=0)]
-    review_overhead: Annotated[float, Field(ge=0)] = 0.0
     metr_fallback_threshold: Annotated[float, Field(gt=0)]
 
 
@@ -256,6 +260,8 @@ class TaskEstimate:
     human_equivalent_minutes: float | None
     metr_warning: MetrWarning | None
     estimation_category: EstimationCategory | None = None
+    estimate_factor: float = 1.0
+    pre_adjustment_minutes: float | None = None
 
 
 # ---------------------------------------------------------------------------

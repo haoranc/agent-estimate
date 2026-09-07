@@ -44,11 +44,10 @@ def load_config(path: str | Path) -> EstimationConfig:
 
     settings = raw_data.get("settings")
     if isinstance(settings, Mapping) and "review_overhead" in settings:
-        warnings.warn(
-            "settings.review_overhead is deprecated and will be removed in v0.8; "
-            "select review overhead with the review mode instead",
-            FutureWarning,
-            stacklevel=2,
+        raise ValueError(
+            "settings.review_overhead was removed; delete this key and select "
+            "additive review overhead with --review-mode (or execution_profile.review "
+            "when using --spec)."
         )
 
     try:
@@ -152,12 +151,16 @@ def _coerce_plugin_profile(raw: object, entry_point_name: str) -> AgentProfile:
         )
 
     try:
-        return AgentProfile.model_validate(payload)
+        profile = AgentProfile.model_validate(payload)
     except ValidationError as exc:
         detail_text = _format_validation_errors(exc)
         raise ValueError(
             f"Invalid profile from entry point {entry_point_name!r}:\n{detail_text}"
         ) from exc
+    if isinstance(candidate, AgentProfileProtocol):
+        # Preserve behavior as well as data; model_copy also retains PrivateAttr.
+        profile._adjustment_hook = candidate.adjust_estimate
+    return profile
 
 
 def _format_validation_errors(exc: ValidationError) -> str:
