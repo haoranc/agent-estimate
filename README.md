@@ -58,6 +58,85 @@ agent-estimate estimate --repo myorg/myrepo --issues 11,12,14
 agent-estimate session --agents 3 --rounds 2 --type review
 ```
 
+### v0.8 forecast contract
+
+The v0.8 source introduces a versioned request for callers that already know the
+task and executor. These features are not in the published v0.7.5 package; use an
+installation from this checkout until v0.8 is released. Bare task descriptions,
+text files, and GitHub issue input remain available.
+
+| Contract | Owns |
+|----------|------|
+| `TaskSpec` | Task facts, required capabilities, dependencies, and independent scope estimates |
+| `ExecutionProfile` | Runtime and model identity, configuration provenance, context, modifiers, and review plan |
+| `AdmissionEnvelope` | Declared minute/file caps and optional replayable cap calculations |
+| `ForecastRecord` | Expected wall minutes, expected files, additive review minutes, and forecast provenance |
+
+The [typed contracts](src/agent_estimate/contract/schema.py) are frozen, reject
+unknown fields and non-finite numbers, and require explicit schema versions.
+Model identity must be either a supplied identifier or an `unknown_reason`;
+selecting an agent does not establish its serving model. IDs are caller supplied.
+The library also exposes `OutcomeObservation` with nullable future actuals slots;
+it does not ingest actuals or persist binding receipts.
+
+From the repository root, with the matching package installed, run the complete
+checked-in [request example](examples/estimate-request.yaml):
+
+```bash
+agent-estimate estimate --spec examples/estimate-request.yaml --format json
+```
+
+The JSON includes `"schema_version": "agent-estimate/report/v1"`, assigns
+`Add input validation` to `Codex`, and reports `forecast.basis: expected-wall`.
+The example's 90-minute admission cap does not determine its expected minutes.
+`--spec` emits the versioned report; library callers can construct the separate
+`ForecastRecord` with `forecast_from_report` in `agent_estimate.contract.duration`.
+
+`--spec` accepts one full `EstimateRequest` containing `task_spec`,
+`execution_profile`, and `admission`, plus an optional `token_prior`. It can be
+combined with `--config`, `--format`, `--compact`, and `--title`. Put task facts,
+scope, and modifiers in the request; alternate input sources and history flags
+cannot be combined with `--spec`. Conflicts and invalid fields exit 2. It does
+not read ambient `data.json` history.
+The named agent must exist in the selected fleet and satisfy every required
+capability. `config_profile` records provenance; `--config` selects the actual
+fleet file. This single-task CLI path requires empty `dependency_task_ids` and
+`execution_profile.estimate_multiplier: 1.0`; use the configured agent's
+`estimate_multiplier` for [profile adjustments](#agent-fleet).
+
+Context identity belongs to `execution_profile.context.context_key`. An explicit
+`modifiers.warm_context` takes precedence: pairing it with
+`context.implicit_co_dispatch: true` is rejected to prevent double counting.
+Review intent is additive: supported plans are no review, one or two standard or
+complex rounds, or three standard rounds. Unsupported plans exit 2.
+
+**Expected values and caps.** Reports label duration `expected-wall`, with
+`source` and `as_of` provenance (an unknown date stays null). Expected wall minutes
+include work and additive review. Score matching actual wall minutes against
+independent expected minutes, never `declared_cap_minutes` or a cap divided by
+guessed headroom. File expectations likewise come from task scope, not file caps.
+The `validate` command uses `actual_total_minutes` for `expected-wall` observations
+and `actual_work_minutes` for `expected-work`; cap-only and cap-derived inputs are
+rejected. Wall scoring is report-only in the current calibration store. Legacy
+`estimated_minutes` means expected work only, and `calibrate --basis expected-work`
+is an explicit attestation that every stored estimate is expected work rather
+than a cap; inspect the rows before using it. Without that attestation,
+`calibrate` exits 2 with guidance on stderr.
+
+**Token honesty.** Typed forecasts default to `tokens.basis: unavailable`, with
+null `expected_tokens_total` and `expected_tokens_output`. Total means processed
+tokens including cache carry; output is a separate count included in total.
+A caller-supplied prior uses `basis: local-policy`, a source, date, population,
+and a mandatory population mismatch warning. An absent count stays unavailable;
+zero is a supplied count. These are not calibrated forecasts. JSON includes
+`forecast.tokens` only when a prior is supplied; Markdown then shows both slots
+and their provenance. There are **no packaged token priors or numeric rates**.
+See the [explicitly uncalibrated rate-shape example](docs/token-forecast-priors.md#rate-shape-example-only--not-calibrated)
+for caller-owned policy inputs.
+
+Upgrading configuration or JSON consumers? Read the
+[v0.8 migration notes](docs/migration-v0.8.md) for the two removed surfaces.
+
 ## How It Works
 
 agent-estimate produces three-point [PERT](https://en.wikipedia.org/wiki/Program_evaluation_and_review_technique) estimates from agent-work priors, not human-duration estimates:
@@ -156,6 +235,13 @@ Available on the [GitHub Marketplace](https://github.com/marketplace/actions/age
 
 The report goes wherever `output-mode` points: the job summary (`summary`, the default), a PR comment (`pr-comment`), an issue comment (`issue-comment`), or a step output for downstream steps (`step-output`) — combinable with `+` (e.g. `summary+pr-comment`).
 
+The Action accepts GitHub issue input; it has no `spec` or token-prior input.
+The [forecast contract](#v08-forecast-contract) describes the CLI's
+`--spec` path, expected-versus-cap scoring, and token provenance. The Action's
+`expected-minutes` output is expected wall time, not an admission cap.
+
+#### Permissions and comment identity
+
 Grant only the permissions required by the selected output modes:
 
 | Output mode | Required `permissions:` |
@@ -166,6 +252,14 @@ Grant only the permissions required by the selected output modes:
 | `step-output` | `issues: read` when issue input comes from a private repository |
 
 Add `contents: read` only when the calling workflow uses `actions/checkout`; the Action itself does not require a checkout. Combined modes need the union of their rows.
+
+Use the default `${{ github.token }}` or a GitHub App installation token for
+comment updates. The upsert filter selects only bot-authored comments with the
+Action's marker. A personal access token (PAT) posts as its human owner, so its
+comments are never selected for later updates. Repeated PAT runs create new
+comments when there is no matching bot-authored comment to update. Existing
+PAT-authored comments are never adopted, even by a later run using a bot token.
+Granting write permissions does not change the comment author's identity.
 
 By default, the Action installs `agent-estimate` from its own checked-out
 `GITHUB_ACTION_PATH`, so the Python implementation stays coupled to the
@@ -270,8 +364,8 @@ jobs:
 
 The full JSON report is available as `steps.estimate.outputs.report` for custom processing.
 Its footer records `engine_version` and `registry_version`. Agent-load rows expose
-the five-minute-turn estimate as `heuristic_cost`; `estimated_cost` remains as a
-compatibility alias until the v0.8 report schema.
+the five-minute-turn estimate as `heuristic_cost`; consumers of the removed
+`estimated_cost` alias must use `heuristic_cost`.
 
 </details>
 
@@ -337,15 +431,30 @@ agents:
     parallelism: 3
     cost_per_turn: 0.08
     model_tier: production
+    estimate_multiplier: 1.0
 settings:
   friction_multiplier: 1.15
   inter_wave_overhead: 0.25
   metr_fallback_threshold: 45.0
 ```
 
-Legacy configs that set `settings.review_overhead` emit a deprecation warning;
-the field is optional and ignored, and it will be removed in v0.8. Remove it and
-select additive review overhead with `--review-mode` instead.
+Configs containing `settings.review_overhead` now exit 2 before model validation,
+even if its value is zero or null. Delete the key and select additive review
+overhead with `--review-mode` (or the request's review plan with `--spec`).
+
+Each agent's optional `estimate_multiplier` is a finite positive number, default
+`1.0`. The pipeline assigns tasks first, calls the assigned profile's
+`adjust_estimate` once per task, then scales work and its PERT range by the resulting
+factor. It updates wave timing, reliability warnings and heuristic cost without
+reassigning tasks or scaling review overhead, inter-wave gaps, or human-equivalent
+work. Structural profile plugins retain their own hook and replace same-name YAML
+profiles; their result must be finite positive work (zero only for zero work).
+When an adjustment changes work, reports show the applied factor and the work
+minutes before and after adjustment.
+
+With `--spec`, `task_spec.required_capabilities` must all be available on the named
+configured agent. An unsatisfiable requirement exits 2 instead of selecting another
+agent. Library callers can continue setting `TaskNode.required_capabilities` directly.
 
 ```bash
 agent-estimate estimate "Ship packaging flow" --config ./my_agents.yaml

@@ -46,26 +46,24 @@ def test_load_config_valid_file_returns_estimation_config(tmp_path: Path) -> Non
 
     assert not captured
     assert config.settings.friction_multiplier == pytest.approx(1.1)
-    assert config.settings.review_overhead == pytest.approx(0.0)
+    assert "review_overhead" not in type(config.settings).model_fields
     assert len(config.agents) == 1
     assert config.agents[0].name == "Claude"
     assert config.agents[0].capabilities == ["planning", "implementation"]
 
 
-def test_load_config_warns_when_review_overhead_is_set(tmp_path: Path) -> None:
+@pytest.mark.parametrize("value", ["0", "0.15", "null", "false", "bad", "[]", "{}"])
+def test_load_config_rejects_review_overhead_before_validation(tmp_path: Path, value: str) -> None:
     deprecated_config = VALID_CONFIG.replace(
         "  metr_fallback_threshold: 40.0\n",
-        "  review_overhead: 0.15\n  metr_fallback_threshold: 40.0\n",
+        f"  review_overhead: {value}\n  metr_fallback_threshold: 40.0\n",
     )
+    # An unrelated invalid field must not obscure the migration instruction.
+    deprecated_config = deprecated_config.replace("friction_multiplier: 1.1", "friction_multiplier: -1")
     config_path = _write(tmp_path, "deprecated.yaml", deprecated_config)
 
-    with pytest.warns(
-        FutureWarning,
-        match=r"settings\.review_overhead is deprecated.*removed in v0\.8",
-    ):
-        config = load_config(config_path)
-
-    assert config.settings.review_overhead == pytest.approx(0.15)
+    with pytest.raises(ValueError, match=r"settings\.review_overhead was removed; delete.*--review-mode"):
+        load_config(config_path)
 
 
 def test_load_config_malformed_yaml_has_parse_error(tmp_path: Path) -> None:
@@ -186,6 +184,10 @@ settings:
         "profiling",
     ]
     assert config.agents[0].model_tier == "gpt-5.3"
+    assert config.agents[0].adjust_estimate(100) == pytest.approx(95)
+    copied = config.agents[0].model_copy(update={"model_tier": "other"})
+    assert copied.adjust_estimate(100) == pytest.approx(95)
+    assert "_adjustment_hook" not in copied.model_dump()
 
 
 def test_load_config_discovers_callable_entry_point_profiles(

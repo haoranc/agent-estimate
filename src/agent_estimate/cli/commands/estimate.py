@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import time
+from dataclasses import replace
 from pathlib import Path
 from typing import NoReturn
 
@@ -14,10 +15,12 @@ from agent_estimate.adapters.config_loader import load_config, load_default_conf
 from agent_estimate.adapters.github_adapter import GitHubAdapterError
 from agent_estimate.adapters.github_ghcli import GitHubGhCliAdapter
 from agent_estimate.adapters.github_rest import GitHubRestAdapter
+from agent_estimate.adapters.spec_loader import load_estimate_request
 from agent_estimate.audit import emit_audit_event
 from agent_estimate.cli.commands._pipeline import run_estimate_pipeline
 from agent_estimate.cli.commands._utils import validate_output_format
 from agent_estimate.cli.commands.github import parse_issue_selection
+from agent_estimate.contract import EstimateRequest
 from agent_estimate.core import EstimationCategory, EstimationConfig, ReviewMode
 from agent_estimate.core.history import infer_warm_context
 from agent_estimate.render import render_json_report, render_markdown_report
@@ -26,9 +29,13 @@ logger = logging.getLogger("agent_estimate")
 
 
 def run(
+    ctx: typer.Context,
     task: str | None = typer.Argument(None, help="Task description to estimate."),
     file: Path | None = typer.Option(
         None, "--file", "-f", help="Path to a task file (one task per line)."
+    ),
+    spec: Path | None = typer.Option(
+        None, "--spec", help="Path to a versioned EstimateRequest YAML file."
     ),
     config: Path | None = typer.Option(
         None, "--config", "-c", help="Path to config YAML."
@@ -128,19 +135,64 @@ def run(
     """Estimate effort for one or more task descriptions."""
     started_at = time.perf_counter()
     config_path = config
-    input_source = "task" if task is not None else "file" if file is not None else "issues"
+    input_source = (
+        "spec" if spec is not None else
+        "task" if task is not None else "file" if file is not None else "issues"
+    )
 
     # --- Resolve input source (exactly one) ---
-    sources = sum([task is not None, file is not None, issues is not None])
+    sources = sum([task is not None, file is not None, issues is not None, spec is not None])
     if sources == 0:
-        _error("Provide a task description, --file, or --issues.", 2)
+        _error("Provide a task description, --file, --issues, or --spec.", 2)
     if sources > 1:
-        _error("Provide only one input source: task argument, --file, or --issues.", 2)
+        _error("Provide only one input source: task argument, --file, --issues, or --spec.", 2)
     validate_output_format(format)
+
+    request: EstimateRequest | None = None
+    if spec is not None:
+        # The file owns task/profile facts. Explicit defaults are overrides too.
+        for option in (
+            "review_mode", "spec_clarity", "warm_context", "agent_fit",
+            "history_file", "history_agent", "history_project", "no_auto_tier",
+            "estimated_tests", "estimated_lines", "num_concerns", "task_type", "repo",
+        ):
+            source = ctx.get_parameter_source(option)
+            # Typer can provide its own enum without an installed click package.
+            if source is not None and source.name == "COMMANDLINE":
+                parameter = next(p for p in ctx.command.params if p.name == option)
+                _error(f"--spec cannot be combined with {parameter.opts[0]}", 2)
+        try:
+            request = load_estimate_request(spec)
+        except ValueError as exc:
+            _error(f"Spec validation error: {exc}", 2)
 
     descriptions: list[str] = []
 
-    if task is not None:
+    if request is not None:
+        # A validated contract may describe work this CLI cannot yet execute.
+        # Reject operational inputs we cannot honor rather than silently estimate
+        # an independent, unconstrained task with a different multiplier.
+        unsupported = {
+            "task_spec.dependency_task_ids": bool(request.task_spec.dependency_task_ids),
+            "execution_profile.estimate_multiplier": request.execution_profile.estimate_multiplier != 1,
+        }
+        for field, present in unsupported.items():
+            if present:
+                _error(f"{field}: not supported by the current spec estimate path.", 2)
+        descriptions = [f"{request.task_spec.title}\n\n{request.task_spec.description}"]
+        profile = request.execution_profile
+        review_mode = _spec_review_mode(request).value
+        spec_clarity = profile.modifiers.spec_clarity
+        warm_context = profile.modifiers.warm_context
+        # ae-4 owns the context.state/warmth rule; only explicit warmth/co-dispatch applies here.
+        if warm_context is None:
+            warm_context = 0.5 if profile.context.implicit_co_dispatch else 1.0
+        agent_fit = profile.modifiers.agent_fit
+        estimated_tests = request.task_spec.scope.estimated_tests
+        estimated_lines = request.task_spec.scope.estimated_lines_changed
+        num_concerns = request.task_spec.scope.concerns
+        task_type = request.task_spec.task_type
+    elif task is not None:
         descriptions = [task]
     elif file is not None:
         try:
@@ -202,10 +254,12 @@ def run(
         changed_fields=_summarize_config_changes(cfg, baseline_cfg),
         agent_names=[agent.name for agent in cfg.agents],
     )
+    if request is not None:
+        cfg = _spec_config(request, cfg)
 
     # --- Infer warm context from dispatch history ---
     history_path = history_file
-    if history_path is None and "GITHUB_ACTIONS" not in os.environ:
+    if request is None and history_path is None and "GITHUB_ACTIONS" not in os.environ:
         default_history = Path("data.json")
         if default_history.exists():
             history_path = default_history
@@ -248,11 +302,17 @@ def run(
             estimated_lines=estimated_lines,
             num_concerns=num_concerns,
             task_category=estimation_category,
+            required_capabilities=(request.task_spec.required_capabilities if request else ()),
         )
     except ValueError as exc:
         _error(f"Estimation error: {exc}", 2)
     except RuntimeError as exc:
         _error(f"Runtime error: {exc}", 1)
+
+    if request is not None:
+        report = replace(
+            report, schema_version="agent-estimate/report/v1", tokens=request.token_prior,
+        )
 
     emit_audit_event(
         "estimation_request",
@@ -287,6 +347,36 @@ def _error(message: str, exit_code: int) -> NoReturn:
     """Print error to stderr and exit."""
     typer.echo(f"Error: {message}", err=True)
     raise typer.Exit(code=exit_code)
+
+
+def _spec_review_mode(request: EstimateRequest) -> ReviewMode:
+    """Map the supported review plans to the existing overhead tiers."""
+    review = request.execution_profile.review
+    if review.mode == "none":
+        return ReviewMode.NONE
+    if review.expected_rounds <= 2:
+        return ReviewMode(review.intensity)
+    if review.expected_rounds == 3 and review.intensity == "standard":
+        return ReviewMode.THREE_ROUND
+    _error(
+        "execution_profile.review: supported plans are none, 1–2 rounds at "
+        "standard/complex intensity, or 3 standard rounds.", 2,
+    )
+
+
+def _spec_config(request: EstimateRequest, cfg: EstimationConfig) -> EstimationConfig:
+    """Use the named configured agent; config_profile remains provenance."""
+    profile = request.execution_profile
+    agents = [agent for agent in cfg.agents if agent.name == profile.runtime.agent_name]
+    if not agents:
+        _error(
+            "execution_profile.runtime.agent_name: no configured agent named "
+            f"{profile.runtime.agent_name!r}; select its config with --config.", 2,
+        )
+    agent = agents[0]
+    if profile.model.id is not None:
+        agent = agent.model_copy(update={"model_tier": profile.model.id})
+    return cfg.model_copy(update={"agents": [agent]})
 
 
 def _fetch_github_task_descriptions(repo: str, issue_numbers: list[int]) -> list[str]:

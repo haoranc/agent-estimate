@@ -9,6 +9,7 @@ import typer
 import yaml
 
 from agent_estimate.adapters.sqlite_store import ObservationInput, SQLiteCalibrationStore
+from agent_estimate.contract.duration import resolve_scoring_basis
 
 
 def run(
@@ -36,10 +37,12 @@ def run(
 
     # Extract required fields
     try:
-        estimated = float(raw["estimated_minutes"])
+        estimated, basis = resolve_scoring_basis(raw)
+        if basis == "expected-wall" and "actual_total_minutes" not in raw:
+            raise ValueError("expected-wall scoring requires actual_total_minutes")
         actual_work = float(raw["actual_work_minutes"])
         actual_total = float(raw.get("actual_total_minutes", actual_work))
-    except (KeyError, TypeError, ValueError) as exc:
+    except (KeyError, TypeError, ValueError, OverflowError) as exc:
         typer.echo(f"Error: Missing or invalid field: {exc}", err=True)
         raise typer.Exit(code=2)
 
@@ -62,8 +65,18 @@ def run(
         typer.echo("Error: actual_total_minutes must be >= actual_work_minutes", err=True)
         raise typer.Exit(code=2)
 
-    # Compute verdict
-    error_ratio = actual_work / estimated
+    # Store v1 records expected work only and cannot retain wall-basis provenance.
+    # Refuse mixed-basis persistence until the separately scoped store-v2 leg.
+    if db is not None and basis != "expected-work":
+        typer.echo("Error: calibration DB v1 accepts expected-work only; wall scoring is report-only", err=True)
+        raise typer.Exit(code=2)
+
+    # Match numerator and denominator time bases; admission caps never enter here.
+    actual_for_score = actual_total if basis == "expected-wall" else actual_work
+    error_ratio = actual_for_score / estimated
+    if not math.isfinite(error_ratio):
+        typer.echo("Error: scoring ratio must be finite", err=True)
+        raise typer.Exit(code=2)
     if 0.8 <= error_ratio <= 1.2:
         verdict = "ACCURATE"
     elif error_ratio < 0.8:
@@ -74,6 +87,9 @@ def run(
     # Print comparison
     typer.echo("Estimation vs Actual Comparison")
     typer.echo("=" * 40)
+    typer.echo(f"Basis:             {basis}")
+    typer.echo(f"Source:            {raw.get('source') or 'caller-supplied observation'}")
+    typer.echo(f"As of:             {raw.get('as_of') or 'unknown'}")
     typer.echo(f"Task type:         {raw.get('task_type', 'unknown')}")
     typer.echo(f"Estimated:         {estimated:.1f} min")
     typer.echo(f"Actual (work):     {actual_work:.1f} min")

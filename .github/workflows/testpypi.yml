@@ -8,6 +8,7 @@ permissions:
 
 jobs:
   publish-testpypi:
+    if: ${{ github.repository == 'kiloloop/agent-estimate' }}
     runs-on: ubuntu-latest
     environment: testpypi
     permissions:

@@ -17,6 +17,10 @@ def run(
         "--db",
         help="Path to calibration database.",
     ),
+    basis: str | None = typer.Option(
+        None, "--basis",
+        help="For legacy DB v1, attest that all stored estimates are expected-work, never caps.",
+    ),
 ) -> None:
     """Update model calibration from historical outcomes."""
     if not db.exists():
@@ -24,6 +28,19 @@ def run(
         typer.echo(f"Expected: {db}", err=True)
         raise typer.Exit(code=2)
 
+    if basis is None:
+        typer.echo(
+            "Calibration excluded: DB v1 has no forecast-basis provenance. "
+            "After verifying every row contains expected work (never caps), "
+            "use --basis expected-work.",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+    if basis != "expected-work":
+        typer.echo("Error: DB v1 only supports expected-work; cap-based scoring is excluded.", err=True)
+        raise typer.Exit(code=2)
+
+    typer.echo("Basis: expected-work | source: caller-attested legacy DB v1 | as_of: unknown")
     try:
         with SQLiteCalibrationStore(db) as store:
             store.calibrate()

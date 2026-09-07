@@ -1,0 +1,43 @@
+# Run: agent-estimate estimate --spec examples/estimate-request.yaml --format json
+# This is a full EstimateRequest. Bare `estimate "description"` needs no other fields.
+schema_version: agent-estimate/estimate-request/v1
+task_spec:
+  schema_version: agent-estimate/task-spec/v1
+  task_id: example-task-1
+  title: Add input validation
+  description: Add validation and unit tests for one input field.
+  task_type: coding
+  required_capabilities: []
+  dependency_task_ids: []
+  scope:
+    estimated_tests: 3
+    estimated_lines_changed: 30
+    concerns: 1
+execution_profile:
+  schema_version: agent-estimate/execution-profile/v1
+  execution_profile_id: example-profile-1
+  runtime:
+    name: codex
+    agent_name: Codex
+  model:
+    unknown_reason: Serving model was not supplied by the caller.
+  # Provenance only; --config selects the actual agent configuration file.
+  config_profile:
+    name: packaged-default
+    revision: example-v1
+  context:
+    state: cold
+  review:
+    mode: single_round
+    expected_rounds: 1
+    intensity: standard
+  execution_mode: single
+  modifiers:
+    spec_clarity: 1.0
+    warm_context: 1.0
+    agent_fit: 1.0
+# Admission caps are validated independently and never used as expected duration.
+admission:
+  schema_version: agent-estimate/admission-envelope/v1
+  declared_cap_minutes: 90
+  declared_cap_files_touched: 3

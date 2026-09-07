@@ -26,6 +26,12 @@ def _build_payload(report: EstimationReport) -> dict[str, Any]:
     ]
 
     return {
+        **({"schema_version": report.schema_version} if report.schema_version else {}),
+        **({"forecast": {
+            "expected_minutes": report.timeline.expected_case_minutes,
+            "basis": report.basis, "source": report.source, "as_of": report.as_of,
+            **({"tokens": report.tokens.model_dump(mode="json")} if report.tokens is not None else {}),
+        }} if report.basis is not None else {}),
         "title": report.title,
         "tasks": [
             {
@@ -46,6 +52,11 @@ def _build_payload(report: EstimationReport) -> dict[str, Any]:
                     "combined": task.modifier_combined,
                     "raw_combined": task.modifier_raw_combined,
                     "clamped": task.modifier_clamped,
+                    **({
+                        "estimate_factor": task.estimate_factor,
+                        "pre_adjustment_minutes": task.work_before_adjustment_minutes,
+                        "post_adjustment_minutes": task.effective_duration_minutes,
+                    } if task.estimate_factor != 1.0 else {}),
                 },
                 "estimation_category": task.estimation_category.value if task.estimation_category is not None else None,
                 "effective_duration_minutes": task.effective_duration_minutes,
@@ -72,8 +83,6 @@ def _build_payload(report: EstimationReport) -> dict[str, Any]:
                 "task_count": load.task_count,
                 "total_work_minutes": load.total_work_minutes,
                 "heuristic_cost": load.heuristic_cost,
-                # Compatibility alias; scheduled for removal with the v0.8 schema.
-                "estimated_cost": load.estimated_cost,
             }
             for load in sorted(report.agent_load, key=lambda load: load.agent)
         ],

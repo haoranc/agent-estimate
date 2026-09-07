@@ -36,6 +36,18 @@ class TestAgentProfileValidation:
     def test_valid_profile_parses(self) -> None:
         profile = AgentProfile(**self._valid())
         assert profile.name == "Claude"
+        assert profile.estimate_multiplier == 1.0
+        assert profile.adjust_estimate(30) == 30
+
+    def test_profile_multiplier_scales_work(self) -> None:
+        profile = AgentProfile(**self._valid(estimate_multiplier=1.5))
+        assert profile.adjust_estimate(30) == 45
+        assert profile.adjust_estimate(0) == 0
+
+    @pytest.mark.parametrize("value", [0, -1, float("nan"), float("inf"), True, "1.5"])
+    def test_invalid_multiplier_rejected(self, value: object) -> None:
+        with pytest.raises(ValidationError, match="estimate_multiplier"):
+            AgentProfile(**self._valid(estimate_multiplier=value))
 
     def test_empty_name_raises(self) -> None:
         with pytest.raises(ValidationError, match="name"):
@@ -80,7 +92,6 @@ class TestProjectSettingsValidation:
         base: dict = {
             "friction_multiplier": 1.0,
             "inter_wave_overhead": 0.0,
-            "review_overhead": 0.0,
             "metr_fallback_threshold": 40.0,
         }
         base.update(overrides)
@@ -98,9 +109,10 @@ class TestProjectSettingsValidation:
         with pytest.raises(ValidationError, match="friction_multiplier"):
             ProjectSettings(**self._valid(friction_multiplier=-1.0))
 
-    def test_negative_review_overhead_raises(self) -> None:
+    @pytest.mark.parametrize("value", [0, None, -0.1])
+    def test_removed_review_overhead_raises(self, value: object) -> None:
         with pytest.raises(ValidationError, match="review_overhead"):
-            ProjectSettings(**self._valid(review_overhead=-0.1))
+            ProjectSettings(**self._valid(review_overhead=value))
 
     def test_negative_inter_wave_overhead_raises(self) -> None:
         with pytest.raises(ValidationError, match="inter_wave_overhead"):
@@ -130,7 +142,6 @@ class TestEstimationConfig:
         return ProjectSettings(
             friction_multiplier=1.0,
             inter_wave_overhead=0.0,
-            review_overhead=0.0,
             metr_fallback_threshold=40.0,
         )
 

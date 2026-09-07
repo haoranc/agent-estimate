@@ -35,7 +35,6 @@ def sample_project_settings() -> ProjectSettings:
     return ProjectSettings(
         friction_multiplier=1.1,
         inter_wave_overhead=0.25,
-        review_overhead=0.15,
         metr_fallback_threshold=40.0,
     )
 

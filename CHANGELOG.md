@@ -2,10 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+Entries from v0.8 onward follow [Common Changelog](https://common-changelog.org/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.8.0] - 2026-09-06
+
+### Changed
+
+- **Breaking:** Score matching work or wall-time actuals against expected values and reject cap-based scoring ([scoring rules](https://github.com/kiloloop/agent-estimate#v08-forecast-contract)).
+- **Breaking:** Require an explicit expected-work attestation for legacy calibration ([calibration guidance](https://github.com/kiloloop/agent-estimate#v08-forecast-contract)).
+- Require Pydantic 2.5 for trace-schema imports ([minimum dependencies](https://github.com/kiloloop/agent-estimate/blob/main/pyproject.toml)).
+- Scale assigned work once through agent profile adjustments without changing task assignments ([profile adjustments](https://github.com/kiloloop/agent-estimate#agent-fleet)).
+- Show applied profile factors and work minutes before and after adjustment ([adjustment reports](https://github.com/kiloloop/agent-estimate#agent-fleet)).
+
+### Added
+
+- Add typed records separating task facts, execution profiles, admission caps, forecasts, and outcomes ([forecast contract](https://github.com/kiloloop/agent-estimate#v08-forecast-contract)).
+- Accept validated, versioned YAML requests through `estimate --spec` ([request example](https://github.com/kiloloop/agent-estimate/blob/main/examples/estimate-request.yaml)).
+- Enforce required capabilities on the named spec executor ([agent selection](https://github.com/kiloloop/agent-estimate#v08-forecast-contract)).
+- Identify expected wall time and its provenance independently of admission caps in reports ([duration forecasts](https://github.com/kiloloop/agent-estimate#v08-forecast-contract)).
+- Accept caller-supplied token forecasts with explicit local-policy provenance ([token priors](https://github.com/kiloloop/agent-estimate/blob/main/docs/token-forecast-priors.md)).
+- Document the bot-only comment update filter and PAT identity limitation ([comment identity](https://github.com/kiloloop/agent-estimate#permissions-and-comment-identity)).
+
+### Removed
+
+- **Breaking:** Reject `settings.review_overhead` with exit code 2 and review-mode migration guidance ([R1 migration](https://github.com/kiloloop/agent-estimate/blob/main/docs/migration-v0.8.md#r1-remove-settingsreview_overhead)).
+- **Breaking:** Remove the JSON `estimated_cost` alias in favor of `heuristic_cost` ([R2 migration](https://github.com/kiloloop/agent-estimate/blob/main/docs/migration-v0.8.md#r2-replace-the-json-estimated_cost-alias)).
+
+### Fixed
+
+- Restrict PyPI and TestPyPI publishing to the public repository ([publishing workflow](https://github.com/kiloloop/agent-estimate/blob/main/.github/workflows/publish.yml)).
 
 ## [0.7.5] - 2026-08-26
 
@@ -152,6 +180,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modifier flags: `--warm-context`, `--spec-clarity`, `--issues`
 - PyPI package: `pip install agent-estimate`
 
+[0.8.0]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.8.0
 [0.7.5]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.7.5
 [0.7.4]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.7.4
 [0.7.3]: https://github.com/kiloloop/agent-estimate/releases/tag/v0.7.3

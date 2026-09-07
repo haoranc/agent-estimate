@@ -132,7 +132,7 @@ def test_render_json_report_is_canonical_and_round_trips() -> None:
         "registry_version": "test-registry",
     }
     assert payload["agent_load"][0]["heuristic_cost"] == 9.3
-    assert payload["agent_load"][0]["estimated_cost"] == 9.3
+    assert all("estimated_cost" not in row for row in payload["agent_load"])
 
 
 def test_estimate_command_json_format_outputs_json() -> None:

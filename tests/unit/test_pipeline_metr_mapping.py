@@ -36,7 +36,6 @@ def _claude_frontier_config() -> EstimationConfig:
         settings=ProjectSettings(
             friction_multiplier=1.0,
             inter_wave_overhead=0.0,
-            review_overhead=0.0,
             metr_fallback_threshold=45.0,
         ),
     )
@@ -49,7 +48,6 @@ def _claude_frontier_config_with_friction(friction: float) -> EstimationConfig:
         settings=ProjectSettings(
             friction_multiplier=friction,
             inter_wave_overhead=0.0,
-            review_overhead=0.0,
             metr_fallback_threshold=45.0,
         ),
     )

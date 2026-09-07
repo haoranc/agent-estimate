@@ -105,9 +105,14 @@ jobs:
         run: |
           # Click 8.2 exercises the compatibility boundary and the
           # no_args_is_help fix that establishes the Typer floor.
-          pip install typer==0.16.1 click==8.2.0 pyyaml==6.0 pydantic==2.4.0 networkx==3.0 typing-extensions==4.6.1
+          pip install typer==0.16.1 click==8.2.0 pyyaml==6.0 pydantic==2.5.0 networkx==3.0 typing-extensions==4.6.1
           pip install --no-deps -e .
       - name: CLI constructs and answers at the floors
         run: |
           agent-estimate --help
           agent-estimate --version
+      - name: Import and test the package at the floors
+        run: |
+          pip install 'pytest>=9.0.3,<10.0' 'tomli>=2.0'
+          python -c "import agent_estimate.tracing.schema"
+          python -m pytest tests/unit/ -x -q
